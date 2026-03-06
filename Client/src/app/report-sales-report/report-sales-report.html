@@ -1,0 +1,208 @@
+<div class="app-container">
+    <app-user-nav></app-user-nav>
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Sales Report</span>
+    </div>
+    <main class="page-content">
+        <div class="report-container">
+            <!-- Header -->
+            <div class="report-header">
+                <h1>List Sales Report</h1>
+                <button class="header-excel-btn" (click)="exportToExcel()">EXCEL</button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-panel">
+                <div class="filter-row top-row">
+                    <div class="filter-group">
+                        <label>Branch</label>
+                        <input type="text" class="form-control" [value]="branchName()" disabled>
+                    </div>
+                    <div class="filter-group">
+                        <label>Search Option</label>
+                        <select class="form-control" [value]="searchOption()" (change)="onSearchOptionChange($event)">
+                            <option value="Custom Date">Custom Date</option>
+                            <option value="Month to Date">Month to Date</option>
+                            <option value="Previous Month">Previous Month</option>
+                            <option value="Year to Date">Year to Date</option>
+                            <option value="Previous Year">Previous Year</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Date Row -->
+                <div class="filter-row dates-row">
+                    <div class="filter-group date-group">
+                        <label class="red-label">Date From</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" class="form-control date-input" [ngModel]="fromDate()"
+                                (ngModelChange)="fromDate.set($event); onFilterChange()"
+                                [disabled]="searchOption() !== 'Custom Date'">
+                        </div>
+                    </div>
+                    <div class="filter-group date-group">
+                        <label class="red-label">Date To</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" class="form-control date-input" [ngModel]="toDate()"
+                                (ngModelChange)="toDate.set($event); onFilterChange()"
+                                [disabled]="searchOption() !== 'Custom Date'">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Controls -->
+            <div class="table-controls">
+                <div class="left-controls">
+                    <button class="control-btn" (click)="exportPagedCsv()">CSV</button>
+                    <button class="control-btn" (click)="exportPagedExcel()">Excel</button>
+                </div>
+                <div class="right-controls">
+                    <span>Show</span>
+                    <select class="entries-select" [value]="limit()" (change)="changeLimit($event)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr class="filters-tr">
+                            <th>Invoice No</th>
+                            <th>Invoice Date</th>
+                            <th>Branch Name</th>
+                            <th class="relative" style="position: relative; min-width: 250px;">
+                                <div class="custom-multiselect">
+                                    <div class="multiselect-header" (click)="toggleVehicleDropdown()">
+                                        <span style="min-width: 10rem;">
+                                            @if (selectedVehicleCodes().length === 0) {
+                                            --Select Vehicle Code--
+                                            } @else {
+                                            Selected ({{ selectedVehicleCodes().length }})
+                                            }
+                                        </span>
+                                        <i class="fas" [class.fa-chevron-down]="!isVehicleDropdownOpen()"
+                                            [class.fa-chevron-up]="isVehicleDropdownOpen()"></i>
+                                    </div>
+                                    @if (isVehicleDropdownOpen()) {
+                                    <div class="multiselect-dropdown">
+                                        <div class="multiselect-option-all"
+                                            (click)="selectedVehicleCodes.set([]); onFilterChange()">
+                                            <input type="checkbox" [checked]="selectedVehicleCodes().length === 0"
+                                                (click)="$event.preventDefault()" readonly>
+                                            <span>--Select Vehicle --</span>
+                                        </div>
+                                        @for (lc of labourCodes(); track lc.labour_id) {
+                                        <div class="multiselect-option"
+                                            (click)="toggleVehicleCode(lc.labour_code); $event.stopPropagation()">
+                                            <input type="checkbox" [checked]="isVehicleSelected(lc.labour_code)"
+                                                (click)="$event.preventDefault()">
+                                            <span>{{ lc.labour_title }}({{ lc.labour_code }})</span>
+                                        </div>
+                                        }
+                                    </div>
+                                    }
+                                </div>
+                            </th>
+                            <th>Vehicle Code</th>
+                            <th>Customer Name</th>
+                            <th>Address</th>
+                            <th>Pincode</th>
+                            <th>Mobile No</th>
+                            <th>Father/Hus/Son</th>
+                            <th>Invoice Type</th>
+                            <th>CDMS No</th>
+                            <th>Area</th>
+                            <th>Hypothecation</th>
+                            <th>Chassis No</th>
+                            <th>Engine No</th>
+                            <th>Executive</th>
+                            <th>Vehicle Color</th>
+                            <th>Taxable</th>
+                            <th>SGST</th>
+                            <th>CGST</th>
+                            <th>CESS</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (loading()) {
+                        <tr>
+                            <td colspan="23" style="text-align: center; padding: 20px;">Loading records...</td>
+                        </tr>
+                        } @else if (records().length === 0) {
+                        <tr class="empty-row">
+                            <td colspan="23" class="no-data">No matching records found</td>
+                        </tr>
+                        } @else {
+                        @for (row of records(); track row.inv_id) {
+                        <tr>
+                            <td (click)="viewPdf(row.inv_id)"
+                                style="font-weight: bold; color: #d32f2f; cursor: pointer; text-decoration: none;">
+                                {{ row.inv_no }}
+                            </td>
+                            <td>{{ formatDisplayDate(row.inv_inv_date) }}</td>
+                            <td>{{ row.branch_name }}</td>
+                            <td>{{ row.inv_vehicle }}</td>
+                            <td>{{ row.inv_vehicle_code }}</td>
+                            <td>{{ row.inv_cus }}</td>
+                            <td>{{ row.inv_cus_addres }}</td>
+                            <td>{{ row.inv_pincode }}</td>
+                            <td>{{ row.inv_pho }}</td>
+                            <td>{{ row.inv_cus_father_hus }}</td>
+                            <td>{{ row.inv_type }}</td>
+                            <td>{{ row.inv_cdms_no }}</td>
+                            <td>{{ row.inv_area }}</td>
+                            <td>{{ row.inv_hypothication }}</td>
+                            <td>{{ row.inv_chassis }}</td>
+                            <td>{{ row.in_engine }}</td>
+                            <td>{{ row.inv_advisername }}</td>
+                            <td>{{ row.inv_color }}</td>
+                            <td>{{ formatAmount(row.inv_taxable_amt) }}</td>
+                            <td>{{ formatAmount(row.inv_sgst) }}</td>
+                            <td>{{ formatAmount(row.inv_cgst) }}</td>
+                            <td>{{ formatAmount(row.inv_cess) }}</td>
+                            <td style="font-weight: bold;">{{ formatAmount(row.inv_total) }}</td>
+                        </tr>
+                        }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-footer" style="justify-content: space-between; align-items: center;">
+                <div class="entries-info" style="font-size: 13px; color: #666;">
+                    Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+                </div>
+                <div class="paging-controls" style="display: flex; gap: 5px;">
+                    <button class="page-btn text-btn" [disabled]="!hasPrev()" (click)="prevPage()">Previous</button>
+                    @for (p of visiblePages(); track $index) {
+                    <button class="page-btn" [class.active]="p === page()" (click)="changePage(p)"
+                        [disabled]="p === '...'">
+                        {{ p }}
+                    </button>
+                    }
+                    <button class="page-btn text-btn" [disabled]="!hasNext()" (click)="nextPage()">Next</button>
+                </div>
+            </div>
+
+            <div class="totals-section">
+                <label>Total Invoice Amount</label>
+                <input type="text" [value]="formatAmount(totalInvoiceAmount())" readonly class="total-input">
+            </div>
+        </div>
+    </main>
+
+    <div style="height: 50px;"></div>
+    <app-user-footer></app-user-footer>
+</div>

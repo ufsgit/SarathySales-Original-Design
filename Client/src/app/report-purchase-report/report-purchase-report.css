@@ -1,0 +1,169 @@
+@import '../reports-proforma-invoice/reports-proforma-invoice.css';
+
+/* Override or add specific styles */
+
+/* Specific overrides for this page */
+.filters-container {
+    align-items: center;
+}
+
+.report-table {
+    min-height: 50vh;
+}
+
+/* Custom header select styling */
+.th-select {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #ccc;
+    font-size: 11px;
+    background-color: #f9f9f9;
+}
+
+/* Column headers specific styling */
+.report-table th {
+    background-color: #f0f0f0;
+    font-size: 11px;
+    padding: 8px 4px;
+    text-align: left;
+    white-space: normal;
+    vertical-align: top;
+}
+
+/* Input fields in headers */
+.header-input {
+    width: 100%;
+}
+
+.header-input input {
+    width: 100%;
+    font-size: 11px;
+    padding: 2px;
+}
+
+/* Footer Totals Centering */
+.footer-totals {
+    justify-content: center;
+    gap: 15px;
+    background-color: transparent;
+    border-top: none;
+    padding-top: 10px;
+}
+
+.total-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.total-item label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+}
+
+.total-item input {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    width: 100px;
+    text-align: right;
+    font-weight: 500;
+}
+
+/* Pagination specific */
+.pagination-section {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 12px;
+    color: #555;
+    margin-right: 20px;
+}
+
+.paging-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.page-btn {
+    padding: 2px 8px;
+    border: 1px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.page-btn.active {
+    background-color: #eee;
+    font-weight: bold;
+}
+
+/* Custom Multi-select styles */
+.custom-multiselect {
+    position: relative;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.multiselect-header {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #444;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+.multiselect-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.multiselect-option,
+.multiselect-option-all {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    color: #333;
+    font-size: 11px;
+}
+
+.multiselect-option:hover,
+.multiselect-option-all:hover {
+    background: #f5f5f5;
+}
+
+.multiselect-option input[type="checkbox"],
+.multiselect-option-all input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+.multiselect-option span,
+.multiselect-option-all span {
+    flex: 1;
+}
+
+/* Ensure table header handles the dropdown */
+.report-table thead th.relative {
+    overflow: visible !important;
+}

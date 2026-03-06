@@ -1,0 +1,83 @@
+<div class="page-wrapper">
+    <main class="split-layout">
+        <!-- Left Visual Panel -->
+        <section class="visual-panel">
+            <div class="image-overlay"></div>
+            <div class="visual-content">
+                <h1 class="brand-signature">Sarathy Motors</h1>
+                <p class="section-title">Previous Transactions</p>
+                <div class="accent-line"></div>
+            </div>
+        </section>
+
+        <!-- Right Data Panel -->
+        <section class="data-panel">
+            <header class="panel-header">
+                <div class="breadcrumb">Home > List Previous Bill</div>
+                <div class="user-meta">Welcome - Staff Panel | <a href="/login">Logout</a></div>
+            </header>
+
+            <div class="panel-content">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3>Previous Money Receipts (Vehicle)</h3>
+                        <div class="search-box">
+                            <label>Search:</label>
+                            <input type="text">
+                        </div>
+                    </div>
+
+                    <div class="scroll-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>SI:No</th>
+                                    <th>Customer Details</th>
+                                    <th>Branch</th>
+                                    <th>Receipt Date</th>
+                                    <th>Receipt No</th>
+                                    <th>Reference</th>
+                                    <th>Payment Type</th>
+                                    <th>Reason</th>
+                                    <th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (receipts.length === 0) {
+                                <tr>
+                                    <td colspan="9" class="no-data">No data available in table</td>
+                                </tr>
+                                }
+                                @for (item of receipts; track $index) {
+                                <tr>
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{item.customer}}</td>
+                                    <td>{{item.branch}}</td>
+                                    <td>{{item.date}}</td>
+                                    <td>{{item.receiptNo}}</td>
+                                    <td>{{item.ref}}</td>
+                                    <td>{{item.paymentType}}</td>
+                                    <td>{{item.reason}}</td>
+                                    <td class="amount">₹{{item.amount}}</td>
+                                </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-footer">
+                        <span>Showing 0 to 0 of 0 entries</span>
+                        <div class="pagination">
+                            <button disabled>Previous</button>
+                            <button disabled>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="panel-footer">
+                <p>2022 © Cyberia Softwares Pvt. Ltd</p>
+            </footer>
+        </section>
+    </main>
+</div>

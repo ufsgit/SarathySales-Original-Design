@@ -1,0 +1,59 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-text">Home</a>
+    </div>
+
+    <div class="welcome-area">
+        <h1 class="fade-in">Welcome back, {{ user()?.emp_name || 'Guest' }}!</h1>
+
+        <div class="user-profile-card scale-up" *ngIf="user()">
+            <div class="card-header">
+                <i class="fas fa-user-circle profile-icon"></i>
+                <div class="header-text">
+                    <h3>Employee Profile</h3>
+                    <span class="status-badge" [class.active]="user()?.status?.toLowerCase() === 'active'">
+                        {{ user()?.status }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-pair">
+                        <span class="info-label">Name:</span>
+                        <span class="info-value">{{ user()?.emp_name }}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Branch:</span>
+                        <span class="info-value">{{ user()?.branch_name }}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Role:</span>
+                        <span class="info-value">{{ user()?.role_des }}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Designation:</span>
+                        <span class="info-value">{{ user()?.e_designation }}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">{{ user()?.status }}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Username:</span>
+                        <span class="info-value">{{ user()?.username }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<app-user-footer></app-user-footer>

@@ -1,0 +1,254 @@
+<div class="app-container">
+    <app-user-nav></app-user-nav>
+
+    <main class="page-container">
+        <div class="page-content-wrapper">
+
+            <!-- Breadcrumb -->
+            <div class="breadcrumb-bar">
+                <a (click)="navigate('/user-home')"><i class="fas fa-home"></i> Home</a>
+                <span> > </span>
+                <span>Master Operation</span>
+                <span> > </span>
+                <span class="active">Pay Slip</span>
+            </div>
+
+            <!-- Main Card -->
+            <div class="theme-card">
+                <header class="orange-header-strip">
+                    <div class="header-left">
+                        <i class="fas fa-bars menu-icon"></i>
+                        <h2>Staff Pay Slip</h2>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn-list" (click)="navigate('/previous-pay-slip')">List Pay Slips</button>
+                        <button class="btn-save" (click)="$event.preventDefault(); onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
+                    </div>
+                </header>
+
+                <div class="page-card-content">
+                    <div *ngIf="successMessage()" class="alert alert-success">{{ successMessage() }}</div>
+                    <div *ngIf="errorMessage()" class="alert alert-danger">{{ errorMessage() }}</div>
+                    <form class="ledger-form">
+
+                        <div class="form-grid-cols-3">
+                            <!-- Column 1: Basic Info -->
+                            <div class="col-stack">
+                                <div class="form-col-vertical">
+                                    <label>Branch Name:</label>
+                                    <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Pay Slip No:</label>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        [value]="paySlipNo()"
+                                        readonly>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Date:</label>
+                                    <div class="date-input-wrapper">
+                                        <input type="date" class="form-control" [ngModel]="paySlipDate()" (ngModelChange)="paySlipDate.set($event)" name="paySlipDate">
+                                    </div>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Customer Name:</label>
+                                    <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName" list="customer-list" (input)="onCustomerInput($any($event.target).value)" placeholder="Internal/Employee">
+                                    <datalist id="customer-list">
+                                        <option *ngFor="let c of customers()" [value]="c.cus_name"></option>
+                                    </datalist>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Vehicle Name:</label>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        [ngModel]="vehicleName()"
+                                        (ngModelChange)="onVehicleInput($event)"
+                                        name="vehicleName"
+                                        list="vehicle-list"
+                                        placeholder="Search vehicle name/code">
+                                    <datalist id="vehicle-list">
+                                        <option *ngFor="let l of labourCodes()" [value]="l.labour_title">{{l.labour_code}}</option>
+                                        <option *ngFor="let l of labourCodes()" [value]="l.labour_code">{{l.labour_title}}</option>
+                                    </datalist>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Executive:</label>
+                                    <select class="form-control" [ngModel]="adviserId()" (ngModelChange)="adviserId.set($event); onAdviserChange()" name="adviserId">
+                                        <option value="">--Select--</option>
+                                        <option *ngFor="let adv of advisers()" [value]="adv.emp_id">{{ adv.e_first_name || adv.name }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Remarks:</label>
+                                    <input type="text" class="form-control" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Finance /Cash:</label>
+                                    <select class="form-control" [ngModel]="financeCash()" (ngModelChange)="financeCash.set($event)" name="financeCash">
+                                        <option value="">--Select--</option>
+                                        <option value="By Cash">By Cash</option>
+                                        <option *ngFor="let f of insuranceCompanies()" [value]="f.icompany_name">
+                                            {{f.icompany_name}}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Vehicle Type:</label>
+                                    <input type="text" class="form-control" [ngModel]="vehicleType()" (ngModelChange)="vehicleType.set($event)" name="vehicleType">
+                                </div>
+                              
+                            </div>
+
+                            <!-- Column 2: Vehicle Amounts -->
+                            <div class="col-stack">
+                                <div class="form-col-vertical">
+                                    <label>Vehicle Amount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="vehicleAmount()" (ngModelChange)="vehicleAmount.set($event)" name="vehicleAmount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Road Tax:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="roadTax()" (ngModelChange)="roadTax.set($event)" name="roadTax">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Insurance:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="insurance()" (ngModelChange)="insurance.set($event)" name="insurance">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Regn Fee:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="regnFee()" (ngModelChange)="regnFee.set($event)" name="regnFee">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>VP Charges:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="vpCharges()" (ngModelChange)="vpCharges.set($event)" name="vpCharges">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Extended Warranty:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="extendedWarranty()" (ngModelChange)="extendedWarranty.set($event)" name="extendedWarranty">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Service & Stamp Charges:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="serviceStamp()" (ngModelChange)="serviceStamp.set($event)" name="serviceStamp">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Fittings Amt:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="fittingsAmt()" (ngModelChange)="fittingsAmt.set($event)" name="fittingsAmt">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>BFL Ins & Others:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="bflInsOthers()" (ngModelChange)="bflInsOthers.set($event)" name="bflInsOthers">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Advance EMI:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="advanceEMI()" (ngModelChange)="advanceEMI.set($event)" name="advanceEMI">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>RSA Amount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="rsaAmount()" (ngModelChange)="rsaAmount.set($event)" name="rsaAmount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Ownership Amt:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="ownershipAmt()" (ngModelChange)="ownershipAmt.set($event)" name="ownershipAmt">
+                                </div>
+                                <br>
+                                <br>
+                                <div class="mini-total">
+                                    <span class="lbl">Total Amount :</span>
+                                    <input class="val small" type="text" [value]="'Rs ' + leftTotal().toFixed(2)" readonly>
+                                </div>
+                            </div>
+
+                            <!-- Column 3: Payment Details -->
+                            <div class="col-stack">
+                                <div class="form-col-vertical">
+                                    <label>Finance Amount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="financeAmount()" (ngModelChange)="financeAmount.set($event)" name="financeAmount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Advance cash:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="advanceCash()" (ngModelChange)="advanceCash.set($event)" name="advanceCash">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Bank Transfer:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="bankTransfer()" (ngModelChange)="bankTransfer.set($event)" name="bankTransfer">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Swipe:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="swipe()" (ngModelChange)="swipe.set($event)" name="swipe">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Exchange:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="exchange()" (ngModelChange)="exchange.set($event)" name="exchange">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Discount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="discount()" (ngModelChange)="discount.set($event)" name="discount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>BFL Discount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="bflDiscount()" (ngModelChange)="bflDiscount.set($event)" name="bflDiscount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Special Discount:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="specialDiscount()" (ngModelChange)="specialDiscount.set($event)" name="specialDiscount">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Dues Amt:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="duesAmt()" (ngModelChange)="duesAmt.set($event)" name="duesAmt">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Gpay:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="gpay()" (ngModelChange)="gpay.set($event)" name="gpay">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Others1:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="others1()" (ngModelChange)="others1.set($event)" name="others1">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Others2:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="others2()" (ngModelChange)="others2.set($event)" name="others2">
+                                </div>
+                                <div class="form-col-vertical">
+                                    <label>Others3:</label>
+                                    <input type="number" class="form-control amount-right" [ngModel]="others3()" (ngModelChange)="others3.set($event)" name="others3">
+                                </div>
+                                <div class="mini-total">
+                                    <span class="lbl">Total Amount :</span>
+                                  <input class="val small" type="text" [value]="'Rs '+ rightTotal().toFixed(2)" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Totals Section -->
+                        <div class="summary-section">
+                            <div class="summary-center">
+                                <div class="total-group">
+                                    <span class="lbl">Balance Amount :</span>
+                                    <span class="val">Rs {{balanceAmount().toFixed(2)}}</span>
+                                </div>
+                            </div>
+
+                            <div class="summary-center">
+                                <label class="confirm"><input type="checkbox"> Are you sure want to save?</label>
+                            </div>
+
+                            <div class="summary-right">
+                                
+                                <button class="btn-save bottom-save" (click)="$event.preventDefault(); onSave()" [disabled]="isSaving()">
+                                    {{ isSaving() ? 'Saving...' : 'Save & Print' }}
+                                </button>
+                            </div>
+                        </div> 
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div style="height: 50px;"></div>
+
+    <app-user-footer></app-user-footer>
+</div>

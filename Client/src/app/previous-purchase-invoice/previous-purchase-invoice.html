@@ -1,0 +1,117 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+
+<main class="main-container">
+
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Previous Purchase Invoice</span>
+    </div>
+
+    <div class="content-wrapper">
+        <h2 class="page-title">Previous Purchase Invoice (Vehicle)</h2>
+
+        <div class="data-card">
+
+            <div class="controls-row">
+                <div class="search-group">
+                    <label>Search:</label>
+                    <input type="text" class="search-input" placeholder="Invoice no, vendor name…"
+                        (input)="onSearchInput($any($event.target).value)">
+                </div>
+                <div class="entries-group">
+                    <label>Show</label>
+                    <select class="entries-select" [value]="limit()"
+                        (change)="onLimitChange($any($event.target).value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>entries</label>
+                </div>
+            </div>
+
+            @if (isLoading()) {
+            <div class="status-row"><span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</span>
+            </div>
+            }
+            @if (errorMsg()) {
+            <div class="status-row error-text">{{ errorMsg() }}</div>
+            }
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Sl:No</th>
+                            <th>Purchase Details</th>
+                            <th>Branch</th>
+                            <th>Invoice No</th>
+                            <th>Invoice Date</th>
+                            <th>RC No</th>
+                            <th>RC Date</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!isLoading() && records().length === 0) {
+                        <tr class="no-data-row">
+                            <td colspan="8">No data available in table</td>
+                        </tr>
+                        }
+                        @for (row of records(); track row.purchaseItemBillId; let i = $index) {
+                        <tr>
+                            <td>{{ rowIndex(i) }}</td>
+                            <td>
+                                <div class="customer-info">
+                                    <span class="highlight-red"
+                                        (click)="generatePdf(row.purchaseItemBillId)">{{ row.invoiceNo || '—' }}</span>
+                                    <span>{{ row.pucha_vendorName || '' }}</span>
+                                    <span class="sub-name">{{ row.purcha_vend_addrs || '' }}</span>
+                                </div>
+                            </td>
+                            <td>{{ row.branch_name || '—' }}</td>
+                            <td>{{ row.invoiceNo }}</td>
+                            <td>{{ formatDate(row.invoiceDate) }}</td>
+                            <td>{{ row.rc_no || '—' }}</td>
+                            <td>{{ formatDate(row.rac_date) }}</td>
+                            <td>
+                                <div class="customer-info text-right">
+                                    <span class="sub-name">Basic Amount:-{{ row.purc_basic_total || '0.00' }}</span>
+                                    <span class="sub-name">Tax Amount:-{{ row.purc_tax_total || '0.00' }}</span>
+                                    <span>Total Amount:-{{ row.purc_grand_total || '0.00' }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+                <div class="dt-pagination">
+                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
+                        [class.disabled]="!hasPrev()">Previous</button>
+
+                    @for (p of visiblePages(); track $index) {
+                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                        {{ p }}
+                    </button>
+                    }
+
+                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
+                        [class.disabled]="!hasNext()">Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

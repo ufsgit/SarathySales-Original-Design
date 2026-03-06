@@ -1,0 +1,122 @@
+<div class="login-wrapper">
+  <!-- Header -->
+  <header class="login-header">
+    <div class="logo-left">
+      <!-- Sarathy Logo Composite -->
+      <div class="header-brand">
+        <div class="brand-icon-small">
+          <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
+            <!-- Stylized 3-line arrow -->
+            <path d="M20 80 C 30 70, 50 50, 60 20" stroke="#ed1c24" stroke-width="8" stroke-linecap="round"
+              fill="none" />
+            <path d="M60 20 L 40 30 L 70 40 L 60 20" fill="#ed1c24" />
+            <path d="M30 90 C 40 80, 55 60, 65 35" stroke="#ed1c24" stroke-width="6" stroke-linecap="round"
+              fill="none" />
+            <path d="M40 95 C 45 90, 55 80, 60 60" stroke="#ed1c24" stroke-width="4" stroke-linecap="round"
+              fill="none" />
+          </svg>
+        </div>
+        <div class="brand-text-block">
+          <span class="brand-name-small">SARATHY</span>
+          <span class="brand-tag-small">Experience the new drive</span>
+        </div>
+      </div>
+    </div>
+    <div class="logo-right">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/a/ad/KTM_Logo.svg" alt="KTM" style="height: 25px;">
+    </div>
+  </header>
+
+  <!-- Orange/Blue Strip -->
+  <div class="theme-strip">
+    <div class="strip-orange">
+      <span>KTM SALES</span>
+    </div>
+    <div class="strip-blue"></div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="login-body">
+    <div class="content-container">
+
+      <!-- Login Card -->
+      <div class="login-card">
+        <div class="avatar-header">
+          <div class="avatar-circle">
+            <!-- Placeholder for the female avatar in screenshot -->
+            <svg viewBox="0 0 100 100" width="60" height="60">
+              <circle cx="50" cy="50" r="50" fill="#b71c1c" />
+              <!-- Simple vector face approximation -->
+              <path d="M30 80 Q 50 100 70 80 V 100 H 30 Z" fill="#e57373" /> <!-- shirt -->
+              <circle cx="50" cy="45" r="20" fill="#ffccbc" /> <!-- face -->
+              <path d="M30 40 Q 50 10 70 40 Q 80 60 70 70 Q 50 60 30 70 Q 20 60 30 40" fill="#5d4037" /> <!-- hair -->
+            </svg>
+          </div>
+        </div>
+
+        <form (submit)="onLogin()">
+          <div class="form-row-custom">
+            <label>Login Id</label>
+            <input type="text" name="email" [(ngModel)]="email" placeholder="Enter Username">
+          </div>
+
+          <div class="form-row-custom">
+            <label>Password</label>
+            <input type="password" name="password" [(ngModel)]="password" placeholder="Enter Password">
+          </div>
+
+          <!-- Error Message -->
+          @if (errorMessage()) {
+          <div style="color:#c0392b; font-size:13px; margin-bottom:8px; text-align:center;">
+            {{ errorMessage() }}
+          </div>
+          }
+
+          <button type="submit" class="btn-login-red" [disabled]="isLoading()">
+            {{ isLoading() ? 'Logging in...' : 'LOGIN' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Branding (Center) -->
+      <div class="branding-area">
+        <div class="big-logo-container">
+          <!-- Red Arrow Graphics -->
+          <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+            <!-- Replicating the rising arrows -->
+            <!-- Arrow 1 (Main) -->
+            <path d="M25 85 Q 45 70 55 35 L 75 40 L 65 55" fill="none" stroke="#ed1c24" stroke-width="8"
+              stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M55 35 L 75 20 L 75 40" fill="#ed1c24" stroke="#ed1c24" stroke-width="2" />
+
+            <!-- Arrow 2 -->
+            <path d="M35 90 Q 50 75 60 50" stroke="#ed1c24" stroke-width="6" stroke-linecap="round" />
+            <!-- Arrow 3 -->
+            <path d="M45 95 Q 55 85 62 65" stroke="#ed1c24" stroke-width="4" stroke-linecap="round" />
+
+            <!-- Top corner accent -->
+            <path d="M65 20 L 90 20 L 90 45" stroke="#ed1c24" stroke-width="8" fill="none" stroke-linejoin="miter" />
+          </svg>
+        </div>
+        <div class="brand-text-large">
+          <div class="sarathy-main">SARATHY</div>
+          <div class="tagline-main">Experience the new drive</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <footer class="login-footer">
+    <div class="footer-links">
+      <a href="#">Terms & Conditions</a>
+      <a href="#">Terms Of Use</a>
+      <a href="#">FAQ on Sarathy motors</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Customer Grievance Redresal Policy</a>
+      <a href="#">Operation Manual</a>
+    </div>
+    <div class="copyright">
+      2026 © UFS Pvt.Ltd
+    </div>
+  </footer>
+</div>

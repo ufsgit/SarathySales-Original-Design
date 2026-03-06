@@ -1,0 +1,183 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Stock Splitup Report</span>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+
+        <!-- Orange Header Bar -->
+        <div class="report-header">
+            <div class="header-left">
+                <i class="fas fa-bars grid-icon" style="margin-right: 10px;"></i>
+                <h2>List Stock Splitup Report</h2>
+            </div>
+
+            <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                <div class="count-box">63</div>
+                <button class="header-excel-btn">EXCEL</button>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filters-container">
+            <div class="filter-row">
+                <label>Branch</label>
+                <select class="form-control" disabled>
+                    <option>SARATHY KOLLAM KTM (13177)</option>
+                </select>
+            </div>
+
+            <div class="filter-row">
+                <label>Chassis No</label>
+                <input type="text" class="form-control">
+            </div>
+
+            <div class="filter-row">
+                <label>Search Option</label>
+                <select class="form-control">
+                    <option>Custom Date</option>
+                    <option>Month to Date</option>
+                    <option>Previous Month</option>
+                    <option>Year to Date</option>
+                    <option>Previous Year</option>
+                </select>
+            </div>
+
+            <div class="date-range-row">
+                <div class="date-group">
+                    <label>Date From</label>
+                    <input type="date" value="2026-02-10">
+                </div>
+                <div class="date-group">
+                    <label>Date To</label>
+                    <input type="date" value="2026-02-10">
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Controls (CSV/Excel + Show entries) -->
+        <div class="table-controls">
+            <div class="btn-group">
+                <button class="control-btn">CSV</button>
+                <button class="control-btn">Excel</button>
+            </div>
+            <div class="entries-control">
+                <span style="color: red;">Show</span>
+                <select class="entries-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span style="color: red;">entries</span>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <div class="header-input">
+                                <label for="invoiceNo">Invoice No</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="rcDate">RC Date</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="branchName">Branch Name</label>
+                            </div>
+                        </th>
+                        <th>
+                            <select class="th-select">
+                                <option>--Select Vehicle Code--</option>
+                            </select>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="vendorDetails">Vendor Details</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="invoiceDate">Invoice Date</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="chassisNo">Chassis No</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="engineNo">Engine No</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="color">Color</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="rcNo">RC No</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-input">
+                                <label for="mfgDate">MFG Date</label>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-label">Total Amount</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="empty-state">
+                        <td colspan="12">No matching records found</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-section">
+            <div class="paging-controls">
+                <span style="margin-right: 10px;">Previous</span>
+                <button class="page-btn">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">4</button>
+                <button class="page-btn">5</button>
+                <button class="page-btn active">6</button>
+                <span style="margin-left: 10px;">Next</span>
+            </div>
+        </div>
+
+        <!-- Footer Totals -->
+        <div class="footer-totals">
+            <div class="total-item">
+                <label>Total Invoice Amount</label>
+                <input type="text" value="00.00" disabled>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

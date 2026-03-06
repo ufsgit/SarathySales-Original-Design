@@ -1,0 +1,547 @@
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { UserNav } from '../user-nav/user-nav';
+import { UserFooter } from '../user-footer/user-footer';
+import { ApiService } from '../services/api.service';
+
+@Component({
+    selector: 'app-purchase-upload',
+    standalone: true,
+    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    template: `
+<div class="app-container">
+  <app-user-nav></app-user-nav>
+
+  <main class="page-container">
+    <div class="page-content-wrapper">
+      
+      <!-- Breadcrumb -->
+      <div class="breadcrumb-bar">
+        <a (click)="navigate('/user-home')"><i class="fas fa-home"></i> Home</a>
+        <span> > </span>
+        <span>INVOICE</span>
+        <span> > </span>
+        <span class="active">Purchase</span>
+      </div>
+
+      <!-- Main Card -->
+      <div class="theme-card">
+        <header class="orange-header-strip">
+           <div class="header-left">
+             <i class="fas fa-bars menu-icon"></i>
+             <h2>INVOICE (Purchase)</h2>
+          </div>
+          <div class="header-actions">
+             <button class="btn-list" type="button" (click)="navigate('/previous-purchase-invoice')">List Purchase Invoice</button>
+          </div>
+        </header>
+
+        <div class="page-card-content">
+          <div *ngIf="uploadMessage" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ uploadMessage }}</div>
+          <div *ngIf="uploadError" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ uploadError }}</div>
+          <form class="ledger-form">
+            
+            <!-- Row 1 -->
+            <div class="form-grid-row">
+                <div class="form-col">
+                    <label>Branch Name:</label>
+                    <input type="text" class="form-control readonly" [value]="branchName" readonly>
+                </div>
+                <div class="form-col">
+                    <label>Inv No:</label>
+                    <input type="text" class="form-control" [(ngModel)]="invNo" name="invNo">
+                </div>
+                <div class="form-col">
+                    <label>Institution:</label>
+                    <select class="form-control" [(ngModel)]="institutionId" name="institutionId" (change)="onInstitutionChange()">
+                        <option value="">--Select--</option>
+                        <option *ngFor="let b of institutionOptions" [value]="b.b_id">{{ b.branch_name }}</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <label>RC No(supplier):</label>
+                    <input type="text" class="form-control" [(ngModel)]="rcNo" name="rcNo">
+                </div>
+            </div>
+
+            <!-- Row 2 -->
+             <div class="form-grid-row">
+                <div class="form-col">
+                    <label>HSN Code:</label>
+                    <input type="text" class="form-control" [(ngModel)]="hsnCode" name="hsnCode">
+                </div>
+                <div class="form-col">
+                    <label>RC Date:</label>
+                    <div class="date-input-wrapper">
+                         <input type="text" class="form-control" [value]="rcDate" >
+                         <i class="fas fa-calendar-alt calendar-icon"></i>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <label>Address:</label>
+                     <textarea class="form-control readonly" [(ngModel)]="address" name="address" rows="1" readonly></textarea>
+                </div>
+                <div class="form-col">
+                    <label>Invoice Date:</label>
+                    <div class="date-input-wrapper">
+                         <input type="text" class="form-control" [value]="invoiceDate" >
+                         <i class="fas fa-calendar-alt calendar-icon"></i>
+                    </div>
+                </div>
+             </div>
+
+             <!-- Row 3 -->
+             <div class="form-grid-row">
+                <div class="form-col"></div> <!-- Spacer -->
+                <div class="form-col"></div> <!-- Spacer -->
+                <div class="form-col">
+                    <label>GSTIN:</label>
+                   <input type="text" class="form-control" [(ngModel)]="gstin" name="gstin">
+                </div>
+                <div class="form-col">
+                    <label>Basic Total:</label>
+                    <input type="number" class="form-control" [(ngModel)]="basicTotal" name="basicTotal">
+                </div>
+                
+                <div class="form-col"></div>
+                <div class="form-col"></div>
+                <div class="form-col"></div>
+                <div class="form-col">
+                    <label>Tax Total:</label>
+                    <input type="number" class="form-control" [(ngModel)]="taxTotal" name="taxTotal">
+                </div>
+                
+                <div class="form-col"></div>
+                <div class="form-col"></div>
+                <div class="form-col"></div>
+                <div class="form-col">
+                    <label>Grand Total:</label>
+                    <input type="number" class="form-control" [(ngModel)]="grandTotal" name="grandTotal">
+                </div>
+             </div>
+
+             <!-- Row 4 -->
+              <div class="form-grid-row">
+                <div class="col-instructions">
+                     <!-- Select Excel File Layout -->
+                     <div class="file-upload-row">
+                        <label>Select Excel File :</label>
+                        <div class="file-action-group">
+                           <input #fileInput type="file" style="display:none" accept=".xlsx,.xls" (change)="onFileSelected($event)">
+                           <button type="button" class="btn-choose" (click)="fileInput.click()">Choose File</button>
+                           <span class="file-status">{{ selectedFileName || 'No file chosen' }}</span>
+                        </div>
+                     </div>
+                     <button type="button" class="btn-import" (click)="onImport()" [disabled]="isUploading">{{ isUploading ? 'Importing...' : 'Import' }}</button>
+
+                     <!-- Instructions Block -->
+                    <div class="instructions-block">
+                        <p>Instructions for uploading Excel File:</p>
+                        <ol>
+                            <li>1. Please remove all blank rows in the excel sheet that has to be uploaded.</li>
+                            <li>2. Make sure the first row of the excel sheet is the title of each columns.</li>
+                            <li>3. No blank rows should be left above the Title row.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="form-col"></div> <!-- Spacer Col 2 -->
+                <div class="form-col"></div> <!-- Spacer Col 3 -->
+                
+                
+             </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <div style="height: 50px;"></div>
+  
+  <app-user-footer></app-user-footer>
+</div>
+  `,
+    styles: [`
+    .app-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .page-container {
+        padding: 2px 0 0 0;
+    }
+
+    .page-content-wrapper {
+        width: 100%;
+        padding: 0 15px;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb-bar {
+        font-size: 12px;
+        color: #555;
+        padding: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .breadcrumb-bar a { color: #555; text-decoration: none; cursor: pointer; }
+    .breadcrumb-bar .active { font-weight: bold; color: #333; }
+
+    /* Card & Header */
+    .theme-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .orange-header-strip {
+        background: #f36f21; /* KTM Orange */
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .menu-icon {
+        background: #d85c15;
+        padding: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .orange-header-strip h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 5px;
+    }
+
+    .btn-list {
+        background-color: #d32f2f; /* Red */
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        font-size: 12px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+
+    /* Form Grid */
+    .page-card-content {
+        padding: 30px 20px;
+        background: #fff;
+        min-height: 600px;
+    }
+
+    .ledger-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px; /* Space between rows */
+    }
+
+    .form-grid-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        align-items: flex-start;
+    }
+
+    .form-col {
+        display: flex;
+        align-items: center; /* Label and Input side-by-side */
+        gap: 10px;
+        justify-content: flex-end; /* Align right to push content */
+    }
+
+    .form-col label {
+        font-size: 12px;
+        color: #333;
+        white-space: nowrap;
+        text-align: right;
+        min-width: 80px; 
+        font-weight: 500;
+    }
+
+    .form-control {
+        flex: 1; /* Input takes remaining space */
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        width: 100%;
+        max-width: 180px; /* Limit input width to look like screenshot */
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        height: 28px;
+    }
+    
+    textarea.form-control {
+        resize: none;
+        height: 30px; 
+    }
+
+    .form-control.readonly {
+        background-color: #f7f7f7;
+        color: #555;
+    }
+
+    .form-control:focus {
+        border-color: #f36f21;
+        outline: none;
+    }
+
+    .date-input-wrapper {
+        position: relative;
+        flex: 1;
+        max-width: 180px;
+    }
+    .date-input-wrapper .form-control {
+        max-width: 100%;
+    }
+    .calendar-icon {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #666;
+        pointer-events: none;
+        font-size: 12px;
+    }
+
+    /* Instructions & Upload Area Layout */
+    .col-instructions {
+        grid-column: span 2;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding-left: 50px; /* Push in slightly */
+    }
+
+    .file-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .file-upload-row label {
+        font-size: 12px;
+        font-weight: bold;
+        color: #333;
+    }
+    .file-action-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-choose {
+        background: #efefef;
+        border: 1px solid #ccc;
+        padding: 3px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        border-radius: 2px;
+    }
+    .file-status {
+        font-size: 11px;
+        color: #555;
+    }
+    .btn-import {
+        background: #5bc0de;
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+
+    .instructions-block {
+        margin-top: 20px;
+    }
+    .instructions-block p {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    .instructions-block ol {
+        padding-left: 0;
+        list-style: none;
+        margin: 0;
+    }
+    .instructions-block li {
+        font-size: 11px;
+        color: #333;
+        margin-bottom: 4px;
+    }
+
+    /* Totals Column Alignment */
+    .form-col-totals {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-end;
+    }
+    .total-row-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: flex-end;
+        width: 100%;
+    }
+    .total-row-item label {
+        font-size: 12px;
+        color: #333;
+        white-space: nowrap;
+        text-align: right;
+        min-width: 80px; 
+        font-weight: 500;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .form-grid-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @media (max-width: 768px) {
+        .form-grid-row {
+            grid-template-columns: 1fr;
+        }
+        .form-col, .col-instructions, .form-col-totals {
+            grid-column: span 1;
+            align-items: flex-start;
+        }
+        .form-control {
+            max-width: 100%;
+        }
+        .col-instructions {
+            padding-left: 0;
+        }
+    }
+  `]
+})
+export class PurchaseUploadComponent implements OnInit {
+    branchId = '';
+    branchName = 'SARATHY KOLLAM KTM';
+    invNo = '';
+    institution = '';
+    institutionId = '';
+    rcNo = '';
+    hsnCode = '';
+    rcDate = '19-02-2026';
+    address = '';
+    invoiceDate = '19-02-2026';
+    gstin = '';
+    institutionOptions: Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin?: string }> = [];
+
+    basicTotal = 0.00;
+    taxTotal = 0.00;
+    grandTotal = 0.00;
+    selectedFile: File | null = null;
+    selectedFileName = '';
+    isUploading = false;
+    uploadMessage = '';
+    uploadError = '';
+
+    constructor(private router: Router, private api: ApiService) { }
+
+    ngOnInit(): void {
+        const user = this.api.getCurrentUser();
+        if (user) {
+            this.branchName = (user.branch_name || '').toString().trim() || this.branchName;
+            this.branchId = (user.branch_id || '').toString();
+        }
+        this.loadInstitutionOptions();
+    }
+
+    private loadInstitutionOptions(): void {
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res?.success && Array.isArray(res.data)) {
+                    this.institutionOptions = res.data.map((b: any) => ({
+                        b_id: parseInt(b.b_id, 10) || 0,
+                        branch_name: (b.branch_name || '').toString().trim(),
+                        branch_address: (b.branch_address || '').toString(),
+                        branch_gstin: (b.branch_gstin || '').toString().trim()
+                    })).filter((b: any) => !!b.branch_name);
+                }
+            }
+        });
+    }
+
+    onInstitutionChange(): void {
+        const id = parseInt((this.institutionId || '').toString(), 10) || 0;
+        const selected = this.institutionOptions.find(b => b.b_id === id);
+        this.institution = selected?.branch_name || '';
+        this.address = selected?.branch_address || '';
+        this.gstin = selected?.branch_gstin || '';
+    }
+
+    onFileSelected(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        const file = input?.files && input.files.length ? input.files[0] : null;
+        this.selectedFile = file;
+        this.selectedFileName = file?.name || '';
+        this.uploadMessage = '';
+        this.uploadError = '';
+    }
+
+    onImport(): void {
+        this.uploadMessage = '';
+        this.uploadError = '';
+        if (!this.branchId) {
+            this.uploadError = 'Branch missing. Please login again.';
+            return;
+        }
+        if (!this.selectedFile) {
+            this.uploadError = 'Please choose an Excel file.';
+            return;
+        }
+
+        this.isUploading = true;
+        this.api.uploadPurchaseExcel(this.selectedFile, this.branchId).subscribe({
+            next: (res: any) => {
+                this.isUploading = false;
+                if (res?.success) {
+                    const successCount = Number(res?.successCount || 0);
+                    const errorCount = Number(res?.errorCount || 0);
+                    this.uploadMessage = `Import complete. Success: ${successCount}, Errors: ${errorCount}`;
+                } else {
+                    this.uploadError = res?.message || 'Import failed';
+                }
+            },
+            error: (err: any) => {
+                this.isUploading = false;
+                this.uploadError = err?.error?.message || 'Upload failed';
+            }
+        });
+    }
+
+    navigate(path: string) { this.router.navigate([path]); }
+}

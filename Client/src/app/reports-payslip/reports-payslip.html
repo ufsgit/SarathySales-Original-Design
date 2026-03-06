@@ -1,0 +1,158 @@
+<div class="app-container">
+    <app-user-nav></app-user-nav>
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Payslip Report</span>
+    </div>
+    <main class="page-content">
+        <div class="report-container">
+            <!-- Header -->
+            <div class="report-header">
+                <div class="header-left">
+                    <svg class="header-icon" width="24" height="24" viewBox="0 0 24 24" fill="white"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 6H20M4 12H20M4 18H20" stroke="white" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    <h1>List Payslip Report</h1>
+                </div>
+                <button class="header-excel-btn" (click)="exportToExcel()">EXCEL</button>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="filters-panel">
+                <div class="filters-wrapper">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Branch</label>
+                            <input type="text" class="form-control" [value]="branchName()" disabled>
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Search Option</label>
+                            <select class="form-control" [value]="searchOption()"
+                                (change)="onSearchOptionChange($event)">
+                                <option value="Custom Date">Custom Date</option>
+                                <option value="Month to Date">Month to Date</option>
+                                <option value="Previous Month">Previous Month</option>
+                                <option value="Year to Date">Year to Date</option>
+                                <option value="Previous Year">Previous Year</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Date From</label>
+                            <div class="date-input-wrapper">
+                                <input type="date" class="form-control" [ngModel]="fromDate()"
+                                    (ngModelChange)="fromDate.set($event); onFilterChange()"
+                                    [disabled]="searchOption() !== 'Custom Date'">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label>Date To</label>
+                            <div class="date-input-wrapper">
+                                <input type="date" class="form-control" [ngModel]="toDate()"
+                                    (ngModelChange)="toDate.set($event); onFilterChange()"
+                                    [disabled]="searchOption() !== 'Custom Date'">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Controls -->
+            <div class="table-controls">
+                <div class="left-controls">
+                    <button class="control-btn" (click)="exportPagedCsv()">CSV</button>
+                    <button class="control-btn" (click)="exportPagedExcel()">Excel</button>
+                </div>
+                <div class="right-controls">
+                    <span>Show</span>
+                    <select class="entries-select" [value]="limit()" (change)="changeLimit($event)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Payslip No</th>
+                            <th>Payslip Date</th>
+                            <th>Branch Name</th>
+                            <th>Vehicle Name</th>
+                            <th>Customer Name</th>
+                            <th>Executive</th>
+                            <th>Vehicle Type</th>
+                            <th>Total Earnings</th>
+                            <th>Total Deduction</th>
+                            <th>Balance Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (loading()) {
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 20px;">Loading records...</td>
+                        </tr>
+                        } @else if (records().length === 0) {
+                        <tr class="empty-row">
+                            <td colspan="10" class="no-data">No matching records found</td>
+                        </tr>
+                        } @else {
+                        @for (row of records(); track row.payslip_id) {
+                        <tr>
+                            <td (click)="viewPdf(row.payslip_id)"
+                                style="cursor: pointer; color: red; font-weight: bold;">
+                                {{ row.pay_slip_no }}
+                            </td>
+                            <td>{{ formatDisplayDate(row.pay_slip_date) }}</td>
+                            <td>{{ row.branch_name }}</td>
+                            <td>{{ row.pay_slip_reference }}</td>
+                            <td>{{ row.pay_cus_name }}</td>
+                            <td>{{ row.pay_regn }}</td>
+                            <td>{{ row.pay_vehil_type }}</td>
+                            <td>{{ formatAmount(row.pay_add_total) }}</td>
+                            <td>{{ formatAmount(row.pay_less_total) }}</td>
+                            <td style="font-weight: bold;">{{ formatAmount(row.pay_grand_tot) }}</td>
+                        </tr>
+                        }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Footer -->
+            <div class="pagination-footer" style="justify-content: space-between; align-items: center; display: flex;">
+                <div class="entries-info" style="font-size: 13px; color: #666;">
+                    Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+                </div>
+                <div class="paging-controls" style="display: flex; gap: 5px;">
+                    <button class="page-btn text-btn" [disabled]="!hasPrev()" (click)="prevPage()">Previous</button>
+                    @for (p of visiblePages(); track $index) {
+                    <button class="page-btn" [class.active]="p === page()" (click)="changePage(p)"
+                        [disabled]="p === '...'">
+                        {{ p }}
+                    </button>
+                    }
+                    <button class="page-btn text-btn" [disabled]="!hasNext()" (click)="nextPage()">Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div style="height: 50px;"></div>
+    <app-user-footer></app-user-footer>
+</div>

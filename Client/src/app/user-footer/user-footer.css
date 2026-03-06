@@ -1,0 +1,22 @@
+
+
+
+/* ===== FOOTER ===== */
+.footer {
+    background: #2c3e50;
+    /* Dark background */
+    padding: 10px 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: auto;
+}
+
+.footer-content p {
+    color: #ff0000;
+    /* Red text */
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+}

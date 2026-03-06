@@ -1,0 +1,161 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Stock Report</span>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+
+        <!-- Orange Header Bar -->
+        <div class="report-header">
+            <div class="header-left">
+                <i class="fas fa-bars grid-icon" style="margin-right: 10px;"></i>
+                <h2>Stock Report</h2>
+            </div>
+            <button class="header-excel-btn">EXCEL</button>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filters-container">
+            <div class="filter-row">
+                <label>Branch</label>
+                <select class="form-control" [ngModel]="branchId()"
+                    (ngModelChange)="branchId.set($event); onFilterChange()">
+                    <option value="">--Select Branch--</option>
+                    @for (b of branches(); track b.b_id) {
+                    <option [value]="b.b_id">{{ b.branch_name }}</option>
+                    }
+                </select>
+            </div>
+
+            <div class="filter-row">
+                <label>Search Option</label>
+                <select class="form-control" [ngModel]="searchOption()" (ngModelChange)="onSearchOptionChange($event)">
+                    <option value="Custom Date">Custom Date</option>
+                    <option value="Month to Date">Month to Date</option>
+                    <option value="Previous Month">Previous Month</option>
+                    <option value="Year to Date">Year to Date</option>
+                    <option value="Previous Year">Previous Year</option>
+                </select>
+            </div>
+
+            <div class="date-range-row">
+                <div class="date-group">
+                    <label>Date From</label>
+                    <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+                <div class="date-group">
+                    <label>Date To</label>
+                    <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Controls (CSV/Excel + Show entries) -->
+        <div class="table-controls">
+            <div class="btn-group">
+                <button class="control-btn">CSV</button>
+                <button class="control-btn">Excel</button>
+            </div>
+            <div class="entries-control">
+                <span>Show</span>
+                <select class="entries-select" [ngModel]="limit()" (ngModelChange)="changeLimit($event)">
+                    <option [value]="10">10</option>
+                    <option [value]="25">25</option>
+                    <option [value]="50">50</option>
+                    <option [value]="100">100</option>
+                </select>
+                <span>entries</span>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th style="min-width: 200px;">Vehicle Name</th>
+                        <th>Vehicle Code</th>
+                        <th>Branch Name</th>
+                        <th>Opening Stock</th>
+                        <th>Purchase</th>
+                        <th>Sales</th>
+                        <th>Branch Transfer</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody [class.loading-body]="loading()">
+                    @for (r of records(); track $index) {
+                    <tr>
+                        <td class="text-red font-bold">{{ r.vehicle_name }}</td>
+                        <td>{{ r.vehicle_code }}</td>
+                        <td>{{ r.branch_name }}</td>
+                        <td class="text-center">{{ r.opening_stock }}</td>
+                        <td class="text-center">{{ r.purchase }}</td>
+                        <td class="text-center">{{ r.sales }}</td>
+                        <td class="text-center">{{ r.branch_transfer }}</td>
+                        <td class="text-center font-bold">{{ r.stock }}</td>
+                    </tr>
+                    }
+                    <tr class="empty-state" *ngIf="!loading() && records().length === 0">
+                        <td colspan="8">No matching records found</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+            <div class="showing-text">
+                Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+            </div>
+            <div class="dt-pagination">
+                <button class="dt-page-btn" [disabled]="!hasPrev() || loading()" (click)="changePage(page() - 1)"
+                    [class.disabled]="!hasPrev()">Previous</button>
+
+                @for (p of visiblePages(); track $index) {
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                    [disabled]="p === '...' || loading()" (click)="changePage($any(p))">
+                    {{ p }}
+                </button>
+                }
+
+                <button class="dt-page-btn" [disabled]="!hasNext() || loading()" (click)="changePage(page() + 1)"
+                    [class.disabled]="!hasNext()">Next</button>
+            </div>
+        </div>
+
+        <!-- Footer Totals Summary -->
+        <div class="footer-totals">
+            <div class="total-group">
+                <label>Total Sales</label>
+                <input type="text" class="total-input" [value]="totalSales()" readonly>
+            </div>
+            <div class="total-group">
+                <label>Total Branch Trfer</label>
+                <input type="text" class="total-input" [value]="totalBranchTransfer()" readonly>
+            </div>
+            <div class="total-group">
+                <label>Current Stock</label>
+                <input type="text" class="total-input" [value]="currentStockTotal()" readonly>
+            </div>
+            <div class="total-group">
+                <label>Total Purchase</label>
+                <input type="text" class="total-input" [value]="totalPurchase()" readonly>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

@@ -1,0 +1,127 @@
+@import '../reports-proforma-invoice/reports-proforma-invoice.css';
+
+/* Local Pagination and Footer Totals */
+.table-footer {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+    margin-bottom: 20px;
+}
+
+.showing-text {
+    font-size: 13px;
+    color: #ff0000;
+}
+
+/* Pagination Buttons */
+.dt-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    justify-content: flex-end;
+}
+
+.dt-page-btn {
+    background: #fff;
+    border: 1px solid #ddd;
+    color: #333;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 35px;
+    text-align: center;
+    transition: all 0.2s;
+    margin-left: -1px;
+}
+
+.dt-page-btn:first-child {
+    border-radius: 4px 0 0 4px;
+    margin-left: 0;
+}
+
+.dt-page-btn:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+.dt-page-btn:hover:not(.disabled):not(.active) {
+    background: #f8f9fa;
+    border-color: #ccc;
+}
+
+.dt-page-btn.active {
+    background: linear-gradient(to bottom, #fff 0%, #dcdcdc 100%);
+    border-color: #999;
+    box-shadow: inset 0 0 3px #aaa;
+    font-weight: 600;
+}
+
+.dt-page-btn.disabled {
+    color: #bbb;
+    cursor: not-allowed;
+    background: #fafafa;
+}
+
+.dt-page-btn.ellipsis {
+    cursor: default;
+    background: #fff;
+}
+
+/* Footer Totals Summary Area */
+.footer-totals {
+    min-height: 80px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.total-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.total-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 13px;
+}
+
+.total-input {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    width: 100px;
+    text-align: right;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ff0000;
+}
+
+.total-input.large {
+    width: 120px;
+    font-weight: 700;
+    background-color: #fffbe6;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.font-bold {
+    font-weight: bold;
+}
+
+.loading-body {
+    opacity: 0.6;
+    pointer-events: none;
+}

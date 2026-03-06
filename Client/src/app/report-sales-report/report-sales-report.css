@@ -1,0 +1,389 @@
+@import '../reports-proforma-invoice/reports-proforma-invoice.css';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:host {
+    --primary: #0f172a;
+    --accent: #3b82f6;
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+    --border: #eef2f6;
+    --orange: #f97316;
+    --red: #d32f2f;
+    display: block;
+}
+
+.app-container {
+    min-height: 100vh;
+    background-color: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+}
+
+.page-content {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.report-container {
+    width: 100%;
+}
+
+/* Wider for all columns */
+
+/* Header */
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background: #f36f21;
+    padding: 10px 20px;
+    color: white;
+}
+
+.report-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.header-excel-btn {
+    background: #d32f2f;
+    /* Darker red */
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+/* Filters Panel */
+.filters-panel {
+    background: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #ddd;
+}
+
+.top-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.dates-row {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    width: 100%;
+}
+
+.filter-row.top-row {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    min-width: 80px;
+    text-align: right;
+}
+
+.red-label {
+    /* Screenshot shows slightly reddish labels for dates? Or just black. Sticking to black/grey unless specific. Wait, previous component used red. Let's keep consistent if needed, but screenshot 2 shows black labels for branch/search opt, and grey/black for dates. */
+    color: #333;
+}
+
+.form-control,
+.date-input {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 13px;
+    min-width: 250px;
+    color: #333;
+    background: #f9f9f9;
+}
+
+.date-input {
+    min-width: 150px;
+    background: white;
+}
+
+
+/* Table Controls */
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 10px;
+}
+
+.left-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.control-btn {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+}
+
+.right-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: #d32f2f;
+    /* Red from previous screenshot */
+}
+
+.entries-select {
+    padding: 2px 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    color: #333;
+    font-weight: 600;
+}
+
+
+/* Table */
+.table-container {
+    background: white;
+    border: 1px solid #ddd;
+    overflow-x: auto;
+    /* Enable Horizontal Scroll */
+    margin-bottom: 20px;
+}
+
+.data-table {
+    width: 100%;
+    min-height: 50vh;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.data-table th {
+    background: #f5f5f5;
+    padding: 10px;
+    text-align: left;
+    font-weight: 700;
+    color: #555;
+    white-space: nowrap;
+    border: 1px solid #eee;
+
+    min-width: 140px;
+}
+
+.header-select {
+    width: 100%;
+    padding: 4px;
+    font-size: 11px;
+    border: 1px solid #ccc;
+    background: white;
+}
+
+.data-table td {
+    padding: 10px;
+    border: 1px solid #eee;
+    color: #333;
+}
+
+.no-data {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 30px;
+}
+
+/* Pagination Footer */
+.pagination-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-bottom: 20px;
+    padding-right: 10px;
+}
+
+.page-btn {
+    border: 1px solid #ddd;
+    /* Light border */
+    background: white;
+    padding: 5px 10px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+}
+
+.page-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.totals-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+    padding-left: 10px;
+    gap: 10px;
+}
+
+.totals-section label {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.total-input {
+    background: #eee;
+    border: 1px solid #ccc;
+    padding: 5px;
+    width: 100px;
+    font-weight: 600;
+    text-align: right;
+}
+
+@media (max-width: 900px) {
+    .filters-panel {
+        align-items: flex-start;
+    }
+
+    .top-row,
+    .dates-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+}
+
+/* New styles for VSI-like table headers */
+.data-table th {
+    padding: 0;
+    /* Remove padding to let input fill */
+}
+
+.filters-tr th {
+    background: #e0e0e0;
+    border-right: 1px solid #ccc;
+    padding: 2px;
+}
+
+.filters-tr input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #bbb;
+    font-size: 12px;
+    box-sizing: border-box;
+    /* Ensure padding doesn't overflow */
+    background: #f9f9f9;
+}
+
+.filters-tr input:focus {
+    outline: none;
+    border-color: var(--orange);
+    background: white;
+}
+
+.page-btn.active {
+    background-color: #eee;
+    font-weight: bold;
+    border-color: #f36f21;
+    color: #f36f21;
+}
+
+/* Custom Multi-select styles */
+.custom-multiselect {
+    position: relative;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.multiselect-header {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #444;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+.multiselect-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.multiselect-option,
+.multiselect-option-all {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    color: #333;
+    font-size: 11px;
+}
+
+.multiselect-option:hover,
+.multiselect-option-all:hover {
+    background: #f5f5f5;
+}
+
+.multiselect-option input[type="checkbox"],
+.multiselect-option-all input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+.multiselect-option span,
+.multiselect-option-all span {
+    flex: 1;
+}
+
+/* Ensure table header handles the dropdown */
+.data-table thead th.relative {
+    overflow: visible !important;
+}

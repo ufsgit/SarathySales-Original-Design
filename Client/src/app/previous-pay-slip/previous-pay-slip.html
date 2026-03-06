@@ -1,0 +1,124 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Previous Pay Slip</span>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
+        <h2 class="page-title">Previous Pay Slip (Vehicle)</h2>
+
+        <div class="data-card">
+
+            <!-- Controls Row -->
+            <div class="controls-row">
+                <div class="search-group">
+                    <label>Search:</label>
+                    <input type="text" class="search-input" placeholder="Slip no, customer, vehicle…"
+                        (input)="onSearchInput($any($event.target).value)">
+                </div>
+                <div class="entries-group">
+                    <label>Show</label>
+                    <select class="entries-select" [value]="limit()"
+                        (change)="onLimitChange($any($event.target).value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>entries</label>
+                </div>
+
+            </div>
+
+            <!-- Loading / Error -->
+            @if (isLoading()) {
+            <div class="status-row">
+                <span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</span>
+            </div>
+            }
+            @if (errorMsg()) {
+            <div class="status-row error-text">{{ errorMsg() }}</div>
+            }
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Sl No</th>
+                            <th>Customer Name</th>
+                            <th>Branch</th>
+                            <th>Pay Slip Date</th>
+                            <th>Pay Slip No</th>
+                            <th>Vehicle</th>
+                            <th>Vehicle Amount</th>
+                            <th>Remarks</th>
+                            <th>Finance / Cash</th>
+                            <th>Balance Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!isLoading() && records().length === 0) {
+                        <tr class="no-data-row">
+                            <td colspan="10">No data available in table</td>
+                        </tr>
+                        }
+                        @for (row of records(); track row.payslip_id; let i = $index) {
+                        <tr>
+                            <td>{{ rowIndex(i) }}</td>
+                            <td>
+                                <div class="customer-info">
+                                    <span class="highlight-red" style="cursor: pointer;" title="Click to view PDF"
+                                        (click)="generatePdf(row.payslip_id)">{{ row.pay_slip_no }}</span>
+                                    <span class="sub-name">{{ row.pay_cus_name || '—' }}</span>
+                                </div>
+                            </td>
+                            <td>{{ row.branch_name || '—' }}</td>
+                            <td>{{ formatDate(row.pay_slip_date) }}</td>
+                            <td>{{ row.pay_slip_no }}</td>
+                            <td>{{ row.pay_slip_reference || '—' }}</td>
+                            <td class="text-right">{{ formatAmount(row.pay_vehile_amt) }}</td>
+                            <td>{{ row.pay_remarks || '—' }}</td>
+                            <td>{{ row.pay_finance || '—' }}</td>
+                            <td class="text-right">{{ formatAmount(row.pay_grand_tot) }}</td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer / Pagination -->
+            <div class="table-footer">
+                <div class="showing-text">
+                    Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+                </div>
+                <div class="dt-pagination">
+                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
+                        [class.disabled]="!hasPrev()">Previous</button>
+
+                    @for (p of visiblePages(); track $index) {
+                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                        {{ p }}
+                    </button>
+                    }
+
+                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
+                        [class.disabled]="!hasNext()">Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

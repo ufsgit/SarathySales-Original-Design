@@ -1,0 +1,112 @@
+<!-- ===== HEADER ===== -->
+<header class="header-container">
+
+
+
+    <!-- Branding Section -->
+    <div class="branding-bar">
+        <div class="brand-left">
+            <div class="brand-logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Simplified Sarathy Logo placeholder -->
+                    <path d="M5 30 L15 10 L25 30" stroke="#ed1c24" stroke-width="4" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <text x="0" y="38" font-family="Arial" font-weight="bold" font-size="10"
+                        fill="#ed1c24">SARATHY</text>
+                </svg>
+                <div class="brand-text">
+                    <span class="main-title">SARATHY</span>
+                    <span class="tagline">Experience the new drive</span>
+                </div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <!-- Top Info Bar -->
+            <div class="top-info-bar">
+                <div class="info-content">
+                    <span class="welcome-text"><i class="fas fa-user"></i> Welcome - Staff Panel</span>
+                    <span class="contact-info">+91 9847771177 / 04742729618</span>
+                    <a href="#" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+            <div class="brand-right">
+                <!-- KTM Logo Placeholder -->
+                <svg width="80" height="30" viewBox="0 0 80 30" fill="none">
+                    <text x="0" y="25" font-family="Arial Black" font-weight="900" font-size="24" fill="black"
+                        style="font-style: italic;">KTM</text>
+                </svg>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Main Navigation Bar (Orange) -->
+    <nav class="main-nav-bar">
+        <div class="nav-links">
+            <a routerLink="/user-home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+
+            <div class="nav-item-dropdown">
+                <span class="dropdown-trigger">Transactions</span>
+                <div class="dropdown-menu">
+                    <a routerLink="/money-receipt" routerLinkActive="active">Money Receipt</a>
+                    <a routerLink="/pay-slip" routerLinkActive="active">Pay Slip</a>
+                    <a routerLink="/gate-pass" routerLinkActive="active">Gate Pass</a>
+                    <a routerLink="/proforma-invoice" routerLinkActive="active">Proforma Invoice</a>
+                    <a routerLink="/purchase-invoice" routerLinkActive="active">Purchase Invoice</a>
+                    <a routerLink="/purchase-upload" routerLinkActive="active">Purchase Invoice Upload</a>
+                    <a routerLink="/sales-invoice" routerLinkActive="active">Sales Invoice</a>
+                    <a routerLink="/branch-transfer" routerLinkActive="active">Branch Transfer</a>
+                </div>
+            </div>
+
+            <div class="nav-item-dropdown">
+                <span class="dropdown-trigger">Previous Transaction</span>
+                <div class="dropdown-menu">
+                    <a routerLink="/previous-money-receipt" routerLinkActive="active">Money Receipt</a>
+                    <a routerLink="/previous-pay-slip" routerLinkActive="active">Pay Slip</a>
+                    <a routerLink="/previous-gate-pass" routerLinkActive="active">Gate Pass</a>
+                    <a routerLink="/previous-proforma-invoice" routerLinkActive="active">Proforma Invoice</a>
+                    <a routerLink="/previous-purchase-invoice" routerLinkActive="active">Purchase Invoice</a>
+                    <a routerLink="/previous-sales-invoice" routerLinkActive="active">Sales Invoice</a>
+                    <a routerLink="/previous-branch-transfer" routerLinkActive="active">Branch Transfer</a>
+                </div>
+            </div>
+
+            <a routerLink="/vehicle-enquiry" routerLinkActive="active">Find Vehicle</a>
+
+            <div class="nav-item-dropdown">
+                <span class="dropdown-trigger">Reports</span>
+                <div class="dropdown-menu">
+                    <a routerLink="/reports-proforma-invoice" routerLinkActive="active">Proforma Invoice</a>
+                    <a routerLink="/reports-stock-verification" routerLinkActive="active">Stock Verification</a>
+                    <a routerLink="/report-stock-splitup" routerLinkActive="active">Stock Splitup</a>
+                    <a routerLink="/report-purchase-report" routerLinkActive="active">Purchase Report</a>
+                    <a routerLink="/report-sales-report" routerLinkActive="active">Sales Report</a>
+                    <a routerLink="/reports-payslip" routerLinkActive="active">Payslip Report</a>
+                    <a routerLink="/reports-money-receipt" routerLinkActive="active">Money Receipt Report</a>
+                    <a routerLink="/report-branch-transfer" routerLinkActive="active">Branch Transfer Report</a>
+                </div>
+            </div>
+
+            <div class="nav-item-dropdown">
+                <span class="dropdown-trigger">VSI Bill</span>
+                <div class="dropdown-menu">
+                    <a routerLink="/vsi-invoice" routerLinkActive="active">VSI Bill</a>
+                    <a routerLink="/vsi-list" routerLinkActive="active">List Previous Bill</a>
+                    <a routerLink="/vsi-report" routerLinkActive="active">VSI Report</a>
+                </div>
+            </div>
+
+            <div class="nav-item-dropdown">
+                <span class="dropdown-trigger">My Profile</span>
+                <div class="dropdown-menu">
+                    <a routerLink="/myprofile-changepassword" routerLinkActive="active">Change Password</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-menu-btn" (click)="toggleMenu()">
+            <span>MENU</span>
+        </div>
+    </nav>
+</header>

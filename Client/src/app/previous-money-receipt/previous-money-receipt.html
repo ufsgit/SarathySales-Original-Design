@@ -1,0 +1,112 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Previous Bill</span>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
+        <h2 class="page-title">Previous Money Receipts(Vehicle)</h2>
+
+        <div class="data-card">
+
+            <!-- Controls Row -->
+            <div class="controls-row">
+                <div class="search-group">
+                    <label>Search:</label>
+                    <input type="text" class="search-input" [ngModel]="searchTerm()"
+                        (input)="onSearchInput($any($event.target).value)">
+                </div>
+                <div class="entries-group">
+                    <label>Show</label>
+                    <select class="entries-select" [ngModel]="limit()"
+                        (change)="onLimitChange($any($event.target).value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>entries</label>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Sl:No</th>
+                            <th>Customer Details</th>
+                            <th>Branch</th>
+                            <th>Receipt Date</th>
+                            <th>Receipt No</th>
+                            <th>Reference</th>
+                            <th>Payment Type</th>
+                            <th>Reason</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (isLoading()) {
+                        <tr>
+                            <td colspan="9" class="text-center">Loading...</td>
+                        </tr>
+                        } @else if (records().length === 0) {
+                        <tr class="no-data-row">
+                            <td colspan="9" class="text-center">No money receipts found.</td>
+                        </tr>
+                        } @else {
+                        @for (row of records(); track row.receipt_id; let i = $index) {
+                        <tr>
+                            <td>{{ rowIndex(i) }}</td>
+                            <td>
+                                <div class="cus-name">{{ row.receipt_cus }}</div>
+                                <div class="cus-addr">{{ row.receipt_cus_address }}</div>
+                            </td>
+                            <td>{{ row.branch_name }}</td>
+                            <td>{{ formatDate(row.receipt_date) }}</td>
+                            <td class="primary-text">{{ row.receipt_no }}</td>
+                            <td>{{ row.reference || '—' }}</td>
+                            <td>{{ row.pay_type }}</td>
+                            <td>{{ row.reason }}</td>
+                            <td class="amount-text">₹{{ formatAmount(row.receipt_amount) }}</td>
+                        </tr>
+                        }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer/Pagination -->
+            <div class="table-footer">
+                <div class="showing-text">
+                    Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+                </div>
+                <div class="dt-pagination">
+                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
+                        [class.disabled]="!hasPrev()">Previous</button>
+
+                    @for (p of visiblePages(); track $index) {
+                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                        {{ p }}
+                    </button>
+                    }
+
+                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
+                        [class.disabled]="!hasNext()">Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

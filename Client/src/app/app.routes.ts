@@ -1,0 +1,71 @@
+import { Routes } from '@angular/router';
+import { UserHome } from './user-home/user-home';
+import { LoginComponent } from './login/login';
+import { PreviousMoneyReceipt } from './previous-money-receipt/previous-money-receipt';
+
+import { PreviousPaySlip } from './previous-pay-slip/previous-pay-slip';
+import { PreviousGatePass } from './previous-gate-pass/previous-gate-pass';
+import { PreviousProformaInvoice } from './previous-proforma-invoice/previous-proforma-invoice';
+import { EditProformaInvoiceComponent } from './edit-proforma-invoice/edit-proforma-invoice';
+import { InvoiceFromProformaComponent } from './invoice-from-proforma/invoice-from-proforma';
+import { PreviousPurchaseInvoice } from './previous-purchase-invoice/previous-purchase-invoice';
+import { PreviousSalesInvoice } from './previous-sales-invoice/previous-sales-invoice';
+import { PreviousBranchTransfer } from './previous-branch-transfer/previous-branch-transfer';
+import { ReportsProformaInvoice } from './reports-proforma-invoice/reports-proforma-invoice';
+import { ReportsStockVerification } from './reports-stock-verification/reports-stock-verification';
+import { ReportStockSplitup } from './report-stock-splitup/report-stock-splitup';
+import { ReportPurchaseReport } from './report-purchase-report/report-purchase-report';
+import { ReportSalesReport } from './report-sales-report/report-sales-report';
+import { ReportsPayslip } from './reports-payslip/reports-payslip';
+import { ReportsMoneyReceipt } from './reports-money-receipt/reports-money-receipt';
+import { ReportBranchTransfer } from './report-branch-transfer/report-branch-transfer';
+import { MyProfileChangePassword } from './myprofile-changepassword/myprofile-changepassword';
+
+import { BranchTransferComponent } from './branch-transfer/branch-transfer';
+import { GatePassComponent } from './gate-pass/gate-pass';
+import { MoneyReceiptComponent } from './money-receipt/money-receipt';
+import { PaySlipComponent } from './pay-slip/pay-slip';
+import { ProformaInvoiceComponent } from './proforma-invoice/proforma-invoice';
+import { PurchaseInvoiceComponent } from './purchase-invoice/purchase-invoice';
+import { PurchaseUploadComponent } from './purchase-upload/purchase-upload';
+import { SalesInvoiceComponent } from './sales-invoice/sales-invoice';
+import { VehicleEnquiryComponent } from './vehicle-enquiry/vehicle-enquiry';
+
+import { VsiInvoiceComponent } from './vsi-invoice/vsi-invoice';
+import { VsiListComponent } from './vsi-list/vsi-list';
+import { VsiReportComponent } from './vsi-report/vsi-report';
+
+export const routes: Routes = [
+    { path: 'previous-money-receipt', component: PreviousMoneyReceipt },
+    { path: 'previous-pay-slip', component: PreviousPaySlip },
+    { path: 'previous-gate-pass', component: PreviousGatePass },
+    { path: 'previous-proforma-invoice', component: PreviousProformaInvoice },
+    { path: 'edit-proforma-invoice/:id', component: EditProformaInvoiceComponent },
+    { path: 'invoice-from-proforma/:id', component: InvoiceFromProformaComponent },
+    { path: 'previous-purchase-invoice', component: PreviousPurchaseInvoice },
+    { path: 'previous-sales-invoice', component: PreviousSalesInvoice },
+    { path: 'previous-branch-transfer', component: PreviousBranchTransfer },
+    { path: 'reports-proforma-invoice', component: ReportsProformaInvoice },
+    { path: 'reports-stock-verification', component: ReportsStockVerification },
+    { path: 'report-stock-splitup', component: ReportStockSplitup },
+    { path: 'report-purchase-report', component: ReportPurchaseReport },
+    { path: 'report-sales-report', component: ReportSalesReport },
+    { path: 'reports-payslip', component: ReportsPayslip },
+    { path: 'reports-money-receipt', component: ReportsMoneyReceipt },
+    { path: 'report-branch-transfer', component: ReportBranchTransfer },
+    { path: 'myprofile-changepassword', component: MyProfileChangePassword },
+    { path: 'branch-transfer', component: BranchTransferComponent },
+    { path: 'gate-pass', component: GatePassComponent },
+    { path: 'money-receipt', component: MoneyReceiptComponent },
+    { path: 'pay-slip', component: PaySlipComponent },
+    { path: 'proforma-invoice', component: ProformaInvoiceComponent },
+    { path: 'purchase-invoice', component: PurchaseInvoiceComponent },
+    { path: 'purchase-upload', component: PurchaseUploadComponent },
+    { path: 'sales-invoice', component: SalesInvoiceComponent },
+    { path: 'vehicle-enquiry', component: VehicleEnquiryComponent },
+    { path: 'vsi-invoice', component: VsiInvoiceComponent },
+    { path: 'vsi-list', component: VsiListComponent },
+    { path: 'vsi-report', component: VsiReportComponent },
+    { path: 'user-home', component: UserHome },
+    { path: '', component: LoginComponent },
+];

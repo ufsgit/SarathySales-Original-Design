@@ -1,0 +1,128 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+
+<main class="main-container">
+
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Previous Proforma Invoice</span>
+    </div>
+
+    <div class="content-wrapper">
+        <h2 class="page-title">Previous Proforma Invoice (Vehicle)</h2>
+
+        <div class="data-card">
+
+            <div class="controls-row">
+                <div class="search-group">
+                    <label>Search:</label>
+                    <input type="text" class="search-input" title="Quotation no, customer, phone…"
+                        placeholder="Quotation no, customer, phone…" (input)="onSearchInput($any($event.target).value)">
+                </div>
+                <div class="entries-group">
+                    <label>Show</label>
+                    <select class="entries-select" [value]="limit()"
+                        (change)="onLimitChange($any($event.target).value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>entries</label>
+                </div>
+
+            </div>
+
+            @if (isLoading()) {
+            <div class="status-row"><span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</span>
+            </div>
+            }
+            @if (errorMsg()) {
+            <div class="status-row error-text">{{ errorMsg() }}</div>
+            }
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Sl:No</th>
+                            <th>Customer Details</th>
+                            <th>Branch</th>
+                            <th>Quotation No</th>
+                            <th>Quotation Date</th>
+                            <th>Payment Mode</th>
+                            <th>Reference</th>
+                            <th>Total Amount</th>
+                            <!-- <th>Executive</th> -->
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!isLoading() && records().length === 0) {
+                        <tr class="no-data-row">
+                            <td colspan="9">No data available in table</td>
+                        </tr>
+                        }
+                        @for (row of records(); track row.pro_id; let i = $index) {
+                        <tr>
+                            <td>{{ rowIndex(i) }}</td>
+                            <td>
+                                <div class="customer-info">
+                                    <span class="highlight-red" style="cursor: pointer;" title="Click to view PDF"
+                                        (click)="generatePdf(row.pro_id)">{{ row.pro_quot_no }}</span>
+                                    <span style="font-weight: bold;">{{ row.pro_cus_name }}</span>
+                                    <span class="sub-name">{{ row.pro_cus_address }}</span>
+                                    <span class="sub-name">Ph: {{ row.pro_contact }}</span>
+                                </div>
+                            </td>
+                            <td>{{ row.branch_name || '—' }}</td>
+                            <td>{{ row.pro_quot_no }}</td>
+                            <td>{{ formatDate(row.pro_date) }}</td>
+                            <td>{{ row.pro_type_loan || '—' }}</td>
+                            <td>{{ row.pro_ref || '—' }}</td>
+                            <td class="text-right">{{ formatAmount(row.pro_grand_total) }}</td>
+                            <!-- <td>{{ row.pro_executive || '—' }}</td> -->
+                            <td class="action-cell">
+                                <div class="action-wrapper">
+                                    <button class="edit-btn" title="Edit Bill"
+                                        [routerLink]="['/edit-proforma-invoice', row.pro_id]">Edit Bill</button>
+                                    @if (row.pro_status == 2) {
+                                    <span class="sold-text">Sold</span>
+                                    } @else if (row.pro_status == 1) {
+                                    <button class="invoicing-btn"
+                                        [routerLink]="['/invoice-from-proforma', row.pro_id]">Invoicing</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+                <div class="dt-pagination">
+                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
+                        [class.disabled]="!hasPrev()">Previous</button>
+
+                    @for (p of visiblePages(); track $index) {
+                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                        {{ p }}
+                    </button>
+                    }
+
+                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
+                        [class.disabled]="!hasNext()">Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

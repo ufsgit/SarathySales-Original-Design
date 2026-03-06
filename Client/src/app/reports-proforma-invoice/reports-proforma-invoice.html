@@ -1,0 +1,201 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+<main class="main-container">
+
+    <!-- Breadcrumb Strip -->
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Proforma Invoice Report</span>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+
+        <!-- Orange Header Bar -->
+        <div class="report-header">
+            <div class="header-left">
+                <i class="fas fa-bars grid-icon" style="margin-right: 10px;"></i>
+                <h2>Proforma Invoice Report</h2>
+            </div>
+            <button class="header-excel-btn" (click)="exportToExcel()">EXCEL</button>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filters-container">
+            <div class="filter-row">
+                <label>Branch</label>
+                <select class="form-control" disabled [ngModel]="branchId()">
+                    <option [value]="branchId()">{{branchName()}} ({{branchId()}})</option>
+                </select>
+            </div>
+
+            <div class="filter-row">
+                <label>Status</label>
+                <select class="form-control" [ngModel]="status()"
+                    (ngModelChange)="status.set($event); onFilterChange()">
+                    <option value="">--all--</option>
+                    <option value="Open">Open</option>
+                    <option value="Close">Close</option>
+                </select>
+            </div>
+
+            <div class="filter-row">
+                <label>Search Option</label>
+                <select class="form-control" [ngModel]="searchOption()" (ngModelChange)="onSearchOptionChange($event)">
+                    <option value="Custom Date">Custom Date</option>
+                    <option value="Month to Date">Month to Date</option>
+                    <option value="Previous Month">Previous Month</option>
+                    <option value="Year to Date">Year to Date</option>
+                    <option value="Previous Year">Previous Year</option>
+                </select>
+            </div>
+
+            <div class="date-range-row">
+                <div class="date-group">
+                    <label>Date From</label>
+                    <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+                <div class="date-group">
+                    <label>Date To</label>
+                    <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Controls (CSV/Excel + Show entries) -->
+        <div class="table-controls">
+            <div class="btn-group">
+                <button class="control-btn" (click)="exportPagedCsv()">CSV</button>
+                <button class="control-btn" (click)="exportPagedExcel()">Excel</button>
+            </div>
+            <div class="entries-control">
+                <span>Show</span>
+                <select class="entries-select" [ngModel]="limit()" (ngModelChange)="changeLimit($event)">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>entries</span>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <div class="loading-overlay" *ngIf="loading()">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+            </div>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Quotation No</th>
+                        <th>Quotation Date</th>
+                        <th>Branch Name</th>
+                        <th>Customer Detail</th>
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Taxable Amount</th>
+                        <th>SGST/UTGST</th>
+                        <th>CGST</th>
+                        <th>Total Amount</th>
+                        <th>Miscellaneous1</th>
+                        <th>Misselaneous2</th>
+                        <th>Less</th>
+                        <th>Invoice Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let r of records()">
+                        <td (click)="viewPdf(r.pro_id)"
+                            style="font-weight: bold; color: #d32f2f; cursor: pointer; text-decoration: none;">
+                            {{r.pro_quot_no}}
+                        </td>
+                        <td>
+                            <div>{{r.pro_date | date:'dd-MM-yyyy'}}</div>
+                            <div class="status-badge" [class.open]="r.pro_status == 1"
+                                [class.closed]="r.pro_status == 2">
+                                Status: {{ r.pro_status == 1 ? 'Open' : 'Closed' }}
+                            </div>
+                        </td>
+                        <td>{{r.branch_name}} ({{r.branch_id}})</td>
+                        <td>
+                            <div class="font-bold">{{r.pro_cus_name}}</div>
+                            <div>{{r.pro_contact}}</div>
+                            <div class="text-muted">{{r.pro_cus_address}}</div>
+                        </td>
+                        <td>{{r.pro_ref}}</td>
+                        <td>{{r.pro_type_loan}}</td>
+                        <td class="text-right">{{r.pro_vehi_tax_total | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_vehi_sgst_total | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_vehi_cgst_total | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_vehicle_total | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_missal1_amt | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_missal2_amt | number:'1.2-2'}}</td>
+                        <td class="text-right">{{r.pro_less | number:'1.2-2'}}</td>
+                        <td class="text-right font-bold">{{r.pro_grand_total | number:'1.2-2'}}</td>
+                    </tr>
+                    <tr class="empty-state" *ngIf="!loading() && records().length === 0">
+                        <td colspan="14">No matching records found</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+            <div class="showing-text">
+                Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+            </div>
+            <div class="dt-pagination">
+                <button class="dt-page-btn" [disabled]="!hasPrev() || loading()" (click)="changePage(page() - 1)"
+                    [class.disabled]="!hasPrev()">Previous</button>
+
+                @for (p of visiblePages(); track $index) {
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                    [disabled]="p === '...' || loading()" (click)="changePage($any(p))">
+                    {{ p }}
+                </button>
+                }
+
+                <button class="dt-page-btn" [disabled]="!hasNext() || loading()" (click)="changePage(page() + 1)"
+                    [class.disabled]="!hasNext()">Next</button>
+            </div>
+        </div>
+
+        <!-- Footer Totals -->
+        <div class="footer-totals">
+            <div class="total-group">
+                <label>Taxable Amount</label>
+                <input type="text" class="total-input" [value]="totalTaxable() | number:'1.2-2'" readonly>
+            </div>
+            <div class="total-group">
+                <label>Total Amount</label>
+                <input type="text" class="total-input" [value]="totalAmount() | number:'1.2-2'" readonly>
+            </div>
+            <div class="total-group">
+                <label>Miss2 Amount</label>
+                <input type="text" class="total-input" [value]="totalMiss2() | number:'1.2-2'" readonly>
+            </div>
+            <div class="total-group">
+                <label>Total Less</label>
+                <input type="text" class="total-input" [value]="totalLess() | number:'1.2-2'" readonly>
+            </div>
+            <div class="total-group">
+                <label>Miss1 Amount</label>
+                <input type="text" class="total-input" [value]="totalMiss1() | number:'1.2-2'" readonly>
+            </div>
+            <div class="total-group">
+                <label>Total Invoice Amount</label>
+                <input type="text" class="total-input large" [value]="totalAmount() | number:'1.2-2'" readonly>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

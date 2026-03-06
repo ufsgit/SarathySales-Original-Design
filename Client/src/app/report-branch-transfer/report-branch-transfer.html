@@ -1,0 +1,138 @@
+<app-user-nav></app-user-nav>
+<!-- Breadcrumb Strip -->
+<div class="breadcrumb-strip">
+    <span class="home-icon"><i class="fas fa-home"></i></span>
+    <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+    <span class="breadcrumb-separator">></span>
+    <span class="breadcrumb-current">List Branch Transfer Report</span>
+</div>
+<div class="page-container">
+    <div class="report-header">
+        <div class="title-section">
+            <h1>List Branch Transfer Report</h1>
+        </div>
+        <button class="header-excel-btn" (click)="exportToExcel()">EXCEL</button>
+    </div>
+
+    <div class="filters-container">
+        <div class="filter-row">
+            <label>Branch</label>
+            <input type="text" class="form-control" [value]="branchName()" disabled>
+        </div>
+        <div class="filter-row">
+            <label>Search Option</label>
+            <select class="form-control" [value]="searchOption()" (change)="onSearchOptionChange($event)">
+                <option value="Custom Date">Custom Date</option>
+                <option value="Month to Date">Month to Date</option>
+                <option value="Previous Month">Previous Month</option>
+                <option value="Year to Date">Year to Date</option>
+                <option value="Previous Year">Previous Year</option>
+            </select>
+        </div>
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>Date From</label>
+                <div class="date-input-wrapper">
+                    <input type="date" class="form-control" [ngModel]="fromDate()"
+                        (ngModelChange)="fromDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Date To</label>
+                <div class="date-input-wrapper">
+                    <input type="date" class="form-control" [ngModel]="toDate()"
+                        (ngModelChange)="toDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-controls">
+        <div class="left-controls">
+            <button class="control-btn" (click)="exportPagedCsv()">CSV</button>
+            <button class="control-btn" (click)="exportPagedExcel()">Excel</button>
+        </div>
+        <div class="right-controls">
+            <span>Show</span>
+            <select [value]="limit()" (change)="changeLimit($event)">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span>entries</span>
+        </div>
+    </div>
+
+    <div class="table-scroll-container">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Debit Note No</th>
+                    <th>Debit Note Date</th>
+                    <th>Issue From Branch Name</th>
+                    <th style="width: 200px;">Issue To Branch Details</th>
+                    <th>Issue Type</th>
+                    <th>Chassis No</th>
+                    <th>Engine No</th>
+                    <th>Vehicle Details</th>
+                    <th>Color</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (loading()) {
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 20px;">Loading records...</td>
+                </tr>
+                } @else if (records().length === 0) {
+                <tr class="empty-state">
+                    <td colspan="10">No matching records found</td>
+                </tr>
+                } @else {
+                @for (row of records(); track row.lc_id) {
+                <tr>
+                    <td (click)="viewPdf(row.lc_id)" style="color: red; font-weight: bold; cursor: pointer;">
+                        {{ row.debit_note_no }}
+                    </td>
+                    <td>{{ formatDisplayDate(row.debit_note_date) }}</td>
+                    <td>{{ row.from_branch_name }} <br> ({{ row.from_branch_id }})</td>
+                    <td>{{ row.to_branch_name || row.lnstitute_name }} <br> {{ row.to_branch_address }}</td>
+                    <td>{{ row.issue_type }}</td>
+                    <td>{{ row.chassis_no }}</td>
+                    <td>{{ row.engine_no }}</td>
+                    <td>{{ row.vehicle }} ({{ row.vehicle_code }})</td>
+                    <td>{{ row.vehicle_color }}</td>
+                    <td style="font-weight: bold;">{{ formatAmount(row.trans_total) }}</td>
+                </tr>
+                }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination & Footer -->
+    <div class="pagination-footer" style="justify-content: space-between; align-items: center; display: flex;">
+        <div class="entries-info" style="font-size: 13px; color: #666;">
+            Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+        </div>
+        <div class="paging-controls" style="display: flex; gap: 5px;">
+            <button class="page-btn text-btn" [disabled]="!hasPrev()" (click)="prevPage()">Previous</button>
+            @for (p of visiblePages(); track $index) {
+            <button class="page-btn" [class.active]="p === page()" (click)="changePage(p)" [disabled]="p === '...'">
+                {{ p }}
+            </button>
+            }
+            <button class="page-btn text-btn" [disabled]="!hasNext()" (click)="nextPage()">Next</button>
+        </div>
+    </div>
+
+    <div class="totals-section">
+        <label>Total Receipt Amount</label>
+        <input type="text" [value]="formatAmount(totalTransAmount())" class="total-input" disabled>
+    </div>
+</div>
+
+<app-user-footer></app-user-footer>

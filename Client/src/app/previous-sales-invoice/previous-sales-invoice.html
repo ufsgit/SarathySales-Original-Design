@@ -1,0 +1,144 @@
+<header>
+    <app-user-nav></app-user-nav>
+</header>
+
+<main class="main-container">
+
+    <div class="breadcrumb-strip">
+        <span class="home-icon"><i class="fas fa-home"></i></span>
+        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">List Sales Bills</span>
+    </div>
+
+    <div class="content-wrapper">
+        <h2 class="page-title">Previous Sales Bills (Vehicle)</h2>
+
+        <div class="data-card">
+
+            <div class="controls-row">
+                <div class="search-group">
+                    <label>Search:</label>
+                    <input type="text" class="search-input" title="Invoice no, customer, vehicle, chassis…"
+                        placeholder="Invoice no, customer, vehicle, chassis…"
+                        (input)="onSearchInput($any($event.target).value)">
+                </div>
+                <div class="entries-group">
+                    <label>Show</label>
+                    <select class="entries-select" [value]="limit()"
+                        (change)="onLimitChange($any($event.target).value)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>entries</label>
+                </div>
+
+            </div>
+
+            @if (isLoading()) {
+            <div class="status-row"><span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</span>
+            </div>
+            }
+            @if (errorMsg()) {
+            <div class="status-row error-text">{{ errorMsg() }}</div>
+            }
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Sl:No</th>
+                            <th>Customer Details</th>
+                            <th>Branch</th>
+                            <th>Chassis No</th>
+                            <th>Invoice No</th>
+                            <th>Invoice Date</th>
+                            <th>Sale Type</th>
+                            <th>Vehicle</th>
+                            <th>Total Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!isLoading() && records().length === 0) {
+                        <tr class="no-data-row">
+                            <td colspan="9">No data available in table</td>
+                        </tr>
+                        }
+                        @for (row of records(); track row.inv_id; let i = $index) {
+                        <tr>
+                            <td>{{ rowIndex(i) }}</td>
+                            <td>
+                                <div class="customer-info">
+                                    <span class="highlight-red" style="cursor: pointer;"
+                                        (click)="generatePdf(row.inv_id)">{{ row.inv_cus || '—' }}</span><br>
+                                    <span class="sub-name">{{ row.inv_cus_addres || '' }}</span><br>
+                                    <span class="sub-name">Pin code: {{row.inv_pincode || ''}}</span>
+                                    <!-- @if (row.inv_pincode) {
+                                    <span class="sub-name">PIN: {{ row.inv_pincode }}</span>
+                                    } -->
+                                </div>
+                            </td>
+                            <td>{{ row.branch_name || '—' }}</td>
+                            <td>
+                                <div class="chassis-engine">
+                                    <span>{{ row.inv_chassis || '—' }}</span>
+                                    @if (row.in_engine) {
+                                    <span class="sub-name">{{ row.in_engine }}</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>{{ row.inv_no }}</td>
+                            <td>{{ formatDate(row.inv_inv_date) }}</td>
+                            <td>{{ row.inv_type || '—' }}</td>
+                            <td>
+                                <div class="customer-info">
+                                    <span>{{ row.inv_vehicle || '—' }}</span>
+                                    <!-- @if (row.inv_color) {
+                                    <span class="sub-name">{{ row.inv_color }}</span>
+                                    } -->
+                                </div>
+                            </td>
+                            <td class="text-right">{{ formatAmount(row.inv_total) }}</td>
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
+                                    <button class="btn btn-primary" (click)="generateSalesLetter(row.inv_id)"
+                                        style="background-color: green; color:white; cursor: pointer;">Sales
+                                        Letter</button>
+                                    <button class="btn btn-primary" (click)="generateSticker(row.inv_id)"
+                                        style="background-color: blue; color:white; cursor: pointer;">Sticker</button>
+                                    <button class="btn btn-primary" (click)="generateRtoBill(row.inv_id)"
+                                        style="background-color: green; color:white; cursor: pointer;">RTO Bill</button>
+                                </div>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+                <div class="dt-pagination">
+                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
+                        [class.disabled]="!hasPrev()">Previous</button>
+
+                    @for (p of visiblePages(); track $index) {
+                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                        {{ p }}
+                    </button>
+                    }
+
+                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
+                        [class.disabled]="!hasNext()">Next</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+<app-user-footer></app-user-footer>

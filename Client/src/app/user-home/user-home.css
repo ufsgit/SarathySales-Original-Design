@@ -1,0 +1,158 @@
+/* Textured Background for the entire page body or host */
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f0f0f3;
+    /* Textured effect using SVG or image */
+    /* background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); */
+}
+
+.main-container {
+    flex: 1;
+}
+
+/* Breadcrumb Strip - White background */
+.breadcrumb-strip {
+    background-color: #ffffff;
+    padding: 10px 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.home-icon {
+    font-size: 14px;
+    color: #666;
+}
+
+.breadcrumb-text {
+    font-weight: 500;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.breadcrumb-text:hover {
+    color: #ff5a00;
+}
+
+/* Welcome Area */
+.welcome-area {
+    padding: 30px 40px;
+}
+
+.welcome-area h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: #333;
+    letter-spacing: 0.5px;
+    margin-bottom: 30px;
+}
+
+.user-profile-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    border: 1px solid #eee;
+    max-width: 800px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+    padding: 20px 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: white;
+}
+
+.profile-icon {
+    font-size: 2.5rem;
+}
+
+.header-text h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+
+.status-badge.active {
+    background: #4caf50;
+    color: white;
+}
+
+.card-body {
+    padding: 25px 30px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.info-pair {
+    display: flex;
+    gap: 10px;
+    font-size: 1rem;
+    color: #444;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #666;
+    min-width: 100px;
+}
+
+.info-value {
+    color: #333;
+    font-weight: 500;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes scaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.scale-up {
+    animation: scaleUp 0.4s ease-out;
+}

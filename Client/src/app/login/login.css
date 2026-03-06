@@ -1,0 +1,299 @@
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Arial+Black&display=swap');
+/* Mocking standard web safe font via fallback if needed */
+
+:root {
+  --sarathy-red: #d32f2f;
+  /* Darker red */
+  --sarathy-blue: #0d47a1;
+  --sarathy-orange: #ff6f00;
+  --theme-bg: #eceff1;
+}
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body,
+html {
+  width: 100%;
+  height: 100%;
+  font-family: 'Roboto', 'Arial', sans-serif;
+  overflow-x: hidden;
+  background-color: var(--theme-bg);
+}
+
+.login-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --- Header --- */
+.login-header {
+  height: 80px;
+  background-color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon-small svg {
+  width: 50px;
+  height: 50px;
+  transform: rotate(-10deg);
+}
+
+.brand-text-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.brand-name-small {
+  font-family: 'Arial', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 24px;
+  color: var(--sarathy-blue);
+  line-height: 1;
+}
+
+.brand-tag-small {
+  font-size: 10px;
+  color: #555;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+
+/* --- Theme Strip --- */
+.theme-strip {
+  height: 45px;
+  display: flex;
+  width: 100%;
+}
+
+.strip-orange {
+  flex: 1;
+  background: #ff6f00;
+  /* Solid orange */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.strip-orange span {
+  color: #333;
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  font-family: 'Roboto', sans-serif;
+}
+
+.strip-blue {
+  width: 25%;
+  background-color: #1565c0;
+}
+
+
+/* --- Body --- */
+.login-body {
+  flex: 1;
+  background-color: #eeeeee;
+  background-image: url("https://www.transparenttextures.com/patterns/stucco.png");
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+.content-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 100px;
+  /* Space between card and logo */
+}
+
+/* --- Login Card --- */
+.login-card {
+  background: #f7f7f7;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px;
+  padding: 30px;
+  width: 340px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.avatar-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.avatar-circle {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  /* Red ring */
+  box-shadow: 0 0 0 4px #d32f2f;
+  overflow: hidden;
+  background: #e0e0e0;
+}
+
+.avatar-circle svg {
+  width: 100%;
+  height: 100%;
+}
+
+.form-row-custom {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row-custom label {
+  font-size: 13px;
+  color: #b71c1c;
+  /* Dark Red labels */
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.form-row-custom input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  color: #333;
+  background-color: white;
+}
+
+.form-row-custom input:focus {
+  border-color: #b71c1c;
+}
+
+.btn-login-red {
+  background-color: #b71c1c;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 20px;
+  /* Not full width */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  align-self: flex-start;
+  /* Left align button */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn-login-red:hover {
+  background-color: #a30000;
+}
+
+
+/* --- Right Branding --- */
+.branding-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.big-logo-container {
+  margin-bottom: 10px;
+}
+
+.brand-text-large {
+  text-align: center;
+}
+
+.sarathy-main {
+  font-family: 'Arial', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 60px;
+  color: #333;
+  /* Dark Grey/Black per screenshot? Or Blue? */
+  /* Screenshot 2 has blue 'SARATHY' in header, but big logo text looks distinct. */
+  /* Actually look at screenshot 2: The user provided TWO images. 
+       Image 1 (User's current state?? or a reference): Red/Blue Sarathy. 
+       Image 2 (Target): Big Red Arrow. "SARATHY" text is dark grey/blue? It looks dark blue #1a237e or similar. 
+       Let's stick to the Classic Sarathy Blue. */
+  color: #0d47a1;
+  line-height: 0.9;
+  letter-spacing: -2px;
+}
+
+.tagline-main {
+  font-family: 'Arial', sans-serif;
+  font-style: italic;
+  font-size: 22px;
+  color: #666;
+}
+
+/* --- Footer --- */
+.login-footer {
+  padding: 20px;
+  background: white;
+  text-align: center;
+}
+
+.footer-links {
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+}
+
+.footer-links a {
+  font-size: 11px;
+  color: #d32f2f;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.copyright {
+  font-size: 11px;
+  color: #d32f2f;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .content-container {
+    flex-direction: column-reverse;
+    /* Logo on top on mobile? Or card on top. Usually card on top. */
+    gap: 50px;
+  }
+
+  .strip-blue {
+    display: none;
+  }
+
+  .stripe-orange {
+    width: 100%;
+    border-radius: 0;
+  }
+}

@@ -1,0 +1,262 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Global Layout */
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f0f0f3;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    font-family: 'Poppins', sans-serif;
+}
+
+.main-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Breadcrumb Strip */
+.breadcrumb-strip {
+    background-color: #ffffff;
+    padding: 10px 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.home-icon {
+    font-size: 14px;
+    color: #666;
+}
+
+.breadcrumb-link {
+    text-decoration: none;
+    color: #555;
+    font-weight: 500;
+}
+
+.breadcrumb-link:hover {
+    color: #ff5a00;
+}
+
+.breadcrumb-separator {
+    font-size: 12px;
+    color: #999;
+}
+
+.breadcrumb-current {
+    font-weight: 600;
+    color: #333;
+}
+
+/* Content Area */
+.content-wrapper {
+    padding: 20px 40px;
+}
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: #000;
+}
+
+/* Data Card */
+.data-card {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+/* Controls Row */
+.controls-row {
+    background-color: #f5f5f5;
+    /* Light grey bar */
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.controls-row label {
+    font-size: 13px;
+    color: #ff0000;
+    /* Red labels */
+    font-weight: 500;
+}
+
+.search-group,
+.entries-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.search-input {
+    border: 1px solid #ccc;
+    padding: 4px 8px;
+    min-width: 200px;
+    font-size: 13px;
+}
+
+.entries-select {
+    padding: 2px 5px;
+    border: 1px solid #ccc;
+    font-size: 13px;
+    height: 26px;
+}
+
+/* Table */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.custom-table th {
+    background-color: #f5f5f5;
+    color: #333;
+    font-weight: 700;
+    font-size: 13px;
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    border-right: 1px solid #eee;
+    /* subtle separation */
+}
+
+/* Remove right border for last user */
+.custom-table th:last-child {
+    border-right: none;
+}
+
+.custom-table td {
+    padding: 10px;
+    font-size: 13px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+}
+
+.no-data-row td {
+    text-align: center;
+    padding: 20px;
+    color: #333;
+}
+
+/* Footer / Pagination */
+.table-footer {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+}
+
+.showing-text {
+    font-size: 13px;
+    color: #ff0000;
+    /* Red text */
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.nav-btn:disabled {
+    color: #ccc;
+    cursor: default;
+}
+
+.nav-btn:not(:disabled):hover {
+    color: #333;
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .content-wrapper {
+        padding: 15px;
+    }
+
+    .breadcrumb-strip {
+        padding: 10px 20px;
+    }
+
+    .controls-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .entries-group {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* ── Utility classes for pagination template ─────────────────── */
+
+/* Loading / error status banner */
+.status-row {
+    padding: 8px 15px;
+    font-size: 13px;
+    border-bottom: 1px solid #eee;
+}
+
+.loading-text {
+    color: #888;
+}
+
+.error-text {
+    color: #c0392b;
+}
+
+/* Red highlighted customer name / gate pass no */
+.highlight-red {
+    color: #cc0000;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* Stacked customer name + address cell */
+.customer-info,
+.chassis-engine {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Dimmed secondary line (address, engine no) */
+.sub-name {
+    font-size: 12px;
+    color: #777;
+}
+
+/* Page X of Y label between Prev / Next */
+.page-indicator {
+    font-size: 13px;
+    color: #555;
+    padding: 0 8px;
+    line-height: 28px;
+}

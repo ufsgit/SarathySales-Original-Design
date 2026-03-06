@@ -1,0 +1,21 @@
+const express = require('express');
+const router = express.Router();
+const {
+    getNextBranchTransferNo,
+    getAvailableStock,
+    getInstitutionCustomerName,
+    listBranchTransfers,
+    getBranchTransfer,
+    saveBranchTransfer,
+    createBranchTransferPdf
+} = require('../controllers/branchTransferController');
+
+router.get('/next-no', getNextBranchTransferNo);
+router.get('/available-stock', getAvailableStock);
+router.get('/institution-name', getInstitutionCustomerName);
+router.get('/list', listBranchTransfers);
+router.post('/save', saveBranchTransfer);
+router.get('/create-pdf/:id', createBranchTransferPdf);
+router.get('/:id', getBranchTransfer);
+
+module.exports = router;

@@ -1,0 +1,114 @@
+<div class="page-wrapper">
+    <main class="split-layout">
+        <!-- Left Visual Panel -->
+        <section class="visual-panel">
+            <div class="image-overlay"></div>
+            <div class="visual-content">
+                <h1 class="brand-signature">Sarathy Motors</h1>
+                <p class="section-title">New Money Receipt</p>
+                <div class="accent-line"></div>
+            </div>
+        </section>
+
+        <!-- Right Form Panel -->
+        <section class="data-panel">
+            <header class="panel-header">
+                <div class="breadcrumb">Home > Master Operation > Money Receipt</div>
+                <div class="user-meta">Welcome - Staff Panel | <a href="/login">Logout</a></div>
+            </header>
+
+            <div class="panel-content">
+                <div class="form-container">
+                    <div class="form-title-bar">
+                        <h3>Money Receipt Generation</h3>
+                        <div class="action-buttons">
+                            <button class="list-btn">List Money Receipts</button>
+                            <button class="save-btn">Save & Print</button>
+                        </div>
+                    </div>
+
+                    <form class="actual-receipt-form">
+                        <div class="form-grid">
+                            <!-- Column 1 -->
+                            <div class="form-group">
+                                <label>Branch Name:</label>
+                                <input type="text" [value]="branchName" readonly class="readonly">
+                            </div>
+                            <div class="form-group">
+                                <label>Receipt No:</label>
+                                <input type="text" [value]="receiptNo" readonly class="readonly blue-text">
+                            </div>
+                            <div class="form-group">
+                                <label>Receipt Date:</label>
+                                <input type="text" [value]="receiptDate">
+                            </div>
+                            <div class="form-group">
+                                <label>Reference:</label>
+                                <input type="text">
+                            </div>
+
+                            <!-- Column 2 -->
+                            <div class="form-group span-2">
+                                <label>Name:</label>
+                                <input type="text">
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Customer Address:</label>
+                                <textarea rows="3"></textarea>
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Reason:</label>
+                                <textarea rows="2"></textarea>
+                            </div>
+
+                            <!-- Column 3 -->
+                            <div class="form-group">
+                                <label>Pay Type:</label>
+                                <select>
+                                    <option>--Select--</option>
+                                    <option>Cash</option>
+                                    <option>Cheque</option>
+                                    <option>DD</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cheque/DD/P.O No:</label>
+                                <input type="text">
+                            </div>
+                            <div class="form-group">
+                                <label>Bank:</label>
+                                <input type="text">
+                            </div>
+                            <div class="form-group">
+                                <label>Place:</label>
+                                <input type="text">
+                            </div>
+
+                            <!-- Column 4 -->
+                            <div class="form-group">
+                                <label>Cheque/DD Date:</label>
+                                <input type="date">
+                            </div>
+                            <div class="form-group">
+                                <label>Refund Y/N:</label>
+                                <select>
+                                    <option>--Select--</option>
+                                    <option>Y</option>
+                                    <option>N</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Amount:</label>
+                                <input type="number" class="amount-field">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <footer class="panel-footer">
+                <p>2022 © Cyberia Softwares Pvt. Ltd</p>
+            </footer>
+        </section>
+    </main>
+</div>
