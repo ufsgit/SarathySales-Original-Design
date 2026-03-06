@@ -873,6 +873,15 @@ export class SalesInvoiceComponent implements OnInit {
         }
     }
 
+    private getExecutiveName(): string {
+        const code = this.executive();
+        if (!code) return '';
+        const opt = this.currentExecutiveOptions().find(ex => ex.value === code);
+        if (!opt) return code;
+        // Label is "Name[Code]", extract name
+        return opt.label.split('[')[0].trim() || opt.label;
+    }
+
     saveInvoice(event?: Event): void {
         event?.preventDefault();
         if (this.isSaving()) return;
@@ -900,7 +909,7 @@ export class SalesInvoiceComponent implements OnInit {
                 invoiceDate: this.toMysqlDate(this.invoiceDate()),
                 branchId: this.defaultBranchId(),
                 issueType: this.issueType(),
-                customerName: this.issueType() === '02' ? '' : this.customerNameManual(),
+                customerName: customerName,
                 customerBranchId: this.issueType() === '02' ? this.customerBranchId() : null,
                 guardian: this.guardian(),
                 address: this.address(),
@@ -913,9 +922,9 @@ export class SalesInvoiceComponent implements OnInit {
                 hypothication: this.hypothication(),
                 place: this.place(),
                 receiptNo: this.receiptNo(),
-                registration: this.registration(),
+                regNo: this.registration(),
                 financeDues: this.financeDues(),
-                executive: this.executive(),
+                adviserId: this.getExecutiveName(),
                 chassisNo: this.chassisNo(),
                 engineNo: this.engineNo(),
                 vehicle: this.vehicle(),
@@ -936,12 +945,12 @@ export class SalesInvoiceComponent implements OnInit {
                     this.isSaving.set(false);
                     if (res?.success) {
                         alert('Invoice Saved Successfully');
-                        if (res.data?.id || res.id) {
-                            const id = res.data?.id || res.id;
-                            const url = this.api.getSalesPdfUrl(id);
-                            window.open(url, '_blank');
-                        }
-                        this.router.navigate(['/previous-sales-invoice']);
+                        // if (res.data?.id || res.id) {
+                        //     const id = res.data?.id || res.id;
+                        //     const url = this.api.getSalesPdfUrl(id);
+                        //     window.open(url, '_blank');
+                        // }
+                        // this.router.navigate(['/previous-sales-invoice']);
                     } else {
                         alert(res?.message || 'Failed to save invoice');
                     }

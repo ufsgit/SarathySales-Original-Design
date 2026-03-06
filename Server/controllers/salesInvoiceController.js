@@ -1035,6 +1035,7 @@ const createRtoBillPdf = async (req, res) => {
 }
 
 const saveInvoice = async (req, res) => {
+    console.log(req.body)
     const {
         invoiceNo, branchId, invoiceDate, customerName, chassisNo, engineNo,
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
@@ -1062,13 +1063,39 @@ const saveInvoice = async (req, res) => {
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
         const params = [
-            invoiceNo, branchId, parsedDate, customerName, chassisNo || '', engineNo || '',
-            regNo || '', adviserId || '', totalAmount, mobileNo || '', guardian || '',
-            address || '', issueType || '', age || '', cdmsNo || '', area || '', hypothication || '', place || '',
-            receiptNo || '', financeDues || '', vehicle || '', pCode || '', color || '', gstin || '',
-            basicAmount || 0, discountAmount || 0, hsnCode || '', taxableAmount || 0, sgst || 0, cgst || 0, cess || 0,
-            pincode || ''
-        ];
+    invoiceNo,
+    branchId,
+    parsedDate,
+    customerName || '',
+    chassisNo || '',
+    engineNo || '',
+    regNo || '',
+    adviserId || '',
+    totalAmount || 0,
+    mobileNo || '',
+    guardian || '',
+    address || '',
+    issueType || '',
+    age || '',
+    cdmsNo || '',
+    area || '',
+    hypothication || '',
+    place || '',
+    receiptNo || '',
+    financeDues || '',
+    vehicle || '',
+    pCode || '',
+    color || '',
+    gstin || '',
+    basicAmount || 0,
+    discountAmount || 0,
+    hsnCode || '',
+    taxableAmount || 0,
+    sgst || 0,
+    cgst || 0,
+    cess || 0,
+    pincode || ''
+];
 
         const [result] = await conn.execute(insertSql, params);
 
