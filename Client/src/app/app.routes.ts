@@ -67,5 +67,6 @@ export const routes: Routes = [
     { path: 'vsi-list', component: VsiListComponent },
     { path: 'vsi-report', component: VsiReportComponent },
     { path: 'user-home', component: UserHome },
+    { path: 'admin-home', component: UserHome },
     { path: '', component: LoginComponent },
 ];

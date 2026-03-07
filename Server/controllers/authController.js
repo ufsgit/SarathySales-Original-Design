@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const jwt = require('jsonwebtoken');
 
 /**
  * POST /api/auth/login
@@ -19,12 +20,7 @@ const login = async (req, res) => {
         const query = `SELECT * FROM tbl_login WHERE uname = ?`;
         const [rows] = await db.execute(query, [username.trim()]);
 
-        console.log('Query:', query);
-        console.log('Values:', [username.trim()]);
-        console.log('Full DB Result (rows):', JSON.stringify(rows));
-
         if (!rows || !Array.isArray(rows) || rows.length === 0) {
-            console.log('No user found for username:', username);
             return res.status(401).json({
                 success: false,
                 message: 'Wrong Username or Password!!!'
@@ -32,30 +28,16 @@ const login = async (req, res) => {
         }
 
         const user = rows[0];
-        console.log('Extracted User object:', JSON.stringify(user));
-
-        if (!user || typeof user !== 'object') {
-            console.log('User row is invalid');
-            return res.status(401).json({
-                success: false,
-                message: 'Wrong Username or Password!!!'
-            });
-        }
-
         const submittedPwd = String(password || '').trim();
         const storedPwd = String(user.pwd || '').trim();
 
-        console.log(`Comparison Attempt - Submitted: "${submittedPwd}", Stored: "${storedPwd}"`);
-
         if (submittedPwd !== storedPwd) {
-            console.log('Password mismatch detected');
             return res.status(401).json({
                 success: false,
                 message: 'Wrong Username or Password!!!'
             });
         }
 
-        console.log('Fetching details for login_id:', user.login_id);
         const [details] = await db.execute(
             `SELECT e.emp_id, e.e_first_name, e.e_branch, e.e_designation, e.status,
                     b.b_id, b.branch_name
@@ -64,29 +46,34 @@ const login = async (req, res) => {
              WHERE e.emp_login_id = ?`,
             [user.login_id]
         );
-        console.log('Raw DB result rows:', JSON.stringify(details));
 
         const detail = details[0] || {};
-        console.log('Detailed employee info:', JSON.stringify(detail));
 
         const userData = {
             login_id: user.login_id,
             username: user.uname,
             role: user.role,
             role_des: user.role_des,
-            branch_id: detail.b_id || null, // Needed for reports
+            branch_id: detail.b_id || null,
             branch_name: detail.branch_name || detail.e_branch || 'No Branch',
             emp_name: detail.e_first_name || user.uname,
             e_designation: detail.e_designation || 'Not Assigned',
             status: detail.status || 'Unknown'
         };
-        console.log('Final userData (aliased):', JSON.stringify(userData));
+
+        // Generate JWT Token
+        const token = jwt.sign(
+            userData,
+            process.env.JWT_SECRET || 'sarathy_secret_key_2024',
+            { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
+        );
 
         return res.status(200).json({
             success: true,
             data: {
                 message: 'Login successful',
-                user: userData
+                user: userData,
+                token: token
             }
         });
 

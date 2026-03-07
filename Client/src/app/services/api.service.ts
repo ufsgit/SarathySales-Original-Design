@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { jwtDecode } from 'jwt-decode';
 
 import { environment } from '../../environments/environment';
 
@@ -23,6 +24,13 @@ export class ApiService {
 
     constructor(private http: HttpClient) { }
 
+    private addTokenToUrl(url: string): string {
+        const token = this.getToken();
+        if (!token) return url;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}token=${token}`;
+    }
+
     private handleError(err: any): Observable<never> {
         return throwError(() => err);
     }
@@ -36,11 +44,12 @@ export class ApiService {
             .pipe(
                 tap(res => {
                     console.log('Full Backend Response:', JSON.stringify(res));
-                    const user = res.data?.user || res.user;
-                    console.log('Resolved User Object:', JSON.stringify(user));
-                    if (res.success && user) {
-                        localStorage.setItem('sarathy_user', JSON.stringify(user));
-                        console.log('Saved to localStorage: sarathy_user');
+                    const data = res.data || res;
+                    const token = data.token;
+
+                    if (res.success && token) {
+                        localStorage.setItem('sarathy_token', token);
+                        console.log('Saved to localStorage: sarathy_token');
                     }
                 }),
                 catchError(err => this.handleError(err))
@@ -54,16 +63,34 @@ export class ApiService {
     }
 
     logout(): void {
-        localStorage.removeItem('sarathy_user');
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sarathy_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem('sarathy_user'); // Just in case it doesn't have the underscore suffix
     }
 
     getCurrentUser(): any {
-        const u = localStorage.getItem('sarathy_user');
-        return u ? JSON.parse(u) : null;
+        const token = this.getToken();
+        if (!token) return null;
+        try {
+            return jwtDecode(token);
+        } catch (e) {
+            console.error('Error decoding token:', e);
+            return null;
+        }
+    }
+
+    getToken(): string | null {
+        return localStorage.getItem('sarathy_token');
     }
 
     isLoggedIn(): boolean {
-        return !!localStorage.getItem('sarathy_user');
+        return !!this.getToken();
     }
 
     // ─── Branch ──────────────────────────────────────────────────────────────────
@@ -224,8 +251,8 @@ export class ApiService {
         );
     }
 
-    getPaySlipPdfUrl(id: number): string {
-        return `${this.BASE_URL}/pay-slip/create-pdf/${id}`;
+    getPaySlipPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/pay-slip/pdf-by-no/${no}`;
     }
 
     // ─── Gate Pass ─────────────────────────────────────────────────────────────────
@@ -370,20 +397,20 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getSalesPdfUrl(id: number): string {
-        return `${this.BASE_URL}/sales-invoice/pdf/${id}`;
+    getSalesPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/sales-invoice/pdf-by-no/${no}`;
     }
 
-    getSalesLetterPdfUrl(id: number): string {
-        return `${this.BASE_URL}/sales-invoice/pdf/sales-letter/${id}`;
+    getSalesLetterPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/sales-invoice/pdf-by-no/sales-letter/${no}`;
     }
 
-    getSalesStickerPdfUrl(id: number): string {
-        return `${this.BASE_URL}/sales-invoice/pdf/sticker/${id}`;
+    getSalesStickerPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/sales-invoice/pdf-by-no/sticker/${no}`;
     }
 
-    getSalesRtoBillPdfUrl(id: number): string {
-        return `${this.BASE_URL}/sales-invoice/pdf/rto-bill/${id}`;
+    getSalesRtoBillPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/sales-invoice/pdf-by-no/rto-bill/${no}`;
     }
 
     // ─── Proforma Invoice ─────────────────────────────────────────────────────────
@@ -423,8 +450,8 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getProformaPdfUrl(id: number): string {
-        return `${this.BASE_URL}/proforma/create-pdf/${id}`;
+    getProformaPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/proforma/pdf-by-no/${no}`;
     }
 
     getProformaChassisRecords(branchId?: string): Observable<ApiResponse> {
@@ -452,8 +479,8 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getPurchasePdfUrl(id: number): string {
-        return `${this.BASE_URL}/purchase-invoice/create-pdf/${id}`;
+    getPurchasePdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/purchase-invoice/pdf-by-no/${no}`;
     }
 
     // ─── Purchase Upload ──────────────────────────────────────────────────────────
@@ -499,8 +526,8 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getBranchTransferPdfUrl(id: number): string {
-        return `${this.BASE_URL}/branch-transfer/create-pdf/${id}`;
+    getBranchTransferPdfUrl(no: string | number): string {
+        return `${this.BASE_URL}/branch-transfer/pdf-by-no/${no}`;
     }
 
     // ─── VSI ──────────────────────────────────────────────────────────────────────
@@ -614,7 +641,7 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/sales/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/sales/excel${q}`);
     }
 
     getSalesPagedExcelUrl(branchId?: string, from?: string, to?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
@@ -624,7 +651,7 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/sales/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/sales/paged-excel${q}`);
     }
 
     getSalesPagedCsvUrl(branchId?: string, from?: string, to?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
@@ -634,7 +661,7 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/sales/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/sales/paged-csv${q}`);
     }
 
     getPurchaseExcelUrl(branchId?: string, from?: string, to?: string, vehicleCode?: string | string[]): string {
@@ -644,7 +671,7 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/purchase/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/purchase/excel${q}`);
     }
 
     getPurchasePagedExcelUrl(branchId?: string, from?: string, to?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
@@ -654,7 +681,7 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/purchase/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/purchase/paged-excel${q}`);
     }
 
     getPurchasePagedCsvUrl(branchId?: string, from?: string, to?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
@@ -664,82 +691,82 @@ export class ApiService {
             const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
             if (codeStr) q += `&vehicleCode=${codeStr}`;
         }
-        return `${this.BASE_URL}/reports/purchase/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/purchase/paged-csv${q}`);
     }
 
     getPayslipExcelUrl(branchId?: string, from?: string, to?: string): string {
         let q = `?from=${from}&to=${to}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/payslip/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/payslip/excel${q}`);
     }
 
     getPayslipPagedExcelUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/payslip/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/payslip/paged-excel${q}`);
     }
 
     getPayslipPagedCsvUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/payslip/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/payslip/paged-csv${q}`);
     }
 
     getMoneyReceiptExcelUrl(branchId?: string, from?: string, to?: string): string {
         let q = `?from=${from}&to=${to}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/money-receipt/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/money-receipt/excel${q}`);
     }
 
     getMoneyReceiptPagedExcelUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/money-receipt/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/money-receipt/paged-excel${q}`);
     }
 
     getMoneyReceiptPagedCsvUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/money-receipt/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/money-receipt/paged-csv${q}`);
     }
 
     getBranchTransferExcelUrl(branchId?: string, from?: string, to?: string): string {
         let q = `?from=${from}&to=${to}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/branch-transfer/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/branch-transfer/excel${q}`);
     }
 
     getBranchTransferPagedExcelUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/branch-transfer/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/branch-transfer/paged-excel${q}`);
     }
 
     getBranchTransferPagedCsvUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
-        return `${this.BASE_URL}/reports/branch-transfer/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/branch-transfer/paged-csv${q}`);
     }
 
     getProformaExcelUrl(branchId?: string, from?: string, to?: string, status?: string): string {
         let q = `?from=${from}&to=${to}`;
         if (branchId) q += `&branchId=${branchId}`;
         if (status) q += `&status=${status}`;
-        return `${this.BASE_URL}/reports/proforma/excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/proforma/excel${q}`);
     }
 
     getProformaPagedExcelUrl(branchId?: string, from?: string, to?: string, status?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
         if (status) q += `&status=${status}`;
-        return `${this.BASE_URL}/reports/proforma/paged-excel${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/proforma/paged-excel${q}`);
     }
 
     getProformaPagedCsvUrl(branchId?: string, from?: string, to?: string, status?: string, page = 1, limit = 25): string {
         let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
         if (branchId) q += `&branchId=${branchId}`;
         if (status) q += `&status=${status}`;
-        return `${this.BASE_URL}/reports/proforma/paged-csv${q}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/reports/proforma/paged-csv${q}`);
     }
 
     getVsiReport(branchId?: string, from?: string, to?: string, page = 1, limit = 25): Observable<ApiResponse> {
@@ -790,15 +817,15 @@ export class ApiService {
     }
 
     getVehicleStickerUrl(chassisNo: string): string {
-        return `${this.BASE_URL}/vehicle-enquiry/sticker/${chassisNo}`;
+        return `${this.BASE_URL}/vehicle-enquiry/pdf/sticker/${chassisNo}`;
     }
 
     getVehicleSaleLetterUrl(chassisNo: string): string {
-        return `${this.BASE_URL}/vehicle-enquiry/sale-letter/${chassisNo}`;
+        return `${this.BASE_URL}/vehicle-enquiry/pdf/sale-letter/${chassisNo}`;
     }
 
     getVehicleEnquiryPrintUrl(chassisNo: string): string {
-        return `${this.BASE_URL}/vehicle-enquiry/print-enquiry/${chassisNo}`;
+        return `${this.BASE_URL}/vehicle-enquiry/pdf/print-enquiry/${chassisNo}`;
     }
 
     // ─── Invoice From Proforma ──────────────────────────────────────────────────────────

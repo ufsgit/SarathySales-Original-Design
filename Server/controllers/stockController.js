@@ -1,7 +1,10 @@
 const db = require('../config/db');
 
 const getStockList = async (req, res) => {
-    const branchId = req.query.branchId || req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         const [rows] = await db.execute(
             `SELECT tbl_stock.*, tbl_branch.branch_name FROM tbl_stock
@@ -12,7 +15,10 @@ const getStockList = async (req, res) => {
 };
 
 const getAvailableVehicles = async (req, res) => {
-    const branchId = req.query.branchId || req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         const [rows] = await db.execute(
             `SELECT * FROM tbl_stock WHERE stock_branch = ? AND sold_status = 'N' ORDER BY stock_id DESC`, [branchId]);
@@ -21,7 +27,10 @@ const getAvailableVehicles = async (req, res) => {
 };
 
 const getStockVerification = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const fromDate = req.query.from, toDate = req.query.to;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
@@ -101,7 +110,10 @@ const getStockVerification = async (req, res) => {
 };
 
 const getStockSplitup = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const fromDate = req.query.from, toDate = req.query.to;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);

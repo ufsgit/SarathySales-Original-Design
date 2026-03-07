@@ -73,7 +73,7 @@
                             <td>
                                 <div class="customer-info">
                                     <span class="highlight-red" style="cursor: pointer;"
-                                        (click)="generatePdf(row.inv_id)">{{ row.inv_cus || '—' }}</span><br>
+                                        (click)="generatePdf(row.inv_no)">{{ row.inv_cus || '—' }}</span><br>
                                     <span class="sub-name">{{ row.inv_cus_addres || '' }}</span><br>
                                     <span class="sub-name">Pin code: {{row.inv_pincode || ''}}</span>
                                     <!-- @if (row.inv_pincode) {
@@ -104,12 +104,12 @@
                             <td class="text-right">{{ formatAmount(row.inv_total) }}</td>
                             <td>
                                 <div style="display: flex; flex-direction: column; gap: 5px;">
-                                    <button class="btn btn-primary" (click)="generateSalesLetter(row.inv_id)"
+                                    <button class="btn btn-primary" (click)="generateSalesLetter(row.inv_no)"
                                         style="background-color: green; color:white; cursor: pointer;">Sales
                                         Letter</button>
-                                    <button class="btn btn-primary" (click)="generateSticker(row.inv_id)"
+                                    <button class="btn btn-primary" (click)="generateSticker(row.inv_no)"
                                         style="background-color: blue; color:white; cursor: pointer;">Sticker</button>
-                                    <button class="btn btn-primary" (click)="generateRtoBill(row.inv_id)"
+                                    <button class="btn btn-primary" (click)="generateRtoBill(row.inv_no)"
                                         style="background-color: green; color:white; cursor: pointer;">RTO Bill</button>
                                 </div>
                             </td>

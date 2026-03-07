@@ -17,21 +17,27 @@ function numberToWords(num) {
 }
 
 const searchVehicles = async (req, res) => {
-    const { query, branchId } = req.query;
+    let { query, branchId } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         const [rows] = await db.execute(
             `SELECT tbl_stock.*, tbl_branch.branch_name FROM tbl_stock
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_branch
              WHERE tbl_stock.stock_branch = ? AND tbl_stock.sold_status = 'N'
              AND (tbl_stock.stock_model LIKE ? OR tbl_stock.stock_chassis_no LIKE ? OR tbl_stock.stock_colour LIKE ?)`,
-            [branchId || req.query.branchId, `%${query}%`, `%${query}%`, `%${query}%`]
+            [branchId, `%${query}%`, `%${query}%`, `%${query}%`]
         );
         res.json({ success: true, data: rows });
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to search vehicles' }); }
 };
 
 const listModels = async (req, res) => {
-    const branchId = req.query.branchId || req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         const [rows] = await db.execute(
             `SELECT DISTINCT stock_model FROM tbl_stock WHERE stock_branch = ? AND sold_status = 'N' ORDER BY stock_model`, [branchId]);
@@ -83,7 +89,10 @@ const listChassis = async (req, res) => {
 const createStickerPdf = async (req, res) => {
     try {
         const [records] = await db.execute(
-            `SELECT * FROM tbl_invoice_labour WHERE inv_chassis = ? ORDER BY inv_id DESC LIMIT 1`, [req.params.chassisNo]
+            `SELECT * FROM tbl_invoice_labour 
+             WHERE inv_chassis = ? ${req.user && req.user.role == 2 ? 'AND inv_branch = ?' : ''}
+             ORDER BY inv_id DESC LIMIT 1`,
+            req.user && req.user.role == 2 ? [req.params.chassisNo, req.user.branch_id] : [req.params.chassisNo]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Vehicle not found' });
@@ -136,7 +145,9 @@ const createSaleLetterPdf = async (req, res) => {
              LEFT JOIN tbl_labour_code lc ON lc.labour_code = inv.inv_vehicle_code
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
              LEFT JOIN purchaseitem pi ON pi.chassis_no = inv.inv_chassis
-             WHERE inv.inv_chassis = ? ORDER BY inv.inv_id DESC LIMIT 1`, [req.params.chassisNo]
+             WHERE inv.inv_chassis = ? ${req.user && req.user.role == 2 ? 'AND inv.inv_branch = ?' : ''}
+             ORDER BY inv.inv_id DESC LIMIT 1`,
+            req.user && req.user.role == 2 ? [req.params.chassisNo, req.user.branch_id] : [req.params.chassisNo]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Vehicle details not found' });
@@ -204,9 +215,9 @@ const createSaleLetterPdf = async (req, res) => {
         currentY = drawSpec(7, 'Fuel Used', data.fuel || 'Petrol', currentY);
         currentY = drawSpec(8, 'No.of Cylinderes', data.no_of_cylider || '1', currentY);
         currentY = drawSpec(9, 'Seating Capacity( incl Driver)', data.seat_capacity || '1+1', currentY);
-        currentY = drawSpec(10, 'Unladen Weight (Dry Weight)', data.ul_weight ? `${data.ul_weight}` : ' ', currentY);
+        currentY = drawSpec(10, 'Unladen Weight (Dry Weight)', data.ul_weight ? `${data.ul_weight} ` : ' ', currentY);
         currentY = drawSpec(11, 'Color/Colours of the Body', data.inv_color || '', currentY);
-        currentY = drawSpec(12, 'Gross Vehicle Weight', data.r_weight ? `${data.r_weight}` : ' ', currentY);
+        currentY = drawSpec(12, 'Gross Vehicle Weight', data.r_weight ? `${data.r_weight} ` : ' ', currentY);
         currentY = drawSpec(13, 'Type of Body', data.tbody || 'Solo with Pillion', currentY);
         currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB') : '', currentY);
 
@@ -241,9 +252,11 @@ const createPrintEnquiryPdf = async (req, res) => {
             `SELECT inv.*, pb.invoiceNo as purchase_bill_no, b.branch_name, b.branch_address, b.branch_ph
              FROM tbl_invoice_labour inv
              LEFT JOIN purchaseitem pi ON pi.chassis_no = inv.inv_chassis
-             INNER JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+             LEFT JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
-             WHERE inv.inv_chassis = ? ORDER BY inv.inv_id DESC LIMIT 1`, [req.params.chassisNo]
+             WHERE inv.inv_chassis = ? ${req.user && req.user.role == 2 ? 'AND inv.inv_branch = ?' : ''}
+             ORDER BY inv.inv_id DESC LIMIT 1`,
+            req.user && req.user.role == 2 ? [req.params.chassisNo, req.user.branch_id] : [req.params.chassisNo]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Vehicle not found' });

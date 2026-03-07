@@ -1,7 +1,8 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { UserNav } from "../user-nav/user-nav";
 import { UserFooter } from "../user-footer/user-footer";
 import { CommonModule } from '@angular/common';
+import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-user-home',
@@ -11,12 +12,13 @@ import { CommonModule } from '@angular/common';
   styleUrl: './user-home.css',
 })
 export class UserHome implements OnInit {
+  private apiService = inject(ApiService);
   user = signal<any>(null);
 
   ngOnInit() {
-    const data = localStorage.getItem('sarathy_user');
-    if (data) {
-      this.user.set(JSON.parse(data));
+    const userData = this.apiService.getCurrentUser();
+    if (userData) {
+      this.user.set(userData);
     }
   }
 }

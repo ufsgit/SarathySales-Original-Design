@@ -159,8 +159,9 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
     return isNaN(n) ? '—' : n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
   }
 
-  generatePdf(id: number): void {
-    const url = this.api.getPaySlipPdfUrl(id);
+  generatePdf(pay_slip_no: string) {
+    if (!pay_slip_no) return;
+    const url = this.api.getPaySlipPdfUrl(pay_slip_no);
     window.open(url, '_blank');
   }
 }

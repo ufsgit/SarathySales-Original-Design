@@ -18,7 +18,10 @@ function numberToWords(num) {
 }
 
 const listPurchaseInvoices = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
@@ -101,7 +104,7 @@ const savePurchaseInvoice = async (req, res) => {
              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 invoiceNo,
-                branchId || req.query.branchId,
+                req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
                 invoiceDate || new Date(),
                 invoiceTime || '',
                 supplierName || '',
@@ -128,7 +131,7 @@ const savePurchaseInvoice = async (req, res) => {
                     invId, item.productId || null, item.prodCode || '', item.description || '',
                     item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
                     item.mfgDate || invoiceDate || new Date(), item.saleType || '',
-                    item.amount || item.rate || 0, branchId || req.query.branchId
+                    item.amount || item.rate || 0, req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId)
                 ]
             );
         }
@@ -148,7 +151,8 @@ const createPurchasePdf = async (req, res) => {
             `SELECT pb.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin 
              FROM purchaseitembill pb
              LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-             WHERE pb.purchaseItemBillId = ?`, [req.params.id]
+             WHERE pb.purchaseItemBillId = ? ${req.user && req.user.role == 2 ? 'AND pb.purch_branchId = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Purchase invoice not found' });
@@ -381,10 +385,25 @@ const getModelColors = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch model colors' });
     }
 };
+const createPurchasePdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Purchase invoice not found' });
+        req.params.id = records[0].purchaseItemBillId;
+        return createPurchasePdf(req, res);
+    } catch (err) {
+        console.error('Purchase PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Purchase PDF' });
+    }
+};
+
 module.exports = {
     listPurchaseInvoices,
     getPurchaseInvoice,
     savePurchaseInvoice,
     createPurchasePdf,
+    createPurchasePdfByNo,
     getModelColors
 };

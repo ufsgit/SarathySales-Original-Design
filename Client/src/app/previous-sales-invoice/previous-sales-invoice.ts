@@ -109,23 +109,27 @@ export class PreviousSalesInvoice implements OnInit, OnDestroy {
     return isNaN(n) ? (v || '—') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  generatePdf(id: number): void {
-    const url = this.api.getSalesPdfUrl(id);
+  generatePdf(inv_no: string) {
+    if (!inv_no) return;
+    const url = this.api.getSalesPdfUrl(inv_no);
     window.open(url, '_blank');
   }
 
-  generateSalesLetter(id: number): void {
-    const url = this.api.getSalesLetterPdfUrl(id);
+  generateSalesLetter(inv_no: string) {
+    if (!inv_no) return;
+    const url = this.api.getSalesLetterPdfUrl(inv_no);
     window.open(url, '_blank');
   }
 
-  generateSticker(id: number): void {
-    const url = this.api.getSalesStickerPdfUrl(id);
+  generateSticker(inv_no: string) {
+    if (!inv_no) return;
+    const url = this.api.getSalesStickerPdfUrl(inv_no);
     window.open(url, '_blank');
   }
 
-  generateRtoBill(id: number): void {
-    const url = this.api.getSalesRtoBillPdfUrl(id);
+  generateRtoBill(inv_no: string) {
+    if (!inv_no) return;
+    const url = this.api.getSalesRtoBillPdfUrl(inv_no);
     window.open(url, '_blank');
   }
 }

@@ -2,7 +2,10 @@ const db = require('../config/db');
 const ExcelJS = require('exceljs');
 
 const getSalesReport = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -43,7 +46,10 @@ const getSalesReport = async (req, res) => {
 };
 
 const getPurchaseReport = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -107,7 +113,10 @@ const getPurchaseReport = async (req, res) => {
 };
 
 const getMoneyReceiptReport = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -136,7 +145,10 @@ const getMoneyReceiptReport = async (req, res) => {
 };
 
 const getPaySlipReport = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -165,7 +177,10 @@ const getPaySlipReport = async (req, res) => {
 };
 
 const getBranchTransferReport = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -197,7 +212,10 @@ const getBranchTransferReport = async (req, res) => {
 };
 
 const getProformaReport = async (req, res) => {
-    const { branchId, from, to, status } = req.query;
+    let { branchId, from, to, status } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -234,7 +252,10 @@ const getProformaReport = async (req, res) => {
 };
 
 const getVsiReport = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -263,7 +284,10 @@ const getVsiReport = async (req, res) => {
 };
 
 const exportProformaExcel = async (req, res) => {
-    const { branchId, from, to, status } = req.query;
+    let { branchId, from, to, status } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -361,7 +385,10 @@ const exportProformaExcel = async (req, res) => {
 };
 
 const exportProformaPagedExcel = async (req, res) => {
-    const { branchId, from, to, status } = req.query;
+    let { branchId, from, to, status } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -441,7 +468,10 @@ const exportProformaPagedExcel = async (req, res) => {
 };
 
 const exportProformaPagedCsv = async (req, res) => {
-    const { branchId, from, to, status } = req.query;
+    let { branchId, from, to, status } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -509,7 +539,10 @@ const exportProformaPagedCsv = async (req, res) => {
 };
 
 const exportSalesExcel = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -626,7 +659,10 @@ const exportSalesExcel = async (req, res) => {
 };
 
 const exportSalesPagedExcel = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -713,7 +749,10 @@ const exportSalesPagedExcel = async (req, res) => {
 };
 
 const exportSalesPagedCsv = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -791,7 +830,10 @@ const exportSalesPagedCsv = async (req, res) => {
 };
 
 const exportPurchaseExcel = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -890,7 +932,10 @@ const exportPurchaseExcel = async (req, res) => {
 };
 
 const exportPurchasePagedExcel = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -980,7 +1025,10 @@ const exportPurchasePagedExcel = async (req, res) => {
 };
 
 const exportPurchasePagedCsv = async (req, res) => {
-    const { branchId, from, to, vehicleCode } = req.query;
+    let { branchId, from, to, vehicleCode } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1061,7 +1109,10 @@ const exportPurchasePagedCsv = async (req, res) => {
 };
 
 const exportPayslipExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -1129,7 +1180,10 @@ const exportPayslipExcel = async (req, res) => {
 };
 
 const exportPayslipPagedExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1195,7 +1249,10 @@ const exportPayslipPagedExcel = async (req, res) => {
 };
 
 const exportPayslipPagedCsv = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1252,7 +1309,10 @@ const exportPayslipPagedCsv = async (req, res) => {
 };
 
 const exportMoneyReceiptExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -1326,7 +1386,10 @@ const exportMoneyReceiptExcel = async (req, res) => {
 };
 
 const exportMoneyReceiptPagedExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1396,7 +1459,10 @@ const exportMoneyReceiptPagedExcel = async (req, res) => {
 };
 
 const exportMoneyReceiptPagedCsv = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1457,7 +1523,10 @@ const exportMoneyReceiptPagedCsv = async (req, res) => {
 };
 
 const exportBranchTransferExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
@@ -1537,7 +1606,10 @@ const exportBranchTransferExcel = async (req, res) => {
 };
 
 const exportBranchTransferPagedExcel = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -1606,7 +1678,10 @@ const exportBranchTransferPagedExcel = async (req, res) => {
 };
 
 const exportBranchTransferPagedCsv = async (req, res) => {
-    const { branchId, from, to } = req.query;
+    let { branchId, from, to } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;

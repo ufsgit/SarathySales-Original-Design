@@ -12,7 +12,10 @@ async function getNextNo(branchId) {
 }
 
 const getNextGatePassNo = async (req, res) => {
-    const branchId = req.query.branchId || req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         res.json({ success: true, gatePassNo: await getNextNo(branchId) });
     } catch (err) {
@@ -22,7 +25,10 @@ const getNextGatePassNo = async (req, res) => {
 };
 
 const getGatePassInvoices = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         let sql = `SELECT inv_id, inv_no
                    FROM tbl_invoice_labour
@@ -57,7 +63,11 @@ const getGatePassInvoices = async (req, res) => {
 
 const getGatePassInvoiceDetails = async (req, res) => {
     const invoiceNo = (req.query.invoiceNo || '').toString().trim();
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
 
     if (!invoiceNo) {
         return res.status(400).json({ success: false, message: 'invoiceNo required' });
@@ -196,8 +206,8 @@ const saveGatePass = async (req, res) => {
             `INSERT INTO tbl_gate_pass (gate_branch_id, gate_pass_no, gate_pass_date, gate_cus_name,
              gate_cus_address, gate_reason, gate_vehicle_model, gate_chassis_no, gate_engine_no, gate_amount, gate_remarks)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [branchId || req.query.branchId, gatePassNo, gatePassDate || new Date(), customerName || '',
-            address || '', reason || '', vehicleModel || '', chassisNo || '', engineNo || '', amount || 0, remarks || '']
+            [branchId, gatePassNo, gatePassDate || new Date(), customerName || '',
+                address || '', reason || '', vehicleModel || '', chassisNo || '', engineNo || '', amount || 0, remarks || '']
         );
         res.json({ success: true, message: 'Gate pass saved', gate_pass_id: result.insertId });
     } catch (err) {

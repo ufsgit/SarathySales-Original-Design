@@ -28,7 +28,12 @@ async function getNextNo(branchId) {
 }
 
 const getNextInvoiceNo = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
 
     if (!branchId) {
         return res.status(400).json({
@@ -107,7 +112,12 @@ const getLabourDetails = async (req, res) => {
 };
 
 const getChassisRecords = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         let sql = `
             SELECT 
@@ -203,7 +213,13 @@ const getHypothecationOptions = async (_req, res) => {
 };
 
 const listInvoices = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
@@ -1036,13 +1052,18 @@ const createRtoBillPdf = async (req, res) => {
 
 const saveInvoice = async (req, res) => {
     console.log(req.body)
-    const {
+    let {
         invoiceNo, branchId, invoiceDate, customerName, chassisNo, engineNo,
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
         discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
     } = req.body;
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
 
     if (!invoiceNo) return res.status(400).json({ success: false, message: 'Invoice number required' });
     const conn = await db.getConnection();
@@ -1063,39 +1084,39 @@ const saveInvoice = async (req, res) => {
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
         const params = [
-    invoiceNo,
-    branchId,
-    parsedDate,
-    customerName || '',
-    chassisNo || '',
-    engineNo || '',
-    regNo || '',
-    adviserId || '',
-    totalAmount || 0,
-    mobileNo || '',
-    guardian || '',
-    address || '',
-    issueType || '',
-    age || '',
-    cdmsNo || '',
-    area || '',
-    hypothication || '',
-    place || '',
-    receiptNo || '',
-    financeDues || '',
-    vehicle || '',
-    pCode || '',
-    color || '',
-    gstin || '',
-    basicAmount || 0,
-    discountAmount || 0,
-    hsnCode || '',
-    taxableAmount || 0,
-    sgst || 0,
-    cgst || 0,
-    cess || 0,
-    pincode || ''
-];
+            invoiceNo,
+            branchId,
+            parsedDate,
+            customerName || '',
+            chassisNo || '',
+            engineNo || '',
+            regNo || '',
+            adviserId || '',
+            totalAmount || 0,
+            mobileNo || '',
+            guardian || '',
+            address || '',
+            issueType || '',
+            age || '',
+            cdmsNo || '',
+            area || '',
+            hypothication || '',
+            place || '',
+            receiptNo || '',
+            financeDues || '',
+            vehicle || '',
+            pCode || '',
+            color || '',
+            gstin || '',
+            basicAmount || 0,
+            discountAmount || 0,
+            hsnCode || '',
+            taxableAmount || 0,
+            sgst || 0,
+            cgst || 0,
+            cess || 0,
+            pincode || ''
+        ];
 
         const [result] = await conn.execute(insertSql, params);
 
@@ -1112,13 +1133,18 @@ const saveInvoice = async (req, res) => {
 
 const updateInvoice = async (req, res) => {
     const { id } = req.params;
-    const {
+    let {
         invoiceNo, branchId, invoiceDate, customerName, chassisNo, engineNo,
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
         discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
     } = req.body;
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
 
     if (!id || !invoiceNo) return res.status(400).json({ success: false, message: 'Invoice ID and number required' });
     const conn = await db.getConnection();
@@ -1181,6 +1207,65 @@ const getSalesExecutives = async (req, res) => {
     }
 };
 
+const createSalesPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin 
+             FROM tbl_invoice_labour inv
+             LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
+             WHERE inv.inv_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        req.params.id = records[0].inv_id;
+        return createSalesPdf(req, res);
+    } catch (err) {
+        console.error('Sales PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Sales PDF' });
+    }
+};
+
+const createSalesLetterPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT inv_id FROM tbl_invoice_labour WHERE inv_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        req.params.id = records[0].inv_id;
+        return createSalesLetterPdf(req, res);
+    } catch (err) {
+        console.error('Sales Letter PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Sales Letter PDF' });
+    }
+};
+
+const createStickerPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT inv_id FROM tbl_invoice_labour WHERE inv_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        req.params.id = records[0].inv_id;
+        return createStickerPdf(req, res);
+    } catch (err) {
+        console.error('Sticker PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Sticker PDF' });
+    }
+};
+
+const createRtoBillPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT inv_id FROM tbl_invoice_labour WHERE inv_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        req.params.id = records[0].inv_id;
+        return createRtoBillPdf(req, res);
+    } catch (err) {
+        console.error('RTO Bill PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate RTO Bill PDF' });
+    }
+};
+
 module.exports = {
     getNextInvoiceNo,
     getAllLabourCodes,
@@ -1192,6 +1277,10 @@ module.exports = {
     createSalesLetterPdf,
     createStickerPdf,
     createRtoBillPdf,
+    createSalesPdfByNo,
+    createSalesLetterPdfByNo,
+    createStickerPdfByNo,
+    createRtoBillPdfByNo,
     getSalesExecutives,
     saveInvoice,
     updateInvoice

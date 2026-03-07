@@ -105,8 +105,9 @@ export class PreviousPurchaseInvoice implements OnInit, OnDestroy {
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-IN');
   }
 
-  generatePdf(id: number): void {
-    const url = this.api.getPurchasePdfUrl(id);
+  generatePdf(invoiceNo: string): void {
+    if (!invoiceNo) return;
+    const url = this.api.getPurchasePdfUrl(invoiceNo);
     window.open(url, '_blank');
   }
 }

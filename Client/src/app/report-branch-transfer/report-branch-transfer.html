@@ -94,7 +94,7 @@
                 } @else {
                 @for (row of records(); track row.lc_id) {
                 <tr>
-                    <td (click)="viewPdf(row.lc_id)" style="color: red; font-weight: bold; cursor: pointer;">
+                    <td (click)="viewPdf(row.debit_note_no)" style="color: red; font-weight: bold; cursor: pointer;">
                         {{ row.debit_note_no }}
                     </td>
                     <td>{{ formatDisplayDate(row.debit_note_date) }}</td>

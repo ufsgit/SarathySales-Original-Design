@@ -68,8 +68,8 @@
                             <td>{{ rowIndex(i) }}</td>
                             <td>
                                 <div class="customer-info">
-                                    <span class="highlight-red"
-                                        (click)="generatePdf(row.purchaseItemBillId)">{{ row.invoiceNo || '—' }}</span>
+                                    <span class="highlight-red" style="cursor: pointer;"
+                                        (click)="generatePdf(row.invoiceNo)">{{ row.invoiceNo || '—' }}</span>
                                     <span>{{ row.pucha_vendorName || '' }}</span>
                                     <span class="sub-name">{{ row.purcha_vend_addrs || '' }}</span>
                                 </div>

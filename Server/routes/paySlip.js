@@ -6,9 +6,10 @@ const {
     getPaySlipFormData,
     listPaySlips,
     savePaySlip,
-    getPaySlip,
     updatePaySlip,
-    createPdf
+    getPaySlip,
+    createPdf,
+    createPdfByNo
 } = require('../controllers/paySlipController');
 
 router.get('/next-no', getNextPaySlipNo);
@@ -16,8 +17,9 @@ router.get('/advisers', getAdvisers);
 router.get('/form-data', getPaySlipFormData);
 router.get('/list', listPaySlips);
 router.post('/save', savePaySlip);
+router.put('/update/:id', updatePaySlip);
+router.get('/get/:id', getPaySlip);
 router.get('/create-pdf/:id', createPdf);
-router.get('/:id', getPaySlip);
-router.put('/:id', updatePaySlip);
+router.get('/pdf-by-no/:no', createPdfByNo);
 
 module.exports = router;

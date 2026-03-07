@@ -109,8 +109,9 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
         return isNaN(n) ? (v || '—') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    generatePdf(id: number): void {
-        const url = this.api.getProformaPdfUrl(id);
+    generatePdf(pro_quot_no: string): void {
+        if (!pro_quot_no) return;
+        const url = this.api.getProformaPdfUrl(pro_quot_no);
         window.open(url, '_blank');
     }
 }

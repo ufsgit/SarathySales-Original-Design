@@ -18,7 +18,11 @@ async function getNextNo(table, noColumn, branchColumn, branchId, prefix) {
 
 /** GET /api/money-receipt/next-no */
 const getNextReceiptNo = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         const no = await getNextNo('tbl_money_receipt', 'receipt_no', 'rec_branch_id', branchId, 'RI');
         res.json({ success: true, receiptNo: no });
@@ -30,7 +34,11 @@ const getNextReceiptNo = async (req, res) => {
 
 /** GET /api/money-receipt/list */
 const listReceipts = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
@@ -73,8 +81,12 @@ const listReceipts = async (req, res) => {
 
 /** POST /api/money-receipt/save */
 const saveReceipt = async (req, res) => {
-    const { receiptNo, branchId, receiptDate, reference, reason, payType,
+    let { receiptNo, branchId, receiptDate, reference, reason, payType,
         chequeDate, chequeNo, customerName, address, amount, bank, place, refundStatus } = req.body;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     if (!receiptNo || !customerName) {
         return res.status(400).json({ success: false, message: 'Receipt No and Customer Name are required' });
     }
@@ -105,9 +117,10 @@ const getReceipt = async (req, res) => {
         const [rows] = await db.execute(
             `SELECT tbl_money_receipt.*, tbl_branch.branch_name FROM tbl_money_receipt
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_money_receipt.rec_branch_id
-             WHERE receipt_id = ?`, [req.params.id]
+             WHERE receipt_id = ? ${req.user && req.user.role == 2 ? 'AND rec_branch_id = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
         );
-        if (!rows.length) return res.status(404).json({ success: false, message: 'Receipt not found' });
+        if (!rows.length) return res.status(404).json({ success: false, message: 'Receipt not found or access denied' });
         res.json({ success: true, data: rows[0] });
     } catch (err) {
         console.error(err);

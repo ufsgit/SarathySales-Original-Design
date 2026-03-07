@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
+import { ApiService } from '../services/api.service';
 
 @Component({
     selector: 'app-vsi-report',
@@ -36,8 +37,8 @@ import { UserFooter } from '../user-footer/user-footer';
           <div class="filter-area centered-filter">
              <div class="filter-row">
                  <label>Branch</label>
-                 <select class="form-control">
-                     <option>SARATHY KOLLAM KTM (1)</option>
+                 <select class="form-control" disabled [ngModel]="branchId()">
+                     <option [value]="branchId()">{{branchName()}} ({{branchId()}})</option>
                  </select>
              </div>
              <div class="filter-row">
@@ -478,8 +479,19 @@ import { UserFooter } from '../user-footer/user-footer';
     }
   `]
 })
-export class VsiReportComponent {
+export class VsiReportComponent implements OnInit {
+    branchId = signal('');
+    branchName = signal('');
 
-    constructor(private router: Router) { }
+    constructor(private router: Router, private api: ApiService) { }
+
+    ngOnInit() {
+        const user = this.api.getCurrentUser();
+        if (user) {
+            this.branchId.set(user.branch_id || '');
+            this.branchName.set(user.branch_name || 'No Branch');
+        }
+    }
+
     navigate(path: string) { this.router.navigate([path]); }
 }

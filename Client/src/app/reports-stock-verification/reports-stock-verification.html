@@ -27,11 +27,11 @@
         <div class="filters-container">
             <div class="filter-row">
                 <label>Branch</label>
-                <select class="form-control" [ngModel]="branchId()"
-                    (ngModelChange)="branchId.set($event); onFilterChange()">
-                    <option value="">--Select Branch--</option>
-                    @for (b of branches(); track b.b_id) {
-                    <option [value]="b.b_id">{{ b.branch_name }}</option>
+                <select class="form-control" [ngModel]="branchId()" disabled>
+                    @if (branchId()) {
+                    <option [value]="branchId()">Locked to Branch ID: {{ branchId() }}</option>
+                    } @else {
+                    <option value="">--No Branch Assigned--</option>
                     }
                 </select>
             </div>

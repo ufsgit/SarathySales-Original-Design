@@ -46,6 +46,9 @@ function numberToWords(num) {
 }
 const getNextProformaNo = async (req, res) => {
     let branchId = (req.query.branchId || '').toString().trim();
+    if (req.user && req.user.role == 2) {
+        branchId = String(req.user.branch_id || '').trim();
+    }
     const branchName = (req.query.branchName || '').toString().trim();
     const year = new Date().getFullYear().toString();
     try {
@@ -68,7 +71,11 @@ const getNextProformaNo = async (req, res) => {
 
 
 const listProformas = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
@@ -140,7 +147,11 @@ const saveProforma = async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const effectiveBranchId = branchId || req.query.branchId;
+        let effectiveBranchId = branchId || req.query.branchId;
+
+        if (req.user && req.user.role == 2) {
+            effectiveBranchId = req.user.branch_id;
+        }
         if (!effectiveBranchId) {
             await conn.rollback();
             return res.status(400).json({ success: false, message: 'Branch id required' });
@@ -475,4 +486,18 @@ const getProformaExecutives = async (req, res) => {
     }
 };
 
-module.exports = { getNextProformaNo, listProformas, getProforma, saveProforma, updateProforma, createProformaPdf, getProformaExecutives };
+const createProformaPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT pro_id FROM tbl_proforma WHERE pro_quot_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Proforma not found' });
+        req.params.id = records[0].pro_id;
+        return createProformaPdf(req, res);
+    } catch (err) {
+        console.error('Proforma PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Proforma PDF' });
+    }
+};
+
+module.exports = { getNextProformaNo, listProformas, getProforma, saveProforma, updateProforma, createProformaPdf, createProformaPdfByNo, getProformaExecutives };

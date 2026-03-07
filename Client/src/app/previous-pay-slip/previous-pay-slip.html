@@ -77,8 +77,9 @@
                             <td>{{ rowIndex(i) }}</td>
                             <td>
                                 <div class="customer-info">
-                                    <span class="highlight-red" style="cursor: pointer;" title="Click to view PDF"
-                                        (click)="generatePdf(row.payslip_id)">{{ row.pay_slip_no }}</span>
+                                    <a href="javascript:void(0)" class="highlight-red" style="cursor: pointer;"
+                                        title="Click to view PDF"
+                                        (click)="generatePdf(row.pay_slip_no)">{{row.pay_slip_no}}</a>
                                     <span class="sub-name">{{ row.pay_cus_name || '—' }}</span>
                                 </div>
                             </td>

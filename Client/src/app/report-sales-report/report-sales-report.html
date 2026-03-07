@@ -146,7 +146,7 @@
                         } @else {
                         @for (row of records(); track row.inv_id) {
                         <tr>
-                            <td (click)="viewPdf(row.inv_id)"
+                            <td (click)="viewPdf(row.inv_no)"
                                 style="font-weight: bold; color: #d32f2f; cursor: pointer; text-decoration: none;">
                                 {{ row.inv_no }}
                             </td>

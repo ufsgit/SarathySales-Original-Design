@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-user-nav',
@@ -9,9 +10,19 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   styleUrl: './user-nav.css',
 })
 export class UserNav {
+  private api = inject(ApiService);
+  private router = inject(Router);
   menuOpen = false;
 
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
+  }
+
+  logout(event: Event) {
+    event.preventDefault();
+    if (confirm('Are you sure you want to logout?')) {
+      this.api.logout();
+      this.router.navigate(['/']);
+    }
   }
 }

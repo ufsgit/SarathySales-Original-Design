@@ -6,8 +6,8 @@ router.get('/search', searchVehicles);
 router.get('/models', listModels);
 router.get('/chassis-list', listChassis);
 router.get('/chassis/:chassisNo', getVehicleByChassisNo);
-router.get('/sticker/:chassisNo', createStickerPdf);
-router.get('/sale-letter/:chassisNo', createSaleLetterPdf);
-router.get('/print-enquiry/:chassisNo', createPrintEnquiryPdf);
+router.get('/pdf/sticker/:chassisNo', createStickerPdf);
+router.get('/pdf/sale-letter/:chassisNo', createSaleLetterPdf);
+router.get('/pdf/print-enquiry/:chassisNo', createPrintEnquiryPdf);
 
 module.exports = router;

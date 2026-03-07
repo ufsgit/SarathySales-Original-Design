@@ -63,9 +63,8 @@ export class ReportPurchaseReport implements OnInit {
     constructor(private api: ApiService) { }
 
     ngOnInit() {
-        const data = localStorage.getItem('sarathy_user');
-        if (data) {
-            const user = JSON.parse(data);
+        const user = this.api.getCurrentUser();
+        if (user) {
             this.branchId.set(user.branch_id || '');
             this.branchName.set(user.branch_name || 'No Branch');
         }

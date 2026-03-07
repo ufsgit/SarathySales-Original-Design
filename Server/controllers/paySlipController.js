@@ -68,6 +68,12 @@ async function getNextNo(branchId) {
 const getNextPaySlipNo = async (req, res) => {
     let branchId = String(req.query.branchId || '').trim();
     const branchName = String(req.query.branchName || '').trim();
+
+    // Enforce branch scoping for non-admins (role 2)
+    if (req.user && req.user.role == 2) {
+        branchId = String(req.user.branch_id || '').trim();
+    }
+
     try {
         if (!branchId && branchName) {
             const [branchRows] = await db.execute(
@@ -113,7 +119,11 @@ const getAdvisers = async (req, res) => {
 };
 
 const getPaySlipFormData = async (req, res) => {
-    const branchId = req.query.branchId ? parseInt(req.query.branchId, 10) : null;
+    let branchId = req.query.branchId ? parseInt(req.query.branchId, 10) : null;
+
+    if (req.user && req.user.role == 2) {
+        branchId = parseInt(req.user.branch_id, 10);
+    }
 
     try {
         const financeOptions = ['By Cash'];
@@ -173,7 +183,11 @@ const getPaySlipFormData = async (req, res) => {
 
 
 const listPaySlips = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
@@ -242,7 +256,7 @@ const listPaySlips = async (req, res) => {
 const savePaySlip = async (req, res) => {
     const body = req.body || {};
     const paySlipNo = pick(body, 'paySlipNo', 'pay_slip_no');
-    const branchId = pick(body, 'branchId', 'pay_branch_id');
+    let branchId = pick(body, 'branchId', 'pay_branch_id');
     const paySlipDate = pick(body, 'paySlipDate', 'pay_slip_date');
     const customerName = pick(body, 'customerName', 'pay_cus_name');
     const vehicleName = pick(body, 'vehicleName', 'pay_slip_reference');
@@ -278,6 +292,11 @@ const savePaySlip = async (req, res) => {
     const others3 = pick(body, 'others3', 'pay_others3_amt');
 
     if (!paySlipNo) return res.status(400).json({ success: false, message: 'Pay slip number required' });
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
+
     if (!branchId) return res.status(400).json({ success: false, message: 'Branch id required' });
 
     try {
@@ -415,7 +434,190 @@ const createPdf = async (req, res) => {
         const [records] = await db.execute(
             `SELECT tbl_payslip.*, tbl_branch.branch_location FROM tbl_payslip
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_payslip.pay_branch_id
-             WHERE payslip_id = ?`, [req.params.id]
+             WHERE payslip_id = ? ${req.user && req.user.role == 2 ? 'AND pay_branch_id = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
+        );
+
+        if (!records.length) return res.status(404).json({ success: false, message: 'Pay slip not found' });
+        const data = records[0];
+
+        const doc = new PDFDocument({ margin: 30, size: 'A4' });
+        let filename = `PaySlip_${data.pay_slip_no}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        doc.pipe(res);
+
+        // --- Header Section ---
+        doc.font('Times-Bold').fontSize(16).text('Pay slip(Vehicle)', { align: 'center' });
+        doc.moveDown(1.5);
+
+        const leftX = 40;
+        const rightX = 350;
+        let startY = doc.y;
+
+        const drawInfo = (label, value, x, y) => {
+            const cleanValue = (value || '').toString().replace(/\r/g, '');
+            doc.font('Times-Bold').fontSize(9).text(label, x, y);
+            doc.font('Times-Roman').fontSize(9).text(`: ${cleanValue || '—'}`, x + 75, y, { width: 150 });
+        };
+
+        drawInfo('Pay Slip No.', data.pay_slip_no, leftX, startY);
+        drawInfo('Vehicle Name', data.pay_slip_reference, rightX, startY);
+
+        startY += 18;
+        drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB') : '', leftX, startY);
+        drawInfo('Executive', data.pay_regn || '', rightX, startY);
+
+        startY += 18;
+        drawInfo('Billed TO', data.pay_cus_name, leftX, startY);
+        drawInfo('Remarks.', data.pay_remarks, rightX, startY);
+
+        startY += 18;
+        drawInfo('Vehicle Type', data.pay_vehil_type, leftX, startY);
+        drawInfo('Location.', data.branch_location, rightX, startY);
+
+        startY += 18;
+        drawInfo('Finance/Cash', data.pay_finance, leftX, startY);
+
+        doc.moveDown(2);
+
+        // --- Table Section ---
+        const tableStartY = doc.y;
+        const x1 = 40, x2 = 70, x3 = 220, x4 = 310, x5 = 460, x6 = 560;
+        const tableWidth = x6 - x1;
+        const rowHeight = 15;
+
+        // Helper to format amount
+        const fmt = (v) => {
+            const n = parseFloat(v);
+            return isNaN(n) ? '0.00' : n.toFixed(2);
+        };
+
+        // Table Header
+        doc.font('Times-Bold').fontSize(9);
+        doc.rect(x1, tableStartY, tableWidth, rowHeight + 5).stroke();
+        doc.text('Sl.No', x1 + 2, tableStartY + 5);
+        doc.text('Earning', x2 + 5, tableStartY + 5);
+        doc.text('Amount', x3, tableStartY + 5, { width: x4 - x3 - 5, align: 'right' });
+        doc.text('Deductions', x4 + 5, tableStartY + 5);
+        doc.text('Amount', x5, tableStartY + 5, { width: x6 - x5 - 5, align: 'right' });
+
+        // Vertical lines for header
+        doc.moveTo(x2, tableStartY).lineTo(x2, tableStartY + rowHeight + 5).stroke();
+        doc.moveTo(x3, tableStartY).lineTo(x3, tableStartY + rowHeight + 5).stroke();
+        doc.moveTo(x4, tableStartY).lineTo(x4, tableStartY + rowHeight + 5).stroke();
+        doc.moveTo(x5, tableStartY).lineTo(x5, tableStartY + rowHeight + 5).stroke();
+
+        let currentY = tableStartY + rowHeight + 5;
+
+        const earnings = [
+            { label: 'Vehicle Amount', val: data.pay_vehile_amt },
+            { label: 'Road Tax', val: data.pay_road_tax },
+            { label: 'Insurance', val: data.pay_insurance },
+            { label: 'Reg Fee', val: data.pay_regn_fee },
+            { label: 'V.P Charges', val: data.pay_vp_charge },
+            { label: 'Ex Warrenty', val: data.pay_exted_wanty },
+            { label: 'Service & Stamp', val: data.pay_service_chrge },
+            { label: 'BFL Insurance&others', val: data.pay_others },
+            { label: 'Advance EMI', val: data.pay_advan_install },
+            { label: 'RSA Amount', val: data.pay_rsa_amt },
+            { label: 'Ownership Amount', val: data.pay_ownership_amt },
+            { label: 'Fittings Amount', val: data.pay_fitting_amt },
+            { label: '', val: '' }
+        ];
+
+        const deductions = [
+            { label: 'Finanace Amount', val: data.pay_dcc },
+            { label: 'Advance Amount', val: data.pay_advance },
+            { label: 'Bank Transfer', val: data.pay_bank_transfer },
+            { label: 'Swipe', val: data.pay_swipe_amt },
+            { label: 'Exchange', val: data.pay_exchange },
+            { label: 'Discount', val: data.pay_discount },
+            { label: 'BFL Discount', val: data.pay_bfl },
+            { label: 'Special Discount', val: data.pay_special_discnt },
+            { label: 'Dues', val: data.pay_dues },
+            { label: 'Gpay', val: data.pay_gpay },
+            { label: 'Others1', val: data.pay_others1_amt },
+            { label: 'Others2', val: data.pay_others2_amt },
+            { label: 'Others3', val: data.pay_others3_amt }
+        ];
+
+        doc.font('Times-Roman').fontSize(8);
+        for (let i = 0; i < 13; i++) {
+            doc.rect(x1, currentY, tableWidth, rowHeight).stroke();
+
+            // Verticals
+            doc.moveTo(x2, currentY).lineTo(x2, currentY + rowHeight).stroke();
+            doc.moveTo(x3, currentY).lineTo(x3, currentY + rowHeight).stroke();
+            doc.moveTo(x4, currentY).lineTo(x4, currentY + rowHeight).stroke();
+            doc.moveTo(x5, currentY).lineTo(x5, currentY + rowHeight).stroke();
+
+            doc.text(i + 1, x1 + 4, currentY + 4);
+
+            // Earning
+            if (earnings[i].label) {
+                doc.text(earnings[i].label, x2 + 4, currentY + 4);
+                if (earnings[i].val) doc.text(fmt(earnings[i].val), x3, currentY + 4, { width: x4 - x3 - 5, align: 'right' });
+            }
+
+            // Deduction
+            if (deductions[i].label) {
+                doc.text(deductions[i].label, x4 + 4, currentY + 4);
+                if (deductions[i].val) doc.text(fmt(deductions[i].val), x5, currentY + 4, { width: x6 - x5 - 5, align: 'right' });
+            }
+
+            currentY += rowHeight;
+        }
+
+        // Totals Row
+        doc.font('Times-Bold');
+        doc.rect(x1, currentY, tableWidth, rowHeight).stroke();
+        doc.moveTo(x3, currentY).lineTo(x3, currentY + rowHeight).stroke();
+        doc.moveTo(x4, currentY).lineTo(x4, currentY + rowHeight).stroke();
+        doc.moveTo(x5, currentY).lineTo(x5, currentY + rowHeight).stroke();
+
+        doc.text('Total', x1, currentY + 4, { width: x3 - x1, align: 'center' });
+        doc.text(`${fmt(data.pay_add_total)}/-`, x3, currentY + 4, { width: x4 - x3 - 5, align: 'right' });
+
+        doc.text('Total', x4, currentY + 4, { width: x5 - x4, align: 'center' });
+        doc.text(`${fmt(data.pay_less_total)}/-`, x5, currentY + 4, { width: x6 - x5 - 5, align: 'right' });
+
+        currentY += rowHeight + 10;
+
+        // --- Bottom Summary ---
+        doc.font('Times-Bold').fontSize(9);
+        doc.text('BALANCE AMOUNT', x1, currentY);
+        doc.text(`RS: ${fmt(data.pay_grand_tot)}/-`, x1 + 130, currentY);
+
+        currentY += 18;
+        doc.text('Tax amount payable on reverse charges (in Rs.) : Nil', x1, currentY);
+
+        currentY += 30;
+        doc.lineWidth(0.5).dash(2, { space: 2 }).moveTo(x1, currentY).lineTo(x6, currentY).stroke().undash();
+
+        // Footer Metadata
+        doc.fontSize(7).font('Times-Roman');
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+
+        doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, 800);
+        doc.text('Page 1/1', x6 - 45, 800);
+
+        doc.end();
+
+    } catch (err) {
+        console.error('PDF Generation Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+    }
+};
+
+const createPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT tbl_payslip.*, tbl_branch.branch_location FROM tbl_payslip
+             LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_payslip.pay_branch_id
+             WHERE pay_slip_no = ?`, [req.params.no]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Pay slip not found' });
@@ -600,5 +802,6 @@ module.exports = {
     savePaySlip,
     getPaySlip,
     updatePaySlip,
-    createPdf
+    createPdf,
+    createPdfByNo
 };

@@ -7,7 +7,8 @@ const {
     listBranchTransfers,
     getBranchTransfer,
     saveBranchTransfer,
-    createBranchTransferPdf
+    createBranchTransferPdf,
+    createBranchTransferPdfByNo
 } = require('../controllers/branchTransferController');
 
 router.get('/next-no', getNextBranchTransferNo);
@@ -16,6 +17,7 @@ router.get('/institution-name', getInstitutionCustomerName);
 router.get('/list', listBranchTransfers);
 router.post('/save', saveBranchTransfer);
 router.get('/create-pdf/:id', createBranchTransferPdf);
+router.get('/pdf-by-no/:no', createBranchTransferPdfByNo);
 router.get('/:id', getBranchTransfer);
 
 module.exports = router;

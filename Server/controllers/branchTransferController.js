@@ -44,7 +44,10 @@ async function getLastTransferNoByBranch(executor, branchId, year) {
 }
 
 const getNextBranchTransferNo = async (req, res) => {
-    const branchId = (req.query.branchId || '').toString().trim();
+    let branchId = (req.query.branchId || '').toString().trim();
+    if (req.user && req.user.role == 2) {
+        branchId = String(req.user.branch_id || '').trim();
+    }
     const year = new Date().getFullYear().toString();
     try {
         if (!branchId) return res.status(400).json({ success: false, message: 'branchId is required' });
@@ -55,7 +58,10 @@ const getNextBranchTransferNo = async (req, res) => {
 
 
 const getAvailableStock = async (req, res) => {
-    const branchId = (req.query.branchId || '').toString().trim();
+    let branchId = (req.query.branchId || '').toString().trim();
+    if (req.user && req.user.role == 2) {
+        branchId = String(req.user.branch_id || '').trim();
+    }
     try {
         let sql = `SELECT
                 bt.lc_id AS stock_id,
@@ -96,7 +102,10 @@ const getAvailableStock = async (req, res) => {
 
 const getInstitutionCustomerName = async (req, res) => {
     const institutionId = parseInt((req.query.institutionId || '').toString(), 10) || 0;
-    const branchId = (req.query.branchId || '').toString().trim();
+    let branchId = (req.query.branchId || '').toString().trim();
+    if (req.user && req.user.role == 2) {
+        branchId = String(req.user.branch_id || '').trim();
+    }
     if (!institutionId) {
         return res.status(400).json({ success: false, message: 'institutionId required' });
     }
@@ -179,7 +188,9 @@ const getBranchTransfer = async (req, res) => {
              FROM tbl_branch_transfer
              LEFT JOIN tbl_branch b1 ON b1.b_id = tbl_branch_transfer.ic_branch
              LEFT JOIN tbl_branch b2 ON b2.b_id = tbl_branch_transfer.lnstitute_branch_id
-             WHERE lc_id = ?`, [req.params.id]);
+             WHERE lc_id = ? ${req.user && req.user.role == 2 ? 'AND tbl_branch_transfer.ic_branch = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
+        );
         if (!rows.length) return res.status(404).json({ success: false, message: 'Not found' });
         res.json({ success: true, transfer: rows[0], items: [] });
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch transfer' }); }
@@ -200,7 +211,11 @@ const saveBranchTransfer = async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const effectiveFromBranchId = (fromBranchId || req.query.branchId || '').toString().trim();
+        let effectiveFromBranchId = (fromBranchId || req.query.branchId || '').toString().trim();
+
+        if (req.user && req.user.role == 2) {
+            effectiveFromBranchId = String(req.user.branch_id || '').trim();
+        }
         if (!effectiveFromBranchId) {
             await conn.rollback();
             return res.status(400).json({ success: false, message: 'From branch is required' });
@@ -299,7 +314,8 @@ const createBranchTransferPdf = async (req, res) => {
             `SELECT bt.*, b.branch_name as from_branch_name, b.branch_address as from_branch_address, b.branch_ph as from_branch_ph, b.branch_gstin as from_branch_gstin
              FROM tbl_branch_transfer bt
              LEFT JOIN tbl_branch b ON b.b_id = bt.ic_branch
-             WHERE bt.lc_id = ?`, [req.params.id]
+             WHERE bt.lc_id = ? ${req.user && req.user.role == 2 ? 'AND bt.ic_branch = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
         );
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Transfer record not found' });
@@ -479,6 +495,20 @@ const createBranchTransferPdf = async (req, res) => {
     }
 };
 
+const createBranchTransferPdfByNo = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT lc_id FROM tbl_branch_transfer WHERE debit_note_no = ?`, [req.params.no]
+        );
+        if (!records.length) return res.status(404).json({ success: false, message: 'Transfer record not found' });
+        req.params.id = records[0].lc_id;
+        return createBranchTransferPdf(req, res);
+    } catch (err) {
+        console.error('Branch Transfer PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate Branch Transfer PDF' });
+    }
+};
+
 module.exports = {
     getNextBranchTransferNo,
     getAvailableStock,
@@ -486,5 +516,6 @@ module.exports = {
     listBranchTransfers,
     getBranchTransfer,
     saveBranchTransfer,
-    createBranchTransferPdf
+    createBranchTransferPdf,
+    createBranchTransferPdfByNo
 };

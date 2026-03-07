@@ -104,8 +104,8 @@ export class PreviousBranchTransfer implements OnInit, OnDestroy {
   rowIndex(i: number): number { return (this.page() - 1) * this.limit() + i + 1; }
 
   generatePdf(row: any): void {
-    if (!row.lc_id) return;
-    const url = this.api.getBranchTransferPdfUrl(row.lc_id);
+    if (!row.debit_note_no) return;
+    const url = this.api.getBranchTransferPdfUrl(row.debit_note_no);
     window.open(url, '_blank');
   }
 

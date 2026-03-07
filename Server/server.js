@@ -13,9 +13,22 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const authMiddleware = require('./middleware/authMiddleware');
+const authController = require('./controllers/authController');
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-app.use('/api/auth', require('./routes/auth'));
+// 1. Specific Public Routes (No Auth)
+app.post('/api/auth/login', authController.login);
+app.get('/api/health', (req, res) => {
+    res.json({ success: true, message: 'Sarathy Sales API is running', timestamp: new Date().toISOString() });
+});
+
+// 2. Applied Middleware for all other /api routes
+app.use('/api', authMiddleware);
+
+// 3. Protected Routes
+app.use('/api/auth', require('./routes/auth')); // For change-password
 app.use('/api/branch', require('./routes/branch'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/money-receipt', require('./routes/moneyReceipt'));
@@ -31,12 +44,6 @@ app.use('/api/stock', require('./routes/stock'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/vehicle-enquiry', require('./routes/vehicleEnquiry'));
 app.use('/api/invoice-from-proforma', require('./routes/invoiceFromProforma'));
-
-// ─── Health Check ─────────────────────────────────────────────────────────────
-
-app.get('/api/health', (req, res) => {
-    res.json({ success: true, message: 'Sarathy Sales API is running', timestamp: new Date().toISOString() });
-});
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 

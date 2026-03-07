@@ -30,7 +30,14 @@ export class LoginComponent {
       next: (res) => {
         this.isLoading.set(false);
         if (res.success) {
-          this.router.navigate(['/user-home']);
+          const user = this.api.getCurrentUser();
+          if (user && user.role == 2) {
+            this.router.navigate(['/user-home']);
+          } else if (user && (user.role_des === 'admin' || user.role == 1)) {
+            this.router.navigate(['/admin-home']);
+          } else {
+            this.router.navigate(['/user-home']); // Default fallback
+          }
         }
       },
       error: (err) => {

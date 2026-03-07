@@ -1,7 +1,10 @@
 const db = require('../config/db');
 
 const getAvailableChassisRecords = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
         let sql = `
             SELECT 
@@ -48,7 +51,10 @@ const getAvailableChassisRecords = async (req, res) => {
 };
 
 const getNextInvoiceFromProformaNumber = async (req, res) => {
-    const branchId = req.query.branchId;
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     console.log({ branchId }, `branchId from invoice from proforma`);
 
     if (!branchId) {

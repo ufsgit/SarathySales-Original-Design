@@ -30,10 +30,9 @@ export class ReportsStockVerification {
     toDate = signal<string>(new Date().toISOString().split('T')[0]);
 
     constructor(private api: ApiService) {
-        // Initialize branch from storage
-        const userStr = localStorage.getItem('sarathy_user');
-        if (userStr) {
-            const user = JSON.parse(userStr);
+        // Initialize branch from token
+        const user = this.api.getCurrentUser();
+        if (user) {
             this.branchId.set(user.branch_id?.toString() || '');
         }
 
