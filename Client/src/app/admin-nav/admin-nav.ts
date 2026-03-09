@@ -44,8 +44,8 @@ import { ApiService } from '../services/api.service';
                     <a routerLink="/admin-productmaster">Product Master</a>
                     <a routerLink="/admin-productmasterlist">Product Price Upload</a>
                     <a routerLink="/admin-hypothicationmaster">Hypothecation Master</a>
-                    <a routerLink="#">Color Types</a>
-                    <a routerLink="#">Stock</a>
+                    <a routerLink="/admin-color">Color Types</a>
+                    <a routerLink="/admin-stock">Stock</a>
                 </div>
             </div>
 

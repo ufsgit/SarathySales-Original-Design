@@ -9,7 +9,7 @@ const getStockList = async (req, res) => {
         const [rows] = await db.execute(
             `SELECT tbl_stock.*, tbl_branch.branch_name FROM tbl_stock
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_branch
-             WHERE tbl_stock.stock_branch = ? ORDER BY tbl_stock.stock_id DESC`, [branchId]);
+             WHERE tbl_stock.stock_branch = ? ORDER BY tbl_stock.stock_id DESC`, [branchId || null]);
         res.json({ success: true, data: rows });
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch stock' }); }
 };
@@ -21,7 +21,7 @@ const getAvailableVehicles = async (req, res) => {
     }
     try {
         const [rows] = await db.execute(
-            `SELECT * FROM tbl_stock WHERE stock_branch = ? AND sold_status = 'N' ORDER BY stock_id DESC`, [branchId]);
+            `SELECT * FROM tbl_stock WHERE stock_branch = ? AND sold_status = 'N' ORDER BY stock_id DESC`, [branchId || null]);
         res.json({ success: true, data: rows });
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch available vehicles' }); }
 };
@@ -137,4 +137,52 @@ const getStockSplitup = async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch stock splitup' }); }
 };
 
-module.exports = { getStockList, getAvailableVehicles, getStockVerification, getStockSplitup };
+const updateStock = async (req, res) => {
+    const { productId, branchId, qty } = req.body;
+    const imagePath = req.file ? `/uploads/stock/${req.file.filename}` : null;
+
+    try {
+        // Ensure tbl_stock has stock_image column
+        try {
+            await db.execute('ALTER TABLE tbl_stock ADD COLUMN IF NOT EXISTS stock_image VARCHAR(255)');
+        } catch (e) { /* Column might exist or DB doesn't support IF NOT EXISTS */ }
+
+        // Get product details
+        const [productRows] = await db.execute('SELECT labour_code, labour_title FROM tbl_labour_code WHERE labour_id = ?', [productId]);
+        if (!productRows.length) return res.status(404).json({ success: false, message: 'Product not found' });
+        
+        const { labour_code, labour_title } = productRows[0];
+
+        // Check if record exists
+        const [existing] = await db.execute(
+            'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
+            [productId, branchId]
+        );
+
+        if (existing.length > 0) {
+            // Update
+            const sql = imagePath 
+                ? 'UPDATE tbl_stock SET stock_qty = ?, opening_stock = ?, stock_image = ? WHERE stock_id = ?'
+                : 'UPDATE tbl_stock SET stock_qty = ?, opening_stock = ? WHERE stock_id = ?';
+            const params = imagePath 
+                ? [qty, qty, imagePath, existing[0].stock_id]
+                : [qty, qty, existing[0].stock_id];
+                
+            await db.execute(sql, params);
+        } else {
+            // Insert
+            await db.execute(
+                `INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock, stock_image)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [productId, labour_code, labour_title, branchId, qty, qty, imagePath]
+            );
+        }
+
+        res.json({ success: true, message: 'Stock updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to update stock' });
+    }
+};
+
+module.exports = { getStockList, getAvailableVehicles, getStockVerification, getStockSplitup, updateStock };
