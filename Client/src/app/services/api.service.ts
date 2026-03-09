@@ -100,6 +100,10 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    listBranches(): Observable<ApiResponse> {
+        return this.getBranches();
+    }
+
     // ─── Customer ─────────────────────────────────────────────────────────────────
 
     searchCustomer(query: string): Observable<ApiResponse> {
@@ -841,4 +845,71 @@ export class ApiService {
             `${this.BASE_URL}/invoice-from-proforma/next-number?branchId=${branchId}`
         );
     }
+    // ─── Admin Masters ────────────────────────────────────────────────────────────
+
+    listEmployees(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/employees/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addEmployee(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/employees/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listProducts(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addProductMaster(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/products/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listHypothecations(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addHypothecationMaster(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addColorMaster(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/colors/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listColors(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/colors/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listCompanies(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/companies/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addCompanyMaster(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/companies/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listInstitutions(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/institutions/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addInstitutionMaster(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/institutions/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    updateStock(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/stock/update`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
 }
+
