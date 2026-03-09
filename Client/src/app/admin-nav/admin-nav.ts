@@ -1,12 +1,13 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { ApiService } from '../services/api.service';
 
 @Component({
-  selector: 'app-admin-nav',
-  standalone: true,
-  imports: [RouterLink, RouterLinkActive, CommonModule],
-  template: `
+    selector: 'app-admin-nav',
+    standalone: true,
+    imports: [RouterLink, RouterLinkActive, CommonModule],
+    template: `
 <header class="admin-header">
     <div class="top-bar">
         <div class="brand-logo">
@@ -24,7 +25,7 @@ import { CommonModule } from '@angular/common';
             <span class="nav-info"><i class="fas fa-user"></i> Welcome - Admin Panel</span>
             <span class="nav-info">0474 2728965 / www.sarathygroup.com</span>
             <a routerLink="/myprofile-changepassword" class="nav-action"><i class="fas fa-lock"></i> Change Password</a>
-            <a routerLink="/" class="nav-action"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="#" class="nav-action" (click)="logout($event)"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </div>
     
@@ -106,7 +107,7 @@ import { CommonModule } from '@angular/common';
     </nav>
 </header>
   `,
-  styles: [`
+    styles: [`
     .admin-header {
         width: 100%;
         background: #fff;
@@ -251,4 +252,15 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class AdminNav {}
+export class AdminNav {
+    private api = inject(ApiService);
+    private router = inject(Router);
+
+    logout(event: Event) {
+        event.preventDefault();
+        if (confirm('Are you sure you want to logout?')) {
+            this.api.logout();
+            this.router.navigate(['/']);
+        }
+    }
+}
