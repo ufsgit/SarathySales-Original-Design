@@ -2,41 +2,31 @@
     <!-- ===== HEADER ===== -->
     <header class="header-container">
         <!-- Branding Section -->
-        <div class="branding-bar">
+        <div class="branding-bar" style="justify-content: space-between; align-items: flex-end; padding: 10px 40px; background: #fff !important; height: auto !important; min-height: 80px;">
             <div class="brand-left">
-                <div class="brand-logo">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Simplified Sarathy Logo placeholder -->
-                        <path d="M5 30 L15 10 L25 30" stroke="#ed1c24" stroke-width="4" stroke-linecap="round"
-                            stroke-linejoin="round" />
-                        <text x="0" y="38" font-family="Arial" font-weight="bold" font-size="10"
-                            fill="#ed1c24">SARATHY</text>
-                    </svg>
-                    <div class="brand-text">
-                        <span class="main-title">SARATHY</span>
-                        <span class="tagline">Experience the new drive</span>
-                    </div>
+                <!-- Exact Sarathy Logo for Home Page -->
+                <div class="brand-logo" routerLink="/user-home" style="cursor: pointer; display: flex; align-items: center;">
+                    <img src="sarathy-logo.png" alt="Sarathy Logo" style="height: 55px; width: auto;">
                 </div>
             </div>
-            <div class="nav-right">
-                <!-- Top Info Bar -->
-                <div class="top-info-bar">
-                    <div class="info-content">
-                        <span class="welcome-text"><i class="fas fa-user"></i> Welcome - Staff Panel</span>
+            
+            <div class="nav-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-bottom: 5px;">
+                <!-- Top Info Bar (Welcome, Mobile, Logout) -->
+                <div class="top-info-bar" style="padding: 0; background: transparent; height: auto;">
+                    <div class="info-content" style="gap: 20px; font-size: 13px; color: #555; font-weight: 500;">
+                        <span class="welcome-text"><i class="fas fa-user-circle"></i> Welcome - Staff Panel</span>
                         <span class="contact-info">+91 9847771177 / 04742729618</span>
-                        <a href="#" class="logout-link" (click)="logout($event)"><i class="fas fa-sign-out-alt"></i>
-                            Logout</a>
+                        <a href="#" class="logout-link" (click)="logout($event)" style="color: #333; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                          <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
                     </div>
                 </div>
-                <div class="brand-right">
-                    <!-- KTM Logo Placeholder -->
-                    <svg width="80" height="30" viewBox="0 0 80 30" fill="none">
-                        <text x="0" y="25" font-family="Arial Black" font-weight="900" font-size="24" fill="black"
-                            style="font-style: italic;">KTM</text>
-                    </svg>
+                
+                <!-- KTM Logo specifically placed here as per image 2 -->
+                <div class="brand-right" style="padding: 0; margin-top: -5px;">
+                    <img src="logo.png" alt="KTM Logo" style="height: 28px; width: auto;">
                 </div>
             </div>
-
         </div>
 
         <!-- Main Navigation Bar (Orange) -->

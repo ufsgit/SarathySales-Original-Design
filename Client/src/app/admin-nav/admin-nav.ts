@@ -10,15 +10,8 @@ import { ApiService } from '../services/api.service';
     template: `
 <header class="admin-header">
     <div class="top-bar">
-        <div class="brand-logo">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5 30 L15 10 L25 30" stroke="#ed1c24" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-                <text x="0" y="38" font-family="Arial" font-weight="bold" font-size="10" fill="#ed1c24">SARATHY</text>
-            </svg>
-            <div class="brand-text">
-                <span class="main-title">SARATHY</span>
-                <span class="tagline">Experience the new drive</span>
-            </div>
+        <div class="brand-logo" routerLink="/admin-home" style="cursor: pointer;">
+            <img src="sarathy-logo.png" alt="Sarathy Logo" style="height: 55px; width: auto;">
         </div>
         
         <div class="top-nav-links">
