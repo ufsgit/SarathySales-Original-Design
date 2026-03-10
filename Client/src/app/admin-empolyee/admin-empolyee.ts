@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
@@ -21,7 +21,7 @@ import { ApiService } from '../services/api.service';
       <div class="breadcrumb-bar">
         <a routerLink="/admin-home" class="breadcrumb-item"><i class="fas fa-home"></i> Home</a>
         <span class="separator"> > </span>
-        <span class="active">Add Employee</span>
+        <span class="active">{{ isEdit() ? 'Edit' : 'Add' }} Employee</span>
       </div>
 
       <!-- Main Card -->
@@ -29,7 +29,7 @@ import { ApiService } from '../services/api.service';
         <header class="blue-header-strip">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
-             <h2>Add Employee</h2>
+             <h2>{{ isEdit() ? 'Edit' : 'Add' }} Employee</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="viewList()">List Employee</button>
@@ -52,9 +52,10 @@ import { ApiService } from '../services/api.service';
                                     <div class="search-box-wrapper">
                                         <input type="text" 
                                                class="form-control select-prefix" 
-                                               [(ngModel)]="employee.prefix" 
+                                               [value]="employee.prefix"
                                                name="prefix"
                                                (focus)="showPrefixList = true"
+                                               (input)="employee.prefix = $any($event.target).value"
                                                placeholder="Mr.">
                                     </div>
                                     <ul class="search-results" *ngIf="showPrefixList">
@@ -71,10 +72,10 @@ import { ApiService } from '../services/api.service';
                                 <div class="search-box-wrapper">
                                     <input type="text" 
                                            class="form-control" 
-                                           [(ngModel)]="instituteSearch" 
+                                           [value]="instituteSearch()"
                                            name="instituteSearch"
                                            (focus)="showInstituteList = true"
-                                           (input)="onInstituteSearchInput()"
+                                           (input)="onInstituteInput($any($event.target).value)"
                                            placeholder="Search Institution...">
                                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                                 </div>
@@ -109,10 +110,10 @@ import { ApiService } from '../services/api.service';
                                 <div class="search-box-wrapper">
                                     <input type="text" 
                                            class="form-control" 
-                                           [(ngModel)]="designationSearch" 
+                                           [value]="designationSearch()"
                                            name="designationSearch"
                                            (focus)="showDesignationList = true"
-                                           (input)="onDesignationSearchInput()"
+                                           (input)="onDesignationInput($any($event.target).value)"
                                            placeholder="Search Designation...">
                                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                                 </div>
@@ -125,7 +126,7 @@ import { ApiService } from '../services/api.service';
                             <label>Email Id :</label>
                             <input type="email" class="form-control" name="email" [(ngModel)]="employee.email" placeholder="Email Address">
                         </div>
-                        <div class="form-group row checkbox-group">
+                        <div class="form-group row checkbox-group" *ngIf="!isEdit()">
                             <label class="checkbox-container">
                                 <input type="checkbox" name="isUser" [(ngModel)]="employee.isUser">
                                 <span class="checkmark"></span>
@@ -138,7 +139,9 @@ import { ApiService } from '../services/api.service';
             </div>
 
              <div class="form-footer-buttons">
-                <button type="submit" class="btn-submit" [disabled]="!employee.isUser">Submit</button>
+                <button type="submit" class="btn-submit" [disabled]="!isEdit() && !employee.isUser">
+                    {{ isEdit() ? 'Update' : 'Submit' }}
+                </button>
                 <button type="button" class="btn-cancel" (click)="resetForm()">Cancel</button>
              </div>
 
@@ -149,7 +152,6 @@ import { ApiService } from '../services/api.service';
   </main>
   
   <div style="height: 50px;"></div>
-  
   <app-admin-footer></app-admin-footer>
 </div>
   `,
@@ -169,8 +171,8 @@ import { ApiService } from '../services/api.service';
     .btn-list { background-color: #c92127; color: white; border: none; padding: 6px 15px; font-size: 13px; cursor: pointer; font-weight: 600; border-radius: 4px; }
     .page-card-content { padding: 40px; background: #fff; }
     .form-cols-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-    .form-section { border-radius: 6px; overflow: hidden; border: 1px solid #1a62bf; }
-    .section-title { background-color: #1a62bf; color: white; padding: 8px 15px; font-size: 15px; font-weight: 600; }
+    .form-section { border-radius: 6px; border: 1px solid #1a62bf; position: relative; }
+    .section-title { background-color: #1a62bf; color: white; padding: 8px 15px; font-size: 15px; font-weight: 600; border-radius: 5px 5px 0 0; }
     .section-content { padding: 25px; display: flex; flex-direction: column; gap: 20px; }
     .form-group { display: flex; align-items: center; gap: 15px; }
     .form-group.align-start { align-items: flex-start; }
@@ -199,6 +201,9 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminEmpolyee implements OnInit {
+  isEdit = signal(false);
+  editId = signal<string | null>(null);
+
   employee = {
     prefix: 'Mr.',
     name: '',
@@ -217,60 +222,100 @@ export class AdminEmpolyee implements OnInit {
   // Signals for Data
   branchesSignal = signal<any[]>([]);
   designationsSignal = signal<string[]>([
-    'Manager', 'Sales Executive', 'Service Advisor', 'Accountant', 'Mechanic', 'Others'
+    'Executive', 'Team Leader', 'Showroom Manager', 'Sales Advisor',
+    'Billing Staff', 'Supervisor', 'Manager', 'Service Advisor',
+    'Accountant', 'Mechanic', 'Others'
   ]);
 
-  // Search State
+  // Search Signals
+  instituteSearch = signal<string>('');
+  designationSearch = signal<string>('');
+
+  // List Visibility
   showPrefixList: boolean = false;
-  instituteSearch: string = '';
   showInstituteList: boolean = false;
-  designationSearch: string = '';
   showDesignationList: boolean = false;
 
   // Computed Filters
   filteredBranches = computed(() => {
     const list = this.branchesSignal();
-    const query = this.instituteSearch.toLowerCase();
+    const query = this.instituteSearch().toLowerCase().trim();
     if (!query) return list;
     return list.filter(b => b.branch_name.toLowerCase().includes(query));
   });
 
   filteredDesignations = computed(() => {
     const list = this.designationsSignal();
-    const query = this.designationSearch.toLowerCase();
+    const query = this.designationSearch().toLowerCase().trim();
     if (!query) return list;
     return list.filter(d => d.toLowerCase().includes(query));
   });
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  constructor(
+    private apiService: ApiService, 
+    private router: Router,
+    private route: ActivatedRoute
+  ) {}
 
   ngOnInit(): void {
     this.loadBranches();
+    this.loadDesignations();
+    
+    this.route.queryParams.subscribe(params => {
+        if (params['id']) {
+            this.isEdit.set(true);
+            this.editId.set(params['id']);
+            this.employee.prefix = params['prefix'] || 'Mr.';
+            this.employee.name = params['name'] || '';
+            this.employee.institute = params['institute'] || '';
+            this.employee.address = params['address'] || '';
+            this.employee.mobile = params['mobile'] || '';
+            this.employee.code = params['code'] || '';
+            this.employee.designation = params['designation'] || '';
+            this.employee.email = params['email'] || '';
+            this.instituteSearch.set(this.employee.institute);
+            this.designationSearch.set(this.employee.designation);
+        }
+    });
   }
 
   loadBranches() {
     this.apiService.getBranches().subscribe({
       next: (res: any) => {
-        if (res.success) {
-          this.branchesSignal.set(res.data || []);
-        }
+        if (res.success) this.branchesSignal.set(res.data || []);
       },
       error: (err: any) => console.error('Error loading branches', err)
     });
   }
 
-  onInstituteSearchInput() {
-    this.showInstituteList = true;
-    if (!this.instituteSearch) {
-      this.employee.institute = '';
-    }
+  loadDesignations() {
+    const defaultList = [
+      'Executive', 'Team Leader', 'Showroom Manager', 'Sales Advisor',
+      'Billing Staff', 'Supervisor', 'Manager', 'Service Advisor',
+      'Accountant', 'Mechanic', 'Others'
+    ];
+
+    this.apiService.listDesignations().subscribe({
+      next: (res: any) => {
+        if (res.success && res.data.length > 0) {
+          const merged = Array.from(new Set([...defaultList, ...res.data]));
+          this.designationsSignal.set(merged);
+        }
+      },
+      error: () => {}
+    });
   }
 
-  onDesignationSearchInput() {
+  onInstituteInput(value: string) {
+    this.instituteSearch.set(value);
+    this.showInstituteList = true;
+    if (!value) this.employee.institute = '';
+  }
+
+  onDesignationInput(value: string) {
+    this.designationSearch.set(value);
     this.showDesignationList = true;
-    if (!this.designationSearch) {
-      this.employee.designation = '';
-    }
+    if (!value) this.employee.designation = '';
   }
 
   selectPrefix(p: string) {
@@ -279,13 +324,13 @@ export class AdminEmpolyee implements OnInit {
   }
 
   selectInstitute(b: any) {
-    this.instituteSearch = b.branch_name;
+    this.instituteSearch.set(b.branch_name);
     this.employee.institute = b.branch_name;
     this.showInstituteList = false;
   }
 
   selectDesignation(d: string) {
-    this.designationSearch = d;
+    this.designationSearch.set(d);
     this.employee.designation = d;
     this.showDesignationList = false;
   }
@@ -301,37 +346,54 @@ export class AdminEmpolyee implements OnInit {
       alert('Please enter employee name');
       return;
     }
-
-    if (!this.employee.isUser) {
+    if (!this.isEdit() && !this.employee.isUser) {
       alert('Please click on the Add as User checkbox to submit');
       return;
     }
 
     const payload = {
-       name: `${this.employee.prefix} ${this.employee.name}`.trim(),
-       institute: this.employee.institute,
-       address: this.employee.address,
-       mobile: this.employee.mobile,
-       code: this.employee.code,
-       designation: this.employee.designation,
-       email: this.employee.email,
-       isUser: this.employee.isUser
+      prefix: this.employee.prefix,
+      name: this.employee.name,
+      institute: this.employee.institute,
+      address: this.employee.address,
+      mobile: this.employee.mobile,
+      code: this.employee.code,
+      designation: this.employee.designation,
+      email: this.employee.email,
+      isUser: this.employee.isUser
     };
 
-    this.apiService.addEmployee(payload).subscribe({
-      next: (res: any) => {
-        if (res.success) {
-          alert('Employee details has been saved successfully!');
-          this.resetForm();
-        } else {
-          alert('Failed to save employee: ' + res.message);
-        }
-      },
-      error: (err: any) => {
-        console.error('Error adding employee', err);
-        alert('Server error occurred while saving employee details');
-      }
-    });
+    if (this.isEdit()) {
+        this.apiService.updateEmployee(this.editId()!, payload).subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    alert('Employee details has been updated successfully!');
+                    this.viewList();
+                } else {
+                    alert('Failed to update employee: ' + res.message);
+                }
+            },
+            error: (err: any) => {
+                console.error('Error updating employee', err);
+                alert('Server error occurred while updating employee details');
+            }
+        });
+    } else {
+        this.apiService.addEmployee(payload).subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    alert('Employee details has been saved successfully!');
+                    this.resetForm();
+                } else {
+                    alert('Failed to save employee: ' + res.message);
+                }
+            },
+            error: (err: any) => {
+                console.error('Error adding employee', err);
+                alert('Server error occurred while saving employee details');
+            }
+        });
+    }
   }
 
   resetForm() {
@@ -346,11 +408,13 @@ export class AdminEmpolyee implements OnInit {
       email: '',
       isUser: false
     };
-    this.instituteSearch = '';
-    this.designationSearch = '';
+    this.instituteSearch.set('');
+    this.designationSearch.set('');
+    this.isEdit.set(false);
+    this.editId.set(null);
   }
 
   viewList() {
-    console.log('Navigate to list');
+    this.router.navigate(['/admin-empolyeelist']);
   }
 }

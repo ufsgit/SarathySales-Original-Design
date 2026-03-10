@@ -26,5 +26,6 @@ router.get('/available', getAvailableVehicles);
 router.get('/report/verification', getStockVerification);
 router.get('/report/splitup', getStockSplitup);
 router.post('/update', upload.single('image'), updateStock);
+router.delete('/delete/:id', require('../controllers/stockController').deleteStock);
 
 module.exports = router;

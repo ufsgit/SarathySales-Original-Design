@@ -32,7 +32,7 @@ import { ApiService } from '../services/api.service';
              <h2>Hypothication Master</h2>
           </div>
           <div class="header-actions">
-             <button class="btn-list" (click)="viewList()">List Hypothication Master</button>
+             <button class="btn-list" routerLink="/admin-hypothicationmasterlist">List Hypothication Master</button>
           </div>
         </header>
 

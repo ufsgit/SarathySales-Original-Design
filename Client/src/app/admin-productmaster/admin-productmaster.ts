@@ -93,9 +93,9 @@ import { ApiService } from '../services/api.service';
                         <label>H.P:</label>
                         <input type="text" class="form-control" name="hp" [(ngModel)]="product.hp">
                     </div>
-                    <div class="form-group row align-start">
+                    <div class="form-group row">
                         <label>Description:</label>
-                        <textarea class="form-control" name="description" [(ngModel)]="product.description" rows="4"></textarea>
+                        <input type="text" class="form-control" name="description" [(ngModel)]="product.description">
                     </div>
                 </div>
 
@@ -151,7 +151,7 @@ import { ApiService } from '../services/api.service';
                     </div>
                     <div class="form-group row">
                         <label>Total :</label>
-                        <input type="text" class="form-control gray-bg" name="total" [value]="totalPrice" readonly>
+                        <input type="number" class="form-control" name="total" [(ngModel)]="totalPrice">
                     </div>
                     <div class="form-group row">
                         <label>Purchase Cost :</label>
@@ -259,7 +259,10 @@ export class AdminProductmaster implements OnInit {
       return;
     }
 
-    this.apiService.addProductMaster(this.product).subscribe({
+    this.apiService.addProductMaster({
+      ...this.product,
+      totalPrice: this.totalPrice
+    }).subscribe({
       next: (res: any) => {
         if (res.success) {
            alert('Product Master details has been saved successfully!');

@@ -35,7 +35,40 @@ import { VsiInvoiceComponent } from './vsi-invoice/vsi-invoice';
 import { VsiListComponent } from './vsi-list/vsi-list';
 import { VsiReportComponent } from './vsi-report/vsi-report';
 
+import { AdminHome } from './admin-home/admin-home';
+import { AdminEmpolyee } from './admin-empolyee/admin-empolyee';
+import { AdminProductmasterlist } from './admin-productmasterlist/admin-productmasterlist';
+import { AdminCompanymaster } from './admin-companymaster/admin-companymaster';
+import { AdminCompanymasterlist } from './admin-companymaster/admin-companymasterlist';
+import { AdminInstitutionmaster } from './admin-institutionmaster/admin-institutionmaster';
+import { AdminInstitutionmasterlist } from './admin-institutionmaster/admin-institutionmasterlist';
+import { AdminProductmaster } from './admin-productmaster/admin-productmaster';
+import { AdminHypothicationmaster } from './admin-hypothicationmaster/admin-hypothicationmaster';
+import { AdminHypothicationmasterlist } from './admin-hypothicationmasterlist/admin-hypothicationmasterlist';
+import { AdminFindvehicle } from './admin-findvehicle/admin-findvehicle';
+import { AdminColor } from './admin-color/admin-color';
+import { AdminColorlist } from './admin-colorlist/admin-colorlist';
+import { AdminStock } from './admin-stock/admin-stock';
+import { AdminStocklist } from './admin-stocklist/admin-stocklist';
+import { AdminEmpolyeelist } from './admin-empolyee/admin-empolyeelist';
+
 export const routes: Routes = [
+    { path: 'admin-home', component: AdminHome },
+    { path: 'admin-empolyee', component: AdminEmpolyee },
+    { path: 'admin-empolyeelist', component: AdminEmpolyeelist },
+    { path: 'admin-productmasterlist', component: AdminProductmasterlist },
+    { path: 'admin-companymaster', component: AdminCompanymaster },
+    { path: 'admin-companymasterlist', component: AdminCompanymasterlist },
+    { path: 'admin-institutionmaster', component: AdminInstitutionmaster },
+    { path: 'admin-institutionmasterlist', component: AdminInstitutionmasterlist },
+    { path: 'admin-productmaster', component: AdminProductmaster },
+    { path: 'admin-hypothicationmaster', component: AdminHypothicationmaster },
+    { path: 'admin-hypothicationmasterlist', component: AdminHypothicationmasterlist },
+    { path: 'admin-findvehicle', component: AdminFindvehicle },
+    { path: 'admin-color', component: AdminColor },
+    { path: 'admin-colorlist', component: AdminColorlist },
+    { path: 'admin-stock', component: AdminStock },
+    { path: 'admin-stocklist', component: AdminStocklist },
     { path: 'previous-money-receipt', component: PreviousMoneyReceipt },
     { path: 'previous-pay-slip', component: PreviousPaySlip },
     { path: 'previous-gate-pass', component: PreviousGatePass },
@@ -67,6 +100,5 @@ export const routes: Routes = [
     { path: 'vsi-list', component: VsiListComponent },
     { path: 'vsi-report', component: VsiReportComponent },
     { path: 'user-home', component: UserHome },
-    { path: 'admin-home', component: UserHome },
     { path: '', component: LoginComponent },
 ];

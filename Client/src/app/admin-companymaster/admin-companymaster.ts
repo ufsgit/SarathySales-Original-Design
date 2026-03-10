@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, OnInit, signal } from '@angular/core';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
@@ -21,7 +21,7 @@ import { ApiService } from '../services/api.service';
       <div class="breadcrumb-bar">
         <a routerLink="/admin-home" class="breadcrumb-item"><i class="fas fa-home"></i> Home</a>
         <span class="separator"> > </span>
-        <span class="active">Company Master Maintenace</span>
+        <span class="active">{{ isEdit() ? 'Edit' : 'Add' }} Company Master Maintenance</span>
       </div>
 
       <!-- Main Card -->
@@ -29,7 +29,7 @@ import { ApiService } from '../services/api.service';
         <header class="blue-header-strip">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
-             <h2>Add Company Master</h2>
+             <h2>{{ isEdit() ? 'Edit' : 'Add' }} Company Master</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="viewList()">List Company Master</button>
@@ -44,7 +44,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group row">
                         <label>Company Code :</label>
-                        <input type="text" class="form-control" name="code" [(ngModel)]="company.code" placeholder="Company Code">
+                        <input type="text" class="form-control" name="code" [(ngModel)]="company.code" placeholder="Company Code" [disabled]="isEdit()">
                     </div>
                     <div class="form-group row">
                         <label>Company Name :</label>
@@ -79,9 +79,8 @@ import { ApiService } from '../services/api.service';
                         <input type="email" class="form-control" name="email" [(ngModel)]="company.email" placeholder="Email-Id">
                     </div>
                     
-                    <!-- Buttons inside right column but pushed down -->
                     <div class="form-actions-inline">
-                        <button type="submit" class="btn-submit">Submit</button>
+                        <button type="submit" class="btn-submit">{{ isEdit() ? 'Update' : 'Submit' }}</button>
                         <button type="button" class="btn-cancel" (click)="resetForm()">Cancel</button>
                     </div>
                 </div>
@@ -116,7 +115,7 @@ import { ApiService } from '../services/api.service';
     
     .btn-list { background-color: #c92127; color: white; border: none; padding: 5px 15px; font-size: 12px; cursor: pointer; font-weight: 600; border-radius: 3px; }
     
-    .page-card-content { padding: 40px 30px; background: #e8eaeb; }
+    .page-card-content { padding: 40px 30px; background: #f8f9fa; }
     
     .form-grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; max-width: 1200px; }
     
@@ -130,6 +129,7 @@ import { ApiService } from '../services/api.service';
     textarea.form-control { height: auto; }
     .form-control:focus { border-color: #1a62bf; outline: none; box-shadow: 0 0 8px rgba(26, 98, 191, 0.2); }
     .form-control::placeholder { color: #aaa; font-style: normal; }
+    .form-control:disabled { background: #eee !important; color: #777; cursor: not-allowed; }
 
     .form-actions-inline { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
     
@@ -143,6 +143,9 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminCompanymaster implements OnInit {
+  isEdit = signal(false);
+  editId = signal<string | null>(null);
+
   company = {
     code: '',
     name: '',
@@ -154,9 +157,28 @@ export class AdminCompanymaster implements OnInit {
     email: ''
   };
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  constructor(
+    private apiService: ApiService, 
+    private router: Router,
+    private route: ActivatedRoute
+  ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['id']) {
+        this.isEdit.set(true);
+        this.editId.set(params['id']);
+        this.company.code = params['code'] || '';
+        this.company.name = params['name'] || '';
+        this.company.address = params['address'] || '';
+        this.company.phone = params['phone'] || '';
+        this.company.dealershipCode = params['dealershipCode'] || '';
+        this.company.cstNo = params['cstNo'] || '';
+        this.company.lstNo = params['lstNo'] || '';
+        this.company.email = params['email'] || '';
+      }
+    });
+  }
 
   onSubmit() {
     if (!this.company.name) {
@@ -164,20 +186,37 @@ export class AdminCompanymaster implements OnInit {
       return;
     }
 
-    this.apiService.addCompanyMaster(this.company).subscribe({
-      next: (res: any) => {
-        if (res.success) {
-          alert('Company Master details has been saved successfully!');
-          this.resetForm();
-        } else {
-          alert('Failed to save company: ' + res.message);
+    if (this.isEdit()) {
+      this.apiService.updateCompanyMaster(this.editId()!, this.company).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            alert('Company Master details has been updated successfully!');
+            this.viewList();
+          } else {
+            alert('Failed to update company: ' + res.message);
+          }
+        },
+        error: (err: any) => {
+          console.error(err);
+          alert('Server error occurred while updating company details');
         }
-      },
-      error: (err: any) => {
-        console.error(err);
-        alert('Server error occurred while saving company details');
-      }
-    });
+      });
+    } else {
+      this.apiService.addCompanyMaster(this.company).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            alert('Company Master details has been saved successfully!');
+            this.resetForm();
+          } else {
+            alert('Failed to save company: ' + res.message);
+          }
+        },
+        error: (err: any) => {
+          console.error(err);
+          alert('Server error occurred while saving company details');
+        }
+      });
+    }
   }
 
   resetForm() {
@@ -191,11 +230,11 @@ export class AdminCompanymaster implements OnInit {
       lstNo: '',
       email: ''
     };
+    this.isEdit.set(false);
+    this.editId.set(null);
   }
 
   viewList() {
-    // Navigate to company list if available
-    // this.router.navigate(['/admin-company-list']);
-    console.log('Navigate to list');
+    this.router.navigate(['/admin-companymasterlist']);
   }
 }

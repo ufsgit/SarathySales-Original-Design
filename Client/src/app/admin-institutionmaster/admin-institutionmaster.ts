@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, OnInit, signal } from '@angular/core';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
@@ -21,7 +21,7 @@ import { ApiService } from '../services/api.service';
       <div class="breadcrumb-bar">
         <a routerLink="/admin-home" class="breadcrumb-item"><i class="fas fa-home"></i> Home</a>
         <span class="separator"> > </span>
-        <span class="active">Add Institution Master</span>
+        <span class="active">{{ isEdit() ? 'Edit' : 'Add' }} Institution Master</span>
       </div>
 
       <!-- Main Card -->
@@ -29,7 +29,7 @@ import { ApiService } from '../services/api.service';
         <header class="blue-header-strip">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
-             <h2>Add Institution Master</h2>
+             <h2>{{ isEdit() ? 'Edit' : 'Add' }} Institution Master</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="viewList()">List Institution Master</button>
@@ -41,42 +41,42 @@ import { ApiService } from '../services/api.service';
             <div class="form-center-layout">
                 <div class="form-group row">
                     <label>Institution Code :</label>
-                    <input type="text" class="form-control" name="code" [(ngModel)]="institution.code" placeholder="Institution Code">
+                    <input type="text" class="form-control" name="code" [(ngModel)]="code" placeholder="Institution Code" [disabled]="isEdit()">
                 </div>
                 <div class="form-group row">
                     <label>Institution Name:</label>
-                    <input type="text" class="form-control" name="name" [(ngModel)]="institution.name" placeholder="Institution Name" required>
+                    <input type="text" class="form-control" name="name" [(ngModel)]="name" placeholder="Institution Name" required>
                 </div>
                 <div class="form-group row align-start">
                     <label>Address :</label>
-                    <textarea class="form-control" name="address" [(ngModel)]="institution.address" placeholder="Address" rows="4"></textarea>
+                    <textarea class="form-control" name="address" [(ngModel)]="address" placeholder="Address" rows="4"></textarea>
                 </div>
                 <div class="form-group row">
                     <label>Location</label>
-                    <input type="text" class="form-control" name="location" [(ngModel)]="institution.location" placeholder="Location">
+                    <input type="text" class="form-control" name="location" [(ngModel)]="location" placeholder="Location">
                 </div>
                 <div class="form-group row">
                     <label>Pin Code</label>
-                    <input type="text" class="form-control" name="pinCode" [(ngModel)]="institution.pinCode" placeholder="Pin Code">
+                    <input type="text" class="form-control" name="pinCode" [(ngModel)]="pinCode" placeholder="Pin Code">
                 </div>
                 
                 <div class="form-spacer"></div>
 
                 <div class="form-group row">
                     <label>GSTIN Number</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="institution.gstin" placeholder="GSTIN">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="gstin" placeholder="GSTIN">
                 </div>
                 <div class="form-group row">
                     <label>Phone Number :</label>
-                    <input type="text" class="form-control" name="phone" [(ngModel)]="institution.phone" placeholder="Contact Number">
+                    <input type="text" class="form-control" name="phone" [(ngModel)]="phone" placeholder="Contact Number">
                 </div>
                 <div class="form-group row">
                     <label>Email Id :</label>
-                    <input type="email" class="form-control" name="email" [(ngModel)]="institution.email" placeholder="Email-Id">
+                    <input type="email" class="form-control" name="email" [(ngModel)]="email" placeholder="Email-Id">
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit">Submit</button>
+                    <button type="submit" class="btn-submit">{{ isEdit() ? 'Update' : 'Submit' }}</button>
                     <button type="button" class="btn-cancel" (click)="resetForm()">Cancel</button>
                 </div>
             </div>
@@ -118,6 +118,7 @@ import { ApiService } from '../services/api.service';
     .form-group label { min-width: 160px; text-align: right; font-size: 13px; color: #333; font-weight: 400; }
     
     .form-control { flex: 1; padding: 8px 12px; font-size: 13px; border: 1px solid #ddd; border-radius: 2px; background: #fff !important; transition: border-color 0.2s; min-height: 34px; width: 100%; box-shadow: inset 0 1px 1px rgba(0,0,0,0.075); }
+    .form-control:disabled { background: #eee !important; color: #777; cursor: not-allowed; }
     textarea.form-control { height: auto; }
     .form-control:focus { border-color: #1a62bf; outline: none; box-shadow: 0 0 8px rgba(26, 98, 191, 0.2); }
     .form-control::placeholder { color: #aaa; font-style: normal; }
@@ -136,57 +137,106 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminInstitutionmaster implements OnInit {
-  institution = {
-    code: '',
-    name: '',
-    address: '',
-    location: '',
-    pinCode: '',
-    gstin: '',
-    phone: '',
-    email: ''
-  };
+  isEdit = signal(false);
+  editId = signal<string | null>(null);
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  // Form Fields as properties (template uses ngModel)
+  code = '';
+  name = '';
+  address = '';
+  location = '';
+  pinCode = '';
+  gstin = '';
+  phone = '';
+  email = '';
 
-  ngOnInit(): void {}
+  constructor(
+    private apiService: ApiService, 
+    private router: Router,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+        if (params['id']) {
+            this.isEdit.set(true);
+            this.editId.set(params['id']);
+            this.code = params['id'];
+            this.name = params['name'] || '';
+            this.address = params['address'] || '';
+            this.location = params['location'] || '';
+            this.pinCode = params['pin'] || '';
+            this.gstin = params['gstin'] || '';
+            this.phone = params['phone'] || '';
+            this.email = params['email'] || '';
+        }
+    });
+  }
 
   onSubmit() {
-    if (!this.institution.name) {
+    if (!this.name) {
       alert('Institution name is required');
       return;
     }
 
-    this.apiService.addInstitutionMaster(this.institution).subscribe({
-      next: (res: any) => {
-        if (res.success) {
-          alert('Institution Master details has been saved successfully!');
-          this.resetForm();
-        } else {
-          alert('Failed to save institution: ' + res.message);
-        }
-      },
-      error: (err: any) => {
-        console.error(err);
-        alert('Server error occurred while saving institution details');
-      }
-    });
+    const payload = {
+        code: this.code,
+        name: this.name,
+        address: this.address,
+        location: this.location,
+        pinCode: this.pinCode,
+        gstin: this.gstin,
+        phone: this.phone,
+        email: this.email
+    };
+
+    if (this.isEdit()) {
+        this.apiService.updateInstitutionMaster(this.editId()!, payload).subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    alert('Institution Master details has been updated successfully!');
+                    this.viewList();
+                } else {
+                    alert('Failed to update institution: ' + res.message);
+                }
+            },
+            error: (err: any) => {
+                console.error(err);
+                alert('Server error occurred while updating institution details');
+            }
+        });
+    } else {
+        this.apiService.addInstitutionMaster(payload).subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    alert('Institution Master details has been saved successfully!');
+                    this.resetForm();
+                } else {
+                    alert('Failed to save institution: ' + res.message);
+                }
+            },
+            error: (err: any) => {
+                console.error(err);
+                alert('Server error occurred while saving institution details');
+            }
+        });
+    }
   }
 
   resetForm() {
-    this.institution = {
-      code: '',
-      name: '',
-      address: '',
-      location: '',
-      pinCode: '',
-      gstin: '',
-      phone: '',
-      email: ''
-    };
+    this.code = '';
+    this.name = '';
+    this.address = '';
+    this.location = '';
+    this.pinCode = '';
+    this.gstin = '';
+    this.phone = '';
+    this.email = '';
+    this.isEdit.set(false);
+    this.editId.set(null);
   }
 
   viewList() {
-    console.log('Navigate to institution list');
+    this.router.navigate(['/admin-institutionmasterlist']);
   }
 }

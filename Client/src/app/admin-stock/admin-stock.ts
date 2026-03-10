@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
@@ -21,7 +21,7 @@ import { ApiService } from '../services/api.service';
       <div class="breadcrumb-bar">
         <a routerLink="/admin-home" class="breadcrumb-item"><i class="fas fa-home"></i> Home</a>
         <span class="separator"> > </span>
-        <span class="active">Add Opening Stock</span>
+        <span class="active">{{ isEdit() ? 'Edit Opening Stock' : 'Add Opening Stock' }}</span>
       </div>
 
       <!-- Main Card -->
@@ -29,7 +29,7 @@ import { ApiService } from '../services/api.service';
         <header class="blue-header-strip">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
-             <h2>Add Opening Stocks</h2>
+             <h2>{{ isEdit() ? 'Edit Opening Stocks' : 'Add Opening Stocks' }}</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="viewList()">List Stocks</button>
@@ -47,14 +47,15 @@ import { ApiService } from '../services/api.service';
                         <div class="search-box-wrapper">
                             <input type="text" 
                                    class="form-control" 
-                                   [(ngModel)]="branchSearch" 
+                                   [ngModel]="branchSearch()" 
+                                   (ngModelChange)="branchSearch.set($event); onBranchSearchInput()"
                                    name="branchSearch"
-                                   (focus)="showBranchList = true"
-                                   (input)="onBranchSearchInput()"
-                                   placeholder="Search Branch...">
-                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                   (focus)="showBranchList.set(true)"
+                                   placeholder="Search Branch..."
+                                   [readonly]="isEdit()">
+                            <i class="fas fa-chevron-down dropdown-arrow" *ngIf="!isEdit()"></i>
                         </div>
-                        <ul class="search-results" *ngIf="showBranchList && filteredBranches().length > 0">
+                        <ul class="search-results" *ngIf="showBranchList() && filteredBranches().length > 0 && !isEdit()">
                             <li *ngFor="let b of filteredBranches()" (click)="selectBranch(b)">{{ b.branch_name }}</li>
                         </ul>
                     </div>
@@ -67,14 +68,15 @@ import { ApiService } from '../services/api.service';
                         <div class="search-box-wrapper">
                             <input type="text" 
                                    class="form-control" 
-                                   [(ngModel)]="productSearch" 
+                                   [ngModel]="productSearch()" 
+                                   (ngModelChange)="productSearch.set($event); onProductSearchInput()"
                                    name="productSearch"
-                                   (focus)="showProductList = true"
-                                   (input)="onProductSearchInput()"
-                                   placeholder="Search Item Code or Name...">
-                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                   (focus)="showProductList.set(true)"
+                                   placeholder="Search Item Code or Name..."
+                                   [readonly]="isEdit()">
+                            <i class="fas fa-chevron-down dropdown-arrow" *ngIf="!isEdit()"></i>
                         </div>
-                        <ul class="search-results" *ngIf="showProductList && filteredProducts().length > 0">
+                        <ul class="search-results" *ngIf="showProductList() && filteredProducts().length > 0 && !isEdit()">
                             <li *ngFor="let p of filteredProducts()" (click)="selectProduct(p)">{{ p.labour_code }} - {{ p.labour_title }}</li>
                         </ul>
                     </div>
@@ -82,16 +84,16 @@ import { ApiService } from '../services/api.service';
                 
                 <div class="form-group row">
                     <label>Item Name :</label>
-                    <input type="text" class="form-control readonly-field" name="itemName" [value]="selectedProductName()" readonly placeholder="">
+                    <input type="text" class="form-control readonly-field" name="itemName" [value]="selectedProductName()" readonly>
                 </div>
 
                 <div class="form-group row">
                     <label>Opening Stock</label>
-                    <input type="number" class="form-control" name="qty" [(ngModel)]="stockItem.qty" placeholder="Opening Stock">
+                    <input type="number" class="form-control" name="qty" [ngModel]="qtySignal()" (ngModelChange)="qtySignal.set($event)" placeholder="Opening Stock">
                 </div>
 
                 <div class="form-actions-centered">
-                    <button type="submit" class="btn-submit">Submit</button>
+                    <button type="submit" class="btn-submit">{{ isEdit() ? 'Update' : 'Submit' }}</button>
                     <button type="button" class="btn-cancel" (click)="resetForm()">Cancel</button>
                 </div>
 
@@ -158,121 +160,136 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminStock implements OnInit {
-  // Form State
-  stockItem = {
-    branchId: '',
-    qty: 0
-  };
+  // State Signals
+  branchIdSignal = signal<string>('');
+  productIdSignal = signal<string>('');
+  qtySignal = signal<number>(0);
   
-  // Signals for Data
+  isEdit = signal<boolean>(false);
+  editId = signal<string | null>(null);
+
   productsSignal = signal<any[]>([]);
   branchesSignal = signal<any[]>([]);
-  productId = signal<string>('');
-  
-  // Search and List State
-  branchSearch: string = '';
-  showBranchList: boolean = false;
-  productSearch: string = '';
-  showProductList: boolean = false;
 
-  // Computed for Filtering Branches
+  branchSearch = signal<string>('');
+  showBranchList = signal<boolean>(false);
+  
+  productSearch = signal<string>('');
+  showProductList = signal<boolean>(false);
+
+  // Computed Selectors
   filteredBranches = computed(() => {
     const list = this.branchesSignal();
-    const query = this.branchSearch.toLowerCase();
+    const query = this.branchSearch().toLowerCase();
     if (!query) return list;
     return list.filter(b => b.branch_name.toLowerCase().includes(query));
   });
 
-  // Computed for Filtering Products
   filteredProducts = computed(() => {
     const list = this.productsSignal();
-    const query = this.productSearch.toLowerCase();
+    const query = this.productSearch().toLowerCase();
     if (!query) return list.slice(0, 100);
-    return list.filter(p => 
-      p.labour_code.toLowerCase().includes(query) || 
+    return list.filter(p =>
+      p.labour_code.toLowerCase().includes(query) ||
       p.labour_title.toLowerCase().includes(query)
     ).slice(0, 100);
   });
 
-  // Computed for Item Name
   selectedProductName = computed(() => {
     const products = this.productsSignal();
-    const pid = this.productId();
+    const pid = this.productIdSignal();
     const p = products.find(item => item.labour_id == pid);
     return p ? p.labour_title : '';
   });
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  constructor(
+    private apiService: ApiService, 
+    private router: Router,
+    private route: ActivatedRoute
+  ) { }
 
   ngOnInit(): void {
     this.loadInitialData();
+    this.route.queryParams.subscribe(params => {
+      if (params['id'] && params['productId']) {
+        this.isEdit.set(true);
+        this.editId.set(params['id']);
+        this.branchIdSignal.set(params['branchId']);
+        this.qtySignal.set(Number(params['qty']));
+        this.productIdSignal.set(params['productId']);
+        this.branchSearch.set(params['branchName']);
+        this.productSearch.set(`${params['code']} - ${params['name']}`);
+      }
+    });
   }
 
   loadInitialData() {
     this.apiService.listProducts().subscribe({
       next: (res: any) => {
         if (res.success) this.productsSignal.set(res.data || []);
-      },
-      error: (err: any) => console.error('Error loading products', err)
+      }
     });
 
     this.apiService.listBranches().subscribe({
       next: (res: any) => {
         if (res.success) this.branchesSignal.set(res.data || []);
-      },
-      error: (err: any) => console.error('Error loading branches', err)
+      }
     });
   }
 
   onBranchSearchInput() {
-    this.showBranchList = true;
-    if (!this.branchSearch) {
-      this.stockItem.branchId = '';
-    }
+    if (this.isEdit()) return;
+    this.showBranchList.set(true);
+    if (!this.branchSearch()) this.branchIdSignal.set('');
   }
 
   onProductSearchInput() {
-    this.showProductList = true;
-    if (!this.productSearch) {
-      this.productId.set('');
-    }
+    if (this.isEdit()) return;
+    this.showProductList.set(true);
+    if (!this.productSearch()) this.productIdSignal.set('');
   }
 
   selectBranch(branch: any) {
-    this.branchSearch = branch.branch_name;
-    this.stockItem.branchId = branch.b_id;
-    this.showBranchList = false;
+    this.branchSearch.set(branch.branch_name);
+    this.branchIdSignal.set(branch.b_id);
+    this.showBranchList.set(false);
   }
 
   selectProduct(product: any) {
-    this.productSearch = `${product.labour_code} - ${product.labour_title}`;
-    this.productId.set(product.labour_id);
-    this.showProductList = false;
+    this.productSearch.set(`${product.labour_code} - ${product.labour_title}`);
+    this.productIdSignal.set(product.labour_id);
+    this.showProductList.set(false);
   }
 
   closeDropdowns() {
-    this.showBranchList = false;
-    this.showProductList = false;
+    this.showBranchList.set(false);
+    this.showProductList.set(false);
   }
 
   onSubmit() {
-    const pid = this.productId();
-    if (!pid || !this.stockItem.branchId) {
+    const pid = this.productIdSignal();
+    const bid = this.branchIdSignal();
+    
+    if (!pid || !bid) {
       alert('Please select product and branch');
       return;
     }
 
     const payload = {
       productId: pid,
-      branchId: this.stockItem.branchId,
-      qty: this.stockItem.qty
+      branchId: bid,
+      qty: this.qtySignal()
     };
 
     this.apiService.updateStock(payload).subscribe({
       next: (res: any) => {
         if (res.success) {
           alert('Stock Maintenance details has been saved successfully!');
-          this.resetForm();
+          if (this.isEdit()) {
+            this.router.navigate(['/admin-stocklist']);
+          } else {
+            this.resetForm();
+          }
         } else {
           alert('Failed to save stock: ' + res.message);
         }
@@ -285,16 +302,20 @@ export class AdminStock implements OnInit {
   }
 
   resetForm() {
-    this.stockItem = {
-      branchId: '',
-      qty: 0
-    };
-    this.productId.set('');
-    this.branchSearch = '';
-    this.productSearch = '';
+    this.branchIdSignal.set('');
+    this.productIdSignal.set('');
+    this.qtySignal.set(0);
+    this.branchSearch.set('');
+    this.productSearch.set('');
+    
+    if (this.isEdit()) {
+      this.router.navigate(['/admin-stock'], { queryParams: {} });
+      this.isEdit.set(false);
+      this.editId.set(null);
+    }
   }
 
   viewList() {
-    this.router.navigate(['/reports-stock-verification']);
+    this.router.navigate(['/admin-stocklist']);
   }
 }

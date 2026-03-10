@@ -12,16 +12,48 @@ const listEmployees = async (req, res) => {
 };
 
 const addEmployee = async (req, res) => {
-    const { name, institute, address, mobile, code, designation, email, isUser } = req.body;
+    const { prefix, name, institute, address, mobile, code, designation, email, isUser } = req.body;
     try {
+        // Check if code already exists
+        const [existing] = await db.execute('SELECT emp_id FROM tbl_employee WHERE e_code = ?', [code]);
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, message: 'Employee Code already exists' });
+        }
+
         const [result] = await db.execute(
-            'INSERT INTO tbl_employee (e_first_name, e_branch, e_address, e_mobile, e_code, e_designation, e_email) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [name, institute, address, mobile, code, designation, email]
+            'INSERT INTO tbl_employee (emp_intial, e_first_name, e_branch, e_address, e_mobile, e_code, e_designation, e_email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [prefix, name, institute, address, mobile, code, designation, email, 'Active']
         );
         res.json({ success: true, message: 'Employee added successfully', id: result.insertId });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Failed to add employee' });
+        console.error('Add Employee Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add employee: ' + err.message });
+    }
+};
+
+const updateEmployee = async (req, res) => {
+    const { id } = req.params;
+    const { prefix, name, institute, address, mobile, code, designation, email } = req.body;
+    try {
+        await db.execute(
+            'UPDATE tbl_employee SET emp_intial=?, e_first_name=?, e_branch=?, e_address=?, e_mobile=?, e_code=?, e_designation=?, e_email=? WHERE emp_id=?',
+            [prefix, name, institute, address, mobile, code, designation, email, id]
+        );
+        res.json({ success: true, message: 'Employee updated successfully' });
+    } catch (err) {
+        console.error('Update Employee Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update employee' });
+    }
+};
+
+const deleteEmployee = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM tbl_employee WHERE emp_id = ?', [id]);
+        res.json({ success: true, message: 'Employee deleted successfully' });
+    } catch (err) {
+        console.error('Delete Employee Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete employee' });
     }
 };
 
@@ -37,32 +69,36 @@ const listProducts = async (req, res) => {
 };
 
 const addProduct = async (req, res) => {
-    const { 
-        code, name, class: productClass, faWeight, raWeight, oaWeight, hsnCode, 
-        taWeight, ulWeight, rWeight, hp, description, 
-        cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode, 
-        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost 
+    const {
+        code, name, class: productClass, faWeight, raWeight, oaWeight, hsnCode,
+        taWeight, ulWeight, rWeight, hp, description,
+        cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
+        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
     } = req.body;
-    
+
+    // Compute total server-side as fallback
+    const computedTotal = totalPrice ??
+        ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0));
+
     try {
         const [result] = await db.execute(
             `INSERT INTO tbl_labour_code 
             (labour_code, labour_title, repair_type, fa_weight, ra_weight, oa_weight, hsn_code, 
-            ta_weight, ul_weight, r_weight, hp, description, 
-            cc, type_of_body, no_of_cylinders, fuel, wheel_base, booking_code, 
-            seat_capacity, sale_price, cgst, sgst, cess, purchase_cost) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ta_weight, ul_weight, r_weight, hp, discription, 
+            cc, tbody, no_of_cylider, fuel, wheel_base, booking_code, 
+            seat_capacity, sale_price, cgst, sgst, cess, purchase_cost, total_price) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                code, name, productClass, faWeight, raWeight, oaWeight, hsnCode, 
-                taWeight, ulWeight, rWeight, hp, description, 
-                cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode, 
-                seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost
+                code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
+                taWeight, ulWeight, rWeight, hp, description,
+                cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
+                seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, String(computedTotal)
             ]
         );
         res.json({ success: true, message: 'Product added successfully', id: result.insertId });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Failed to add product' });
+        console.error('Add Product Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add product: ' + err.message });
     }
 };
 
@@ -90,9 +126,35 @@ const addHypothecation = async (req, res) => {
     }
 };
 
+const editHypothecation = async (req, res) => {
+    const { id } = req.params;
+    const { name, address, gstin } = req.body;
+    try {
+        await db.execute(
+            'UPDATE tbl_insurance_company SET icompany_name = ?, icompany_address = ?, icompany_gst = ? WHERE com_id = ?',
+            [name, address, gstin, id]
+        );
+        res.json({ success: true, message: 'Hypothecation master updated successfully' });
+    } catch (err) {
+        console.error('Edit Hypothecation Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update hypothecation: ' + err.message });
+    }
+};
+
+const deleteHypothecation = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM tbl_insurance_company WHERE com_id = ?', [id]);
+        res.json({ success: true, message: 'Hypothecation master deleted successfully' });
+    } catch (err) {
+        console.error('Delete Hypothecation Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete hypothecation: ' + err.message });
+    }
+};
+
 const listCompanies = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM company_master ORDER BY company_name ASC');
+        const [rows] = await db.execute('SELECT * FROM customer_details ORDER BY c_name ASC');
         res.json({ success: true, data: rows });
     } catch (err) {
         console.error(err);
@@ -100,11 +162,30 @@ const listCompanies = async (req, res) => {
     }
 };
 
+
+
 const addCompany = async (req, res) => {
     try {
         const { code, name, address, phone, dealershipCode, cstNo, lstNo, email } = req.body;
+
+        // Check for duplicates
+        const [existing] = await db.execute(
+            'SELECT c_id, c_reg_no, c_name FROM customer_details WHERE c_reg_no = ? OR c_name = ?',
+            [code, name]
+        );
+
+        if (existing.length > 0) {
+            const found = existing[0];
+            if (found.c_reg_no === code) {
+                return res.status(400).json({ success: false, message: 'Company Code already exists' });
+            }
+            if (found.c_name === name) {
+                return res.status(400).json({ success: false, message: 'Company Name already exists' });
+            }
+        }
+
         await db.execute(
-            'INSERT INTO company_master (company_code, company_name, address, phone, dealership_code, cst_no, lst_no, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO customer_details (c_reg_no, c_name, c_address, c_contact_no, c_dealership_code, cst_no, lst_no, c_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [code, name, address, phone, dealershipCode, cstNo, lstNo, email]
         );
         res.json({ success: true, message: 'Company master added' });
@@ -114,9 +195,35 @@ const addCompany = async (req, res) => {
     }
 };
 
+const updateCompany = async (req, res) => {
+    const { id } = req.params;
+    const { code, name, address, phone, dealershipCode, cstNo, lstNo, email } = req.body;
+    try {
+        await db.execute(
+            'UPDATE customer_details SET c_reg_no=?, c_name=?, c_address=?, c_contact_no=?, c_dealership_code=?, cst_no=?, lst_no=?, c_email=? WHERE c_id=?',
+            [code, name, address, phone, dealershipCode, cstNo, lstNo, email, id]
+        );
+        res.json({ success: true, message: 'Company master updated successfully' });
+    } catch (err) {
+        console.error('Update Company Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update company' });
+    }
+};
+
+const deleteCompany = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM customer_details WHERE c_id = ?', [id]);
+        res.json({ success: true, message: 'Company master deleted successfully' });
+    } catch (err) {
+        console.error('Delete Company Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete company' });
+    }
+};
+
 const listInstitutions = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM institution_master ORDER BY institution_name ASC');
+        const [rows] = await db.execute('SELECT * FROM tbl_branch ORDER BY branch_name ASC');
         res.json({ success: true, data: rows });
     } catch (err) {
         console.error(err);
@@ -127,20 +234,65 @@ const listInstitutions = async (req, res) => {
 const addInstitution = async (req, res) => {
     try {
         const { code, name, address, location, pinCode, gstin, phone, email } = req.body;
-        await db.execute(
-            'INSERT INTO institution_master (institution_code, institution_name, address, location, pincode, gstin, phone, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [code, name, address, location, pinCode, gstin, phone, email]
+
+        // Check for duplicates
+        const [existing] = await db.execute(
+            'SELECT branch_id, branch_name FROM tbl_branch WHERE branch_id = ? OR branch_name = ?',
+            [code, name]
         );
-        res.json({ success: true, message: 'Institution master added' });
+
+        if (existing.length > 0) {
+            const found = existing[0];
+            if (found.branch_id === code) {
+                return res.status(400).json({ success: false, message: 'Institution Code already exists' });
+            }
+            if (found.branch_name === name) {
+                return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+            }
+        }
+
+        const pin = parseInt(pinCode) || 0;
+        await db.execute(
+            'INSERT INTO tbl_branch (branch_id, branch_name, branch_address, branch_location, branch_pin, branch_gstin, branch_ph, branch_email, branch_prefix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [code, name, address, location, pin, gstin, phone, email, 'KLM']
+        );
+        res.json({ success: true, message: 'Institution master added successfully' });
     } catch (err) {
-        console.error(err);
+        console.error('Institution Master Error:', err);
         res.status(500).json({ success: false, message: 'Database error' });
+    }
+};
+
+const updateInstitution = async (req, res) => {
+    const { id } = req.params; // branch_id
+    const { name, address, location, pinCode, gstin, phone, email } = req.body;
+    try {
+        const pin = parseInt(pinCode) || 0;
+        await db.execute(
+            'UPDATE tbl_branch SET branch_name=?, branch_address=?, branch_location=?, branch_pin=?, branch_gstin=?, branch_ph=?, branch_email=? WHERE branch_id=?',
+            [name, address, location, pin, gstin, phone, email, id]
+        );
+        res.json({ success: true, message: 'Institution updated successfully' });
+    } catch (err) {
+        console.error('Update Institution Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update institution' });
+    }
+};
+
+const deleteInstitution = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM tbl_branch WHERE branch_id = ?', [id]);
+        res.json({ success: true, message: 'Institution deleted successfully' });
+    } catch (err) {
+        console.error('Delete Institution Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete institution' });
     }
 };
 
 const listColors = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM tbl_color ORDER BY color_code ASC');
+        const [rows] = await db.execute('SELECT model_id as id, mod_code as color_code, mod_name as description FROM tbl_model ORDER BY mod_code ASC');
         res.json({ success: true, data: rows });
     } catch (err) {
         console.error(err);
@@ -151,31 +303,122 @@ const listColors = async (req, res) => {
 const addColor = async (req, res) => {
     try {
         const { code, description } = req.body;
-        const imagePath = req.file ? `/uploads/colors/${req.file.filename}` : null;
-        
+
         await db.execute(
-            'INSERT INTO tbl_color (color_code, description, image_path) VALUES (?, ?, ?)',
-            [code, description, imagePath]
+            'INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)',
+            [code, description]
         );
-        res.json({ success: true, message: 'Color master added' });
+        res.json({ success: true, message: 'Color master added successfully' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Database error' });
+        res.status(500).json({ success: false, message: 'Database error: ' + err.message });
+    }
+};
+
+const updateColor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { code, description } = req.body;
+        await db.execute(
+            'UPDATE tbl_model SET mod_code = ?, mod_name = ? WHERE model_id = ?',
+            [code, description, id]
+        );
+        res.json({ success: true, message: 'Color master updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Database error: ' + err.message });
+    }
+};
+
+const deleteColor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.execute('DELETE FROM tbl_model WHERE model_id = ?', [id]);
+        res.json({ success: true, message: 'Color master deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Database error: ' + err.message });
+    }
+};
+
+const listDesignations = async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            'SELECT DISTINCT e_designation FROM tbl_employee WHERE e_designation IS NOT NULL AND e_designation != "" ORDER BY e_designation ASC'
+        );
+        const designations = rows.map(r => r.e_designation);
+        res.json({ success: true, data: designations });
+    } catch (err) {
+        console.error('List Designations Error:', err);
+        res.status(500).json({ success: false, message: 'Database error: ' + err.message });
+    }
+};
+
+const editProduct = async (req, res) => {
+    const { id } = req.params;
+    const {
+        code, name, class: productClass, faWeight, raWeight, oaWeight, hsnCode,
+        taWeight, ulWeight, rWeight, hp, description,
+        cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
+        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
+    } = req.body;
+    const computedTotal = totalPrice ?? ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0));
+    try {
+        await db.execute(
+            `UPDATE tbl_labour_code SET 
+            labour_code=?, labour_title=?, repair_type=?, fa_weight=?, ra_weight=?, oa_weight=?, hsn_code=?,
+            ta_weight=?, ul_weight=?, r_weight=?, hp=?, discription=?,
+            cc=?, tbody=?, no_of_cylider=?, fuel=?, wheel_base=?, booking_code=?,
+            seat_capacity=?, sale_price=?, cgst=?, sgst=?, cess=?, purchase_cost=?, total_price=?
+            WHERE labour_id=?`,
+            [code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
+                taWeight, ulWeight, rWeight, hp, description,
+                cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
+                seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, String(computedTotal), id]
+        );
+        res.json({ success: true, message: 'Product updated successfully' });
+    } catch (err) {
+        console.error('Edit Product Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update product: ' + err.message });
+    }
+};
+
+const deleteProduct = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM tbl_labour_code WHERE labour_id = ?', [id]);
+        res.json({ success: true, message: 'Product deleted successfully' });
+    } catch (err) {
+        console.error('Delete Product Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete product: ' + err.message });
     }
 };
 
 module.exports = {
     listEmployees,
     addEmployee,
+    updateEmployee,
+    deleteEmployee,
     listProducts,
     addProduct,
+    editProduct,
+    deleteProduct,
     listHypothecations,
     addHypothecation,
+    editHypothecation,
+    deleteHypothecation,
     listCompanies,
     addCompany,
+    updateCompany,
+    deleteCompany,
     listInstitutions,
     addInstitution,
+    updateInstitution,
+    deleteInstitution,
     listColors,
-    addColor
+    addColor,
+    updateColor,
+    deleteColor,
+    listDesignations
 };
 

@@ -857,6 +857,16 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateEmployee(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/employees/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteEmployee(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/employees/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     listProducts(): Observable<ApiResponse> {
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list`)
             .pipe(catchError(err => this.handleError(err)));
@@ -882,6 +892,16 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateColorMaster(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/colors/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteColorMaster(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/colors/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     listColors(): Observable<ApiResponse> {
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/colors/list`)
             .pipe(catchError(err => this.handleError(err)));
@@ -897,6 +917,16 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateCompanyMaster(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/companies/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteCompanyMaster(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/companies/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     listInstitutions(): Observable<ApiResponse> {
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/institutions/list`)
             .pipe(catchError(err => this.handleError(err)));
@@ -907,8 +937,34 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateInstitutionMaster(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/institutions/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteInstitutionMaster(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/institutions/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listDesignations(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/designations/list`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     updateStock(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/stock/update`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    listStocks(branchId?: string): Observable<ApiResponse> {
+        const q = branchId ? `?branchId=${branchId}` : '';
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/list${q}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteStock(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/stock/delete/${id}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 }

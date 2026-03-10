@@ -12,6 +12,7 @@ app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 const authMiddleware = require('./middleware/authMiddleware');
 const authController = require('./controllers/authController');
@@ -44,6 +45,8 @@ app.use('/api/stock', require('./routes/stock'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/vehicle-enquiry', require('./routes/vehicleEnquiry'));
 app.use('/api/invoice-from-proforma', require('./routes/invoiceFromProforma'));
+app.use('/api/admin', require('./routes/admin'));
+
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 
