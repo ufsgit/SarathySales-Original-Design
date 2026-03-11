@@ -961,7 +961,6 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-<<<<<<< HEAD
     listStocks(branchId?: string): Observable<ApiResponse> {
         const q = branchId ? `?branchId=${branchId}` : '';
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/list${q}`)
@@ -970,13 +969,14 @@ export class ApiService {
 
     deleteStock(id: string | number): Observable<ApiResponse> {
         return this.http.delete<ApiResponse>(`${this.BASE_URL}/stock/delete/${id}`)
-=======
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     getSalesReturnReport(branchId?: string, page = 1, limit = 10, searchTerm = ''): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
         if (branchId && branchId !== 'All Branches') params = params.set('branchId', branchId);
         if (searchTerm) params = params.set('searchTerm', searchTerm);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-return/list`, { params })
->>>>>>> recovery-yesterday
             .pipe(catchError(err => this.handleError(err)));
     }
 }

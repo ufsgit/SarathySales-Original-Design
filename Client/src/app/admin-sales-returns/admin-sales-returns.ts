@@ -79,7 +79,7 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
 
         // For admin view, we pass undefined for branchId to get all branches
         this.api.getSalesReturnReport(undefined, this.page(), this.limit(), this.searchTerm()).subscribe({
-            next: (res) => {
+            next: (res: any) => {
                 this.isLoading.set(false);
                 if (res.success) {
                     this.records.set(res.data ?? []);
@@ -88,7 +88,7 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
                     this.errorMsg.set(res.message || 'Failed to load records.');
                 }
             },
-            error: (err) => {
+            error: (err: any) => {
                 this.isLoading.set(false);
                 this.errorMsg.set(err?.error?.message || 'Server error.');
             }
