@@ -937,6 +937,19 @@ export class PurchaseInvoiceComponent implements OnInit {
       return;
     }
 
+    // Validate duplicate chassis numbers
+    const chassisList = this.items()
+      .map(i => (i.chassisNo || '').toString().trim())
+      .filter(c => c !== '');
+
+    const duplicates = chassisList.filter((item, index) => chassisList.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+      const msg = `Duplicate Chassis Number Found: ${[...new Set(duplicates)].join(', ')}`;
+      this.errorMessage.set(msg);
+      alert(msg);
+      return;
+    }
+
     this.isSaving.set(true);
     this.proceedWithSave();
   }

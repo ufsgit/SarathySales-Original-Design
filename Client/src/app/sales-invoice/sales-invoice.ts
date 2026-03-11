@@ -830,6 +830,8 @@ export class SalesInvoiceComponent implements OnInit {
     filteredChassisOptions = signal<any[]>([]);
     isSaving = signal(false);
     defaultBranchId = signal('');
+    invProductId = signal('');
+    invColorCode = signal('');
     private chassisIndex = new Map<string, any>();
 
     totalAmountDisplay = computed(() => {
@@ -1099,6 +1101,8 @@ export class SalesInvoiceComponent implements OnInit {
             this.pCode.set('');
             this.color.set('');
             this.hsnCode.set('');
+            this.invProductId.set('');
+            this.invColorCode.set('');
             this.basicAmount.set(0);
             this.discountAmount.set(0);
             this.taxableAmount.set(0);
@@ -1116,6 +1120,8 @@ export class SalesInvoiceComponent implements OnInit {
         this.pCode.set((selected.inv_vehicle_code || selected.inv_product_id || '').toString());
         this.color.set((selected.inv_color || selected.color_name || '').toString());
         this.hsnCode.set((selected.inv_hsncode || selected.hsn_code || '').toString());
+        this.invProductId.set((selected.inv_product_id || '').toString());
+        this.invColorCode.set((selected.inv_color_code || '').toString());
 
         this.basicAmount.set(this.toAmount(selected.basic_amount ?? selected.inv_basic_amt ?? 0));
         this.discountAmount.set(this.toAmount(selected.discount_amount ?? selected.inv_discount_amt ?? 0));
@@ -1200,7 +1206,7 @@ export class SalesInvoiceComponent implements OnInit {
                 engineNo: this.engineNo(),
                 vehicle: this.vehicle(),
                 color: this.color(),
-                pCode: this.pCode(),
+                pCode: this.pCode(), 
                 hsnCode: this.hsnCode(),
                 basicAmount: this.basicAmount(),
                 discountAmount: this.discountAmount(),
@@ -1208,7 +1214,9 @@ export class SalesInvoiceComponent implements OnInit {
                 sgst: this.sgst(),
                 cgst: this.cgst(),
                 cess: this.cess(),
-                totalAmount: Number(this.totalAmountDisplay())
+                totalAmount: Number(this.totalAmountDisplay()),
+                invProductId: this.invProductId(),
+                invColorCode: this.invColorCode()
             };
 
             this.api.saveSalesInvoice(payload).subscribe({

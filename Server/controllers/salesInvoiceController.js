@@ -124,8 +124,11 @@ const getChassisRecords = async (req, res) => {
                 pi.chassis_no AS inv_chassis,
                 pi.engine_no AS in_engine,
                 pi.materialName AS inv_vehicle,
-                pi.product_id AS inv_vehicle_code,
-                pi.color_name AS inv_color,
+                pi.materialsId AS materialsId,
+                pi.color_id AS color_id,
+                pi.product_id AS product_id,
+                tm.mod_code AS inv_color_code,
+                tlc.labour_id AS inv_product_id,
                 pi.item_hsn_code AS inv_hsncode,
                 tlc.sale_price AS basic_amount,
                 0 AS discount_amount,
@@ -141,6 +144,7 @@ const getChassisRecords = async (req, res) => {
             FROM purchaseitem pi
             LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
             LEFT JOIN tbl_labour_code tlc ON pi.product_id = tlc.labour_id
+            LEFT JOIN tbl_model tm ON pi.color_id = tm.model_id
             LEFT JOIN tbl_invoice_labour til ON pi.chassis_no = til.inv_chassis
             WHERE pi.chassis_no IS NOT NULL 
               AND TRIM(pi.chassis_no) <> ''
@@ -173,8 +177,10 @@ const getChassisRecords = async (req, res) => {
             inv_chassis: (r.inv_chassis || '').toString().trim(),
             in_engine: r.in_engine || r.inv_engine_no || '',
             inv_vehicle: r.inv_vehicle || r.vehicle || '',
-            inv_vehicle_code: r.inv_vehicle_code || r.inv_product_id || '',
+            inv_vehicle_code: r.materialsId || r.inv_vehicle_code || r.inv_product_id || '',
+            inv_product_id: r.product_id || r.inv_product_id || '',
             inv_color: r.inv_color || r.color_name || '',
+            inv_color_code: r.color_id || r.inv_color_code || '',
             inv_hypothication: r.inv_hypothication || '',
             inv_hsncode: r.inv_hsncode || r.hsn_code || '',
             inv_basic_amt: r.inv_basic_amt ?? r.basic_amount ?? 0,
@@ -1057,7 +1063,8 @@ const saveInvoice = async (req, res) => {
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
-        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
+        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode,
+        invColorCode, invProductId
     } = req.body;
 
     // Enforce branch scoping for non-admins (role 2)
@@ -1077,8 +1084,8 @@ const saveInvoice = async (req, res) => {
                 inv_cus_addres, inv_type, inv_age, inv_cdms_no, inv_area, inv_hypothication, inv_place, 
                 inv_receipt_no, inv_finance_dues, inv_vehicle, inv_vehicle_code, inv_color, inv_gstin, 
                 inv_basic_amt, inv_discount_amt, inv_hsncode, inv_taxable_amt, inv_sgst, inv_cgst, inv_cess, 
-                inv_pincode, status, inv_color_code
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '')
+                inv_pincode, status, inv_color_code, inv_product_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         `;
 
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
@@ -1115,7 +1122,9 @@ const saveInvoice = async (req, res) => {
             sgst || 0,
             cgst || 0,
             cess || 0,
-            pincode || ''
+            pincode || '',
+            invColorCode || color || '', 
+            invProductId || pCode || ''
         ];
 
         const [result] = await conn.execute(insertSql, params);
@@ -1138,7 +1147,8 @@ const updateInvoice = async (req, res) => {
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
-        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
+        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode,
+        invColorCode, invProductId
     } = req.body;
 
     // Enforce branch scoping for non-admins (role 2)
@@ -1158,7 +1168,7 @@ const updateInvoice = async (req, res) => {
                 inv_cus_addres=?, inv_type=?, inv_age=?, inv_cdms_no=?, inv_area=?, inv_hypothication=?, inv_place=?, 
                 inv_receipt_no=?, inv_finance_dues=?, inv_vehicle=?, inv_vehicle_code=?, inv_color=?, inv_gstin=?, 
                 inv_basic_amt=?, inv_discount_amt=?, inv_hsncode=?, inv_taxable_amt=?, inv_sgst=?, inv_cgst=?, inv_cess=?, 
-                inv_pincode=?, inv_color_code=''
+                inv_pincode=?, inv_color_code=?, inv_product_id=?
             WHERE inv_id=?
         `;
 
@@ -1170,7 +1180,7 @@ const updateInvoice = async (req, res) => {
             address || '', issueType || '', age || '', cdmsNo || '', area || '', hypothication || '', place || '',
             receiptNo || '', financeDues || '', vehicle || '', pCode || '', color || '', gstin || '',
             basicAmount || 0, discountAmount || 0, hsnCode || '', taxableAmount || 0, sgst || 0, cgst || 0, cess || 0,
-            pincode || '', id
+            pincode || '', invColorCode || color || '', invProductId || pCode || '', id
         ];
 
         await conn.execute(updateSql, params);

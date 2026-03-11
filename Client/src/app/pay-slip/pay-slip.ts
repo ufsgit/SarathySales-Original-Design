@@ -634,15 +634,15 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                     if (!this.currentId) {
                         this.currentId = res.payslip_id || null;
                     }
-                    if (this.currentId) {
-                        this.api.getPaySlip(this.currentId).subscribe({
-                            next: (savedRes: any) => {
-                                if (savedRes.success && savedRes.data) {
-                                    this.loadPaySlipIntoForm(savedRes.data);
-                                }
-                            }
-                        });
-                    }
+                    // if (this.currentId) {
+                    //     this.api.getPaySlip(this.currentId).subscribe({
+                    //         next: (savedRes: any) => {
+                    //             if (savedRes.success && savedRes.data) {
+                    //                 this.loadPaySlipIntoForm(savedRes.data);
+                    //             }
+                    //         }
+                    //     });
+                    // }
                 } else {
                     this.errorMessage.set(res.message || 'Save failed');
                     alert(this.errorMessage());

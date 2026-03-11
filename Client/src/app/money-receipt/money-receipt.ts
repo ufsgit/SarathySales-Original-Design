@@ -79,7 +79,6 @@ import { ApiService, ApiResponse } from '../services/api.service';
                         <option value="Cash">Cash</option>
                         <option value="Cheque">Cheque</option>
                         <option value="DD">DD</option>
-                        <option value="Online">Online</option>
                     </select>
                 </div>
                 <div class="form-col">

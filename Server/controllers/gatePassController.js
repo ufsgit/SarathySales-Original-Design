@@ -184,7 +184,7 @@ const listGatePasses = async (req, res) => {
             params.push(branchId);
         }
         if (search) {
-            conditions.push('(gate_pass_no LIKE ? OR gate_cus_name LIKE ? OR gate_vehicle_model LIKE ?)');
+            conditions.push('(gate_pass_no LIKE ? OR pass_cus_name LIKE ? OR pass_vehicle LIKE ?)');
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
@@ -222,8 +222,11 @@ const listGatePasses = async (req, res) => {
 
 const saveGatePass = async (req, res) => {
     console.log('[gatePassController] saveGatePass payload:', req.body);
-    const { gatePassNo, branchId, gatePassDate, customerName, address,
-        reason, vehicleModel, chassisNo, engineNo, amount, remarks } = req.body;
+    const {
+        gatePassNo, branchId, gatePassDate, customerName, address,
+        vehicleModel, chassisNo, engineNo, color, productCode,
+        gate_invoice_id, issueType, selectionDate, status
+    } = req.body;
 
     if (!gatePassNo) return res.status(400).json({ success: false, message: 'Gate pass number required' });
     if (!branchId) return res.status(400).json({ success: false, message: 'branchId required' });
@@ -236,11 +239,18 @@ const saveGatePass = async (req, res) => {
         }
 
         const [result] = await db.execute(
-            `INSERT INTO tbl_gate_pass (gate_branch_id, gate_pass_no, gate_pass_date, gate_cus_name,
-             gate_cus_address, gate_reason, gate_vehicle_model, gate_chassis_no, gate_engine_no, gate_amount, gate_remarks)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [branchId, gatePassNo, gatePassDate || new Date(), customerName || '',
-                address || '', reason || '', vehicleModel || '', chassisNo || '', engineNo || '', amount || 0, remarks || '']
+            `INSERT INTO tbl_gate_pass (
+                gate_invoice_id, gate_pass_no, gate_pass_date, gate_branch_id, 
+                pass_issue_type, pass_cus_name, pass_invoic_no, pass_cus_addrs, 
+                selection_date, pass_chassis_no, pass_engine_no, pass_vehicle, 
+                pass_vehicle_color, pass_vehicle_code, pass_status
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                gate_invoice_id || 0, gatePassNo, gatePassDate || new Date(), branchId,
+                issueType || '', customerName || '', req.body.invoiceNo || '', address || '',
+                selectionDate || null, chassisNo || '', engineNo || '', vehicleModel || '',
+                color || '', productCode || '', status || 1
+            ]
         );
         console.log(`[gatePassController] Gate pass saved successfully. ID: ${result.insertId}`);
         res.json({ success: true, message: 'Gate pass saved', gate_pass_id: result.insertId });
@@ -268,13 +278,22 @@ const getGatePass = async (req, res) => {
 
 const updateGatePass = async (req, res) => {
     console.log(`[gatePassController] Updating gate pass ID: ${req.params.id}`, req.body);
-    const { gatePassDate, customerName, address, reason, vehicleModel, chassisNo, engineNo, amount, remarks } = req.body;
+    const {
+        gate_invoice_id, gatePassDate, issueType, customerName, invoiceNo, address,
+        selectionDate, chassisNo, engineNo, vehicleModel, color, productCode, status
+    } = req.body;
     try {
         await db.execute(
-            `UPDATE tbl_gate_pass SET gate_pass_date=?, gate_cus_name=?, gate_cus_address=?,
-             gate_reason=?, gate_vehicle_model=?, gate_chassis_no=?, gate_engine_no=?,
-             gate_amount=?, gate_remarks=? WHERE gate_pass_id=?`,
-            [gatePassDate, customerName, address, reason, vehicleModel, chassisNo, engineNo, amount, remarks, req.params.id]
+            `UPDATE tbl_gate_pass SET 
+                gate_invoice_id=?, gate_pass_date=?, pass_issue_type=?, pass_cus_name=?, 
+                pass_invoic_no=?, pass_cus_addrs=?, selection_date=?, pass_chassis_no=?, 
+                pass_engine_no=?, pass_vehicle=?, pass_vehicle_color=?, pass_vehicle_code=?, 
+                pass_status=? 
+             WHERE gate_pass_id=?`,
+            [
+                gate_invoice_id, gatePassDate, issueType, customerName, invoiceNo, address,
+                selectionDate, chassisNo, engineNo, vehicleModel, color, productCode, status, req.params.id
+            ]
         );
         res.json({ success: true, message: 'Gate pass updated' });
     } catch (err) {
