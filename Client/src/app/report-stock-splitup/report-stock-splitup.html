@@ -15,14 +15,14 @@
     <div class="content-wrapper">
 
         <!-- Orange Header Bar -->
-        <div class="report-header">
+        <div class="report-header" [style.background]="isAdmin() ? '#385dc4ff' : null">
             <div class="header-left">
                 <i class="fas fa-bars grid-icon" style="margin-right: 10px;"></i>
                 <h2>List Stock Splitup Report</h2>
             </div>
 
             <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
-                <div class="count-box">63</div>
+                <div class="count-box">{{ total() }}</div>
                 <button class="header-excel-btn">EXCEL</button>
             </div>
         </div>
@@ -31,35 +31,64 @@
         <div class="filters-container">
             <div class="filter-row">
                 <label>Branch</label>
-                <select class="form-control" disabled>
-                    <option>SARATHY KOLLAM KTM (13177)</option>
-                </select>
+                <div class="custom-dropdown" [class.active]="isBranchDropdownOpen()" [class.disabled]="!isAdmin()">
+                    <div class="dropdown-selected" (click)="toggleBranchDropdown()">
+                        <span [class.placeholder]="branchName() === 'Select Branch'">{{ branchName() || 'Select Branch'
+                            }}</span>
+                        <i class="fas fa-chevron-down arrow"></i>
+                    </div>
+                    @if (isBranchDropdownOpen()) {
+                    <div class="dropdown-menu">
+                        <div class="search-container">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search branch..." [ngModel]="branchSearchTerm()"
+                                (ngModelChange)="branchSearchTerm.set($event)" (click)="$event.stopPropagation()">
+                        </div>
+                        <div class="options-container">
+                            @if (isAdmin()) {
+                            <div class="option" (click)="selectBranch({b_id: '', branch_name: 'All Branches'})">
+                                <span class="branch-name">All Branches</span>
+                            </div>
+                            }
+                            @for (branch of filteredBranches(); track branch.b_id) {
+                            <div class="option" (click)="selectBranch(branch)">
+                                <span class="branch-name">{{ branch.branch_name }}</span>
+                                <span class="branch-id">({{ branch.b_id }})</span>
+                            </div>
+                            }
+                        </div>
+                    </div>
+                    }
+                </div>
             </div>
 
             <div class="filter-row">
                 <label>Chassis No</label>
-                <input type="text" class="form-control">
+                <input type="text" class="form-control" [ngModel]="chassisNo()"
+                    (ngModelChange)="chassisNo.set($event); onFilterChange()">
             </div>
 
             <div class="filter-row">
                 <label>Search Option</label>
-                <select class="form-control">
-                    <option>Custom Date</option>
-                    <option>Month to Date</option>
-                    <option>Previous Month</option>
-                    <option>Year to Date</option>
-                    <option>Previous Year</option>
+                <select class="form-control" [ngModel]="searchOption()" (ngModelChange)="onSearchOptionChange($event)">
+                    <option value="Custom Date">Custom Date</option>
+                    <option value="Month to Date">Month to Date</option>
+                    <option value="Previous Month">Previous Month</option>
+                    <option value="Year to Date">Year to Date</option>
+                    <option value="Previous Year">Previous Year</option>
                 </select>
             </div>
 
             <div class="date-range-row">
                 <div class="date-group">
                     <label>Date From</label>
-                    <input type="date" value="2026-02-10">
+                    <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
                 </div>
                 <div class="date-group">
                     <label>Date To</label>
-                    <input type="date" value="2026-02-10">
+                    <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event); onFilterChange()"
+                        [disabled]="searchOption() !== 'Custom Date'">
                 </div>
             </div>
         </div>
@@ -72,11 +101,11 @@
             </div>
             <div class="entries-control">
                 <span style="color: red;">Show</span>
-                <select class="entries-select">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
+                <select class="entries-select" [ngModel]="limit()" (ngModelChange)="changeLimit($event)">
+                    <option [value]="10">10</option>
+                    <option [value]="25">25</option>
+                    <option [value]="50">50</option>
+                    <option [value]="100">100</option>
                 </select>
                 <span style="color: red;">entries</span>
             </div>
@@ -87,85 +116,60 @@
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th>
-                            <div class="header-input">
-                                <label for="invoiceNo">Invoice No</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="rcDate">RC Date</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="branchName">Branch Name</label>
-                            </div>
-                        </th>
-                        <th>
-                            <select class="th-select">
-                                <option>--Select Vehicle Code--</option>
-                            </select>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="vendorDetails">Vendor Details</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="invoiceDate">Invoice Date</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="chassisNo">Chassis No</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="engineNo">Engine No</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="color">Color</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="rcNo">RC No</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-input">
-                                <label for="mfgDate">MFG Date</label>
-                            </div>
-                        </th>
-                        <th>
-                            <div class="header-label">Total Amount</div>
-                        </th>
+                        <th>Invoice No</th>
+                        <th>RC Date</th>
+                        <th>Branch Name</th>
+                        <th>Vehicle Code</th>
+                        <th>Vendor Details</th>
+                        <th>Invoice Date</th>
+                        <th>Chassis No</th>
+                        <th>Engine No</th>
+                        <th>Color</th>
+                        <th>RC No</th>
+                        <th>MFG Date</th>
+                        <th>Total Amount</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody [class.loading-body]="loading()">
+                    @for (r of records(); track $index) {
+                    <tr>
+                        <td>{{ r.invoice_no }}</td>
+                        <td>{{ r.rc_date | date:'dd-MM-yyyy' }}</td>
+                        <td>{{ r.branch_name }}</td>
+                        <td>{{ r.vehicle_code }}</td>
+                        <td>{{ r.vendor_name }}</td>
+                        <td>{{ r.invoice_date | date:'dd-MM-yyyy' }}</td>
+                        <td>{{ r.chassis_no }}</td>
+                        <td>{{ r.engine_no }}</td>
+                        <td>{{ r.color }}</td>
+                        <td>{{ r.rc_no }}</td>
+                        <td>{{ r.mfg_date | date:'dd-MM-yyyy' }}</td>
+                        <td>{{ r.total_amount | number:'1.2-2' }}</td>
+                    </tr>
+                    }
+                    @if (!loading() && records().length === 0) {
                     <tr class="empty-state">
                         <td colspan="12">No matching records found</td>
                     </tr>
+                    }
                 </tbody>
             </table>
         </div>
 
         <!-- Pagination -->
         <div class="pagination-section">
+            <div class="showing-text" style="flex: 1; color: red;">
+                Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
+            </div>
             <div class="paging-controls">
-                <span style="margin-right: 10px;">Previous</span>
-                <button class="page-btn">1</button>
-                <button class="page-btn">2</button>
-                <button class="page-btn">3</button>
-                <button class="page-btn">4</button>
-                <button class="page-btn">5</button>
-                <button class="page-btn active">6</button>
-                <span style="margin-left: 10px;">Next</span>
+                <button class="page-btn" [disabled]="!hasPrev() || loading()"
+                    (click)="changePage(page() - 1)">Previous</button>
+                @for (p of visiblePages(); track $index) {
+                <button class="page-btn" [class.active]="p === page()" (click)="changePage($any(p))"
+                    [disabled]="p === '...' || loading()">{{ p }}</button>
+                }
+                <button class="page-btn" [disabled]="!hasNext() || loading()"
+                    (click)="changePage(page() + 1)">Next</button>
             </div>
         </div>
 
@@ -173,7 +177,7 @@
         <div class="footer-totals">
             <div class="total-item">
                 <label>Total Invoice Amount</label>
-                <input type="text" value="00.00" disabled>
+                <input type="text" [value]="totalInvoiceAmount() | number:'1.2-2'" disabled>
             </div>
         </div>
 

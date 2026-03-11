@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,35 +28,53 @@ import { ApiService, ApiResponse } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
           <div class="header-left">
-             <i class="fas fa-bars menu-icon"></i>
              <h2>Money Receipt</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="navigate('/previous-money-receipt')">List Money Receipts</button>
-             <button class="btn-save" (click)="onSave()" [disabled]="isSaving">{{ isSaving ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
           </div>
         </header>
 
         <div class="page-card-content">
-          <div *ngIf="successMessage" style="color:green; padding:8px; margin-bottom:8px; border:1px solid green; border-radius:4px;">{{ successMessage }}</div>
-          <div *ngIf="errorMessage" style="color:#c0392b; padding:8px; margin-bottom:8px; border:1px solid #c0392b; border-radius:4px;">{{ errorMessage }}</div>
+          <div *ngIf="successMessage()" style="color:green; padding:8px; margin-bottom:8px; border:1px solid green; border-radius:4px;">{{ successMessage() }}</div>
+          <div *ngIf="errorMessage()" style="color:#c0392b; padding:8px; margin-bottom:8px; border:1px solid #c0392b; border-radius:4px;">{{ errorMessage() }}</div>
           <form class="ledger-form">
             
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName" readonly>
+                    <div class="custom-dropdown" *ngIf="isAdmin(); else staffBranch" #dropdownRef>
+                        <div class="dropdown-toggle" (click)="toggleDropdown()" [class.placeholder]="branchName() === 'Select Branch'">
+                            {{ branchName() }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search..." [ngModel]="branchSearchTerm()" (ngModelChange)="branchSearchTerm.set($event)" name="branchSearchTerm" #searchInputRef (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" *ngFor="let b of searchableBranchList()" (click)="onBranchSelect(b)">
+                                    {{ b.branch_name }}
+                                </div>
+                                <div class="dropdown-option no-results" *ngIf="searchableBranchList().length === 0">No results found</div>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Name:</label>
-                    <input type="text" class="form-control" [(ngModel)]="customerName" name="customerName">
+                    <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
                 </div>
                 <div class="form-col">
                     <label>Pay Type:</label>
-                    <select class="form-control" [(ngModel)]="payType" name="payType">
+                    <select class="form-control" [ngModel]="payType()" (ngModelChange)="payType.set($event)" name="payType">
                         <option value="">--Select--</option>
                         <option value="Cash">Cash</option>
                         <option value="Cheque">Cheque</option>
@@ -67,7 +85,7 @@ import { ApiService, ApiResponse } from '../services/api.service';
                 <div class="form-col">
                     <label>Cheque/DD Date:</label>
                     <div class="date-input-wrapper">
-                        <input type="date" class="form-control" [(ngModel)]="chequeDate" name="chequeDate">
+                        <input type="date" class="form-control" [ngModel]="chequeDate()" (ngModelChange)="chequeDate.set($event)" name="chequeDate">
                     </div>
                 </div>
             </div>
@@ -76,19 +94,19 @@ import { ApiService, ApiResponse } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Receipt No:</label>
-                    <input type="text" class="form-control readonly" [value]="receiptNo" readonly>
+                    <input type="text" class="form-control readonly" [value]="receiptNo()" readonly>
                 </div>
                 <div class="form-col">
                     <label>Customer Address:</label>
-                    <textarea class="form-control" [(ngModel)]="address" name="address" rows="1"></textarea>
+                    <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1"></textarea>
                 </div>
                 <div class="form-col">
                     <label>Cheque/DD/P.O No:</label>
-                    <input type="text" class="form-control" [(ngModel)]="chequeNo" name="chequeNo">
+                    <input type="text" class="form-control" [ngModel]="chequeNo()" (ngModelChange)="chequeNo.set($event)" name="chequeNo">
                 </div>
                 <div class="form-col">
                     <label>Refund Y/N:</label>
-                    <select class="form-control" [(ngModel)]="refundYN" name="refundYN">
+                    <select class="form-control" [ngModel]="refundYN()" (ngModelChange)="refundYN.set($event)" name="refundYN">
                         <option value="">--Select--</option>
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
@@ -101,21 +119,21 @@ import { ApiService, ApiResponse } from '../services/api.service';
                 <div class="form-col">
                     <label>Receipt Date:</label>
                     <div class="date-input-wrapper">
-                        <input type="text" class="form-control" [value]="receiptDate" readonly>
+                        <input type="text" class="form-control" [value]="receiptDate()" readonly>
                         <i class="fas fa-calendar-alt calendar-icon"></i>
                     </div>
                 </div>
                 <div class="form-col">
                     <label>Reason:</label>
-                    <textarea class="form-control" [(ngModel)]="reason" name="reason" rows="1"></textarea>
+                    <textarea class="form-control" [ngModel]="reason()" (ngModelChange)="reason.set($event)" name="reason" rows="1"></textarea>
                 </div>
                 <div class="form-col">
                     <label>Bank:</label>
-                    <input type="text" class="form-control" [(ngModel)]="bank" name="bank">
+                    <input type="text" class="form-control" [ngModel]="bank()" (ngModelChange)="bank.set($event)" name="bank">
                 </div>
                 <div class="form-col">
                     <label>Amount:</label>
-                    <input type="number" class="form-control" [(ngModel)]="amount" name="amount">
+                    <input type="number" class="form-control" [ngModel]="amount()" (ngModelChange)="amount.set($event)" name="amount">
                 </div>
             </div>
 
@@ -123,14 +141,14 @@ import { ApiService, ApiResponse } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Reference:</label>
-                    <input type="text" class="form-control" [(ngModel)]="reference" name="reference">
+                    <input type="text" class="form-control" [ngModel]="reference()" (ngModelChange)="reference.set($event)" name="reference">
                 </div>
                 <div class="form-col">
                      <!-- Empty Spacer -->
                 </div>
                 <div class="form-col">
                     <label>Place:</label>
-                    <input type="text" class="form-control" [(ngModel)]="place" name="place">
+                    <input type="text" class="form-control" [ngModel]="place()" (ngModelChange)="place.set($event)" name="place">
                 </div>
                 <div class="form-col">
                      <!-- Empty Spacer -->
@@ -194,6 +212,10 @@ import { ApiService, ApiResponse } from '../services/api.service';
         justify-content: space-between;
         align-items: center;
         color: white;
+    }
+
+    .orange-header-strip.admin-header {
+        background: #1e3a8a;
     }
 
     .header-left {
@@ -344,113 +366,257 @@ import { ApiService, ApiResponse } from '../services/api.service';
             max-width: 100%;
         }
     }
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+    }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
+    }
   `]
 })
 export class MoneyReceiptComponent {
-    branchName = '';
-    branchId = '';
-    receiptNo = '';
-    receiptDate = new Date().toLocaleDateString('en-GB'); // dd/mm/yyyy
+    @ViewChild('dropdownRef') dropdownRef!: ElementRef;
+    @ViewChild('searchInputRef') searchInputRef!: ElementRef;
+
+    branchName = signal('SARATHY KOLLAM KTM');
+    branchId = signal('');
+    receiptNo = signal('');
+    receiptDate = signal(new Date().toLocaleDateString('en-GB')); // dd/mm/yyyy
+
+    // Admin Features
+    isAdmin = signal(false);
+    branches = signal<any[]>([]);
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
+
+    searchableBranchList = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branches().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term)
+        );
+    });
+
+    toggleDropdown() {
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+            setTimeout(() => {
+                if (this.searchInputRef) {
+                    this.searchInputRef.nativeElement.focus();
+                }
+            }, 0);
+        }
+    }
+
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: Event) {
+        if (this.dropdownRef && !this.dropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen.set(false);
+        }
+    }
+
+    onBranchSelect(branch: any) {
+        this.branchId.set(branch.b_id.toString());
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+        this.loadReceiptNo();
+    }
 
     // Form Models
-    customerName = '';
-    payType = '';
-    chequeDate = '';
+    customerName = signal('');
+    payType = signal('');
+    chequeDate = signal('');
 
-    address = '';
-    chequeNo = '';
-    refundYN = 'No';
+    address = signal('');
+    chequeNo = signal('');
+    refundYN = signal('No');
 
-    reason = '';
-    bank = '';
-    amount: number | null = null;
+    reason = signal('');
+    bank = signal('');
+    amount = signal<number | null>(null);
 
-    reference = '';
-    place = '';
+    reference = signal('');
+    place = signal('');
 
-    isLoading = false;
-    isSaving = false;
-    successMessage = '';
-    errorMessage = '';
+    isLoading = signal(false);
+    isSaving = signal(false);
+    successMessage = signal('');
+    errorMessage = signal('');
 
     constructor(private router: Router, private api: ApiService) { }
 
     ngOnInit(): void {
         const user = this.api.getCurrentUser();
         if (user) {
-            this.branchName = user.branch_name || '';
-            this.branchId = user.branch_id || '';
+            const admin = user.role == 1 || user.role_des === 'admin';
+            this.isAdmin.set(admin);
+
+            let bName = (user.branch_name || '').toString().trim();
+            if (bName === 'No Branch' || !bName) {
+                if (admin) {
+                    bName = 'Select Branch';
+                    this.branchId.set('');
+                } else {
+                    bName = 'SARATHY KOLLAM KTM';
+                    this.branchId.set((user.branch_id || '').toString());
+                }
+            } else {
+                this.branchId.set((user.branch_id || '').toString());
+            }
+            this.branchName.set(bName);
+
+            if (admin) {
+                this.loadBranches();
+            }
         }
         this.loadReceiptNo();
         // Set today's date
-        const today = new Date();
-        this.receiptDate = today.toLocaleDateString('en-GB');
+        this.receiptDate.set(new Date().toLocaleDateString('en-GB'));
+    }
+
+    loadBranches(): void {
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res.success && Array.isArray(res.data)) {
+                    this.branches.set(res.data);
+                }
+            }
+        });
     }
 
     loadReceiptNo(): void {
-        this.api.getMoneyReceiptNextNo(this.branchId).subscribe({
-            next: (res: any) => { if (res.success) this.receiptNo = res.receiptNo; },
-            error: () => { this.receiptNo = 'ERROR'; }
+        if (!this.branchId()) return;
+        this.api.getMoneyReceiptNextNo(this.branchId()).subscribe({
+            next: (res: any) => { if (res.success) this.receiptNo.set(res.receiptNo); },
+            error: () => { this.receiptNo.set('ERROR'); }
         });
     }
 
     onSave(): void {
-        if (!this.customerName || !this.amount) {
-            this.errorMessage = 'Customer Name and Amount are required.';
+        if (!this.customerName() || !this.amount()) {
+            this.errorMessage.set('Customer Name and Amount are required.');
             return;
         }
-        this.isSaving = true;
-        this.errorMessage = '';
-        this.successMessage = '';
+        this.isSaving.set(true);
+        this.errorMessage.set('');
+        this.successMessage.set('');
 
         const today = new Date();
         const receiptDateISO = today.toISOString().split('T')[0];
 
         const payload = {
-            receiptNo: this.receiptNo,
-            branchId: this.branchId,
+            receiptNo: this.receiptNo(),
+            branchId: this.branchId(),
             receiptDate: receiptDateISO,
-            reference: this.reference,
-            reason: this.reason,
-            payType: this.payType,
-            chequeDate: this.chequeDate || null,
-            chequeNo: this.chequeNo,
-            customerName: this.customerName,
-            address: this.address,
-            amount: this.amount,
-            bank: this.bank,
-            place: this.place,
-            refundStatus: this.refundYN
+            reference: this.reference(),
+            reason: this.reason(),
+            payType: this.payType(),
+            chequeDate: this.chequeDate() || null,
+            chequeNo: this.chequeNo(),
+            customerName: this.customerName(),
+            address: this.address(),
+            amount: this.amount(),
+            bank: this.bank(),
+            place: this.place(),
+            refundStatus: this.refundYN()
         };
 
         this.api.saveMoneyReceipt(payload).subscribe({
             next: (res) => {
-                this.isSaving = false;
+                this.isSaving.set(false);
                 if (res.success) {
-                    this.successMessage = 'Money receipt saved successfully!';
+                    this.successMessage.set('Money receipt saved successfully!');
                     this.resetForm();
                     this.loadReceiptNo(); // Load next number
                 }
             },
             error: (err) => {
-                this.isSaving = false;
+                this.isSaving.set(false);
                 this.errorMessage = err?.error?.message || 'Failed to save receipt.';
             }
         });
     }
 
     resetForm(): void {
-        this.customerName = '';
-        this.payType = '';
-        this.chequeDate = '';
-        this.address = '';
-        this.chequeNo = '';
-        this.refundYN = 'No';
-        this.reason = '';
-        this.bank = '';
-        this.amount = null;
-        this.reference = '';
-        this.place = '';
+        this.customerName.set('');
+        this.payType.set('');
+        this.chequeDate.set('');
+        this.address.set('');
+        this.chequeNo.set('');
+        this.refundYN.set('No');
+        this.reason.set('');
+        this.bank.set('');
+        this.amount.set(null);
+        this.reference.set('');
+        this.place.set('');
     }
 
     navigate(path: string) { this.router.navigate([path]); }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>INVOICE (Purchase)</h2>
@@ -39,15 +39,45 @@ import { ApiService } from '../services/api.service';
         </header>
 
         <div class="page-card-content">
-          <div *ngIf="uploadMessage" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ uploadMessage }}</div>
-          <div *ngIf="uploadError" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ uploadError }}</div>
+          <div *ngIf="uploadMessage()" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ uploadMessage() }}</div>
+          <div *ngIf="uploadError()" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ uploadError() }}</div>
           <form class="ledger-form">
             
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName" readonly>
+                    <ng-container *ngIf="isAdmin(); else staffBranch">
+                        <div class="custom-dropdown" #branchDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                {{ branchName() }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search branch..."
+                                        [ngModel]="branchSearchTerm()"
+                                        (ngModelChange)="branchSearchTerm.set($event)"
+                                        name="branchSearch" #branchSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableBranchOptionsList()"
+                                        (click)="onBranchSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableBranchOptionsList().length === 0">
+                                        No branches found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Inv No:</label>
@@ -55,14 +85,14 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Institution:</label>
-                    <select class="form-control" [(ngModel)]="institutionId" name="institutionId" (change)="onInstitutionChange()">
+                    <select class="form-control" [ngModel]="institutionId()" (ngModelChange)="institutionId.set($event); onInstitutionChange()" name="institutionId">
                         <option value="">--Select--</option>
-                        <option *ngFor="let b of institutionOptions" [value]="b.b_id">{{ b.branch_name }}</option>
+                        <option *ngFor="let b of institutionOptions()" [value]="b.b_id">{{ b.branch_name }}</option>
                     </select>
                 </div>
                 <div class="form-col">
                     <label>RC No(supplier):</label>
-                    <input type="text" class="form-control" [(ngModel)]="rcNo" name="rcNo">
+                    <input type="text" class="form-control" [ngModel]="rcNo()" (ngModelChange)="rcNo.set($event)" name="rcNo">
                 </div>
             </div>
 
@@ -75,7 +105,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col">
                     <label>RC Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="text" class="form-control" [value]="rcDate" >
+                         <input type="text" class="form-control" [value]="rcDate()" >
                          <i class="fas fa-calendar-alt calendar-icon"></i>
                     </div>
                 </div>
@@ -86,7 +116,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col">
                     <label>Invoice Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="text" class="form-control" [value]="invoiceDate" >
+                         <input type="text" class="form-control" [value]="invoiceDate()" >
                          <i class="fas fa-calendar-alt calendar-icon"></i>
                     </div>
                 </div>
@@ -102,7 +132,7 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Basic Total:</label>
-                    <input type="number" class="form-control" [(ngModel)]="basicTotal" name="basicTotal">
+                    <input type="number" class="form-control" [ngModel]="basicTotal()" (ngModelChange)="basicTotal.set($event)" name="basicTotal">
                 </div>
                 
                 <div class="form-col"></div>
@@ -110,7 +140,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col"></div>
                 <div class="form-col">
                     <label>Tax Total:</label>
-                    <input type="number" class="form-control" [(ngModel)]="taxTotal" name="taxTotal">
+                    <input type="number" class="form-control" [ngModel]="taxTotal()" (ngModelChange)="taxTotal.set($event)" name="taxTotal">
                 </div>
                 
                 <div class="form-col"></div>
@@ -118,7 +148,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col"></div>
                 <div class="form-col">
                     <label>Grand Total:</label>
-                    <input type="number" class="form-control" [(ngModel)]="grandTotal" name="grandTotal">
+                    <input type="number" class="form-control" [ngModel]="grandTotal()" (ngModelChange)="grandTotal.set($event)" name="grandTotal">
                 </div>
              </div>
 
@@ -131,10 +161,10 @@ import { ApiService } from '../services/api.service';
                         <div class="file-action-group">
                            <input #fileInput type="file" style="display:none" accept=".xlsx,.xls" (change)="onFileSelected($event)">
                            <button type="button" class="btn-choose" (click)="fileInput.click()">Choose File</button>
-                           <span class="file-status">{{ selectedFileName || 'No file chosen' }}</span>
+                           <span class="file-status">{{ selectedFileName() || 'No file chosen' }}</span>
                         </div>
                      </div>
-                     <button type="button" class="btn-import" (click)="onImport()" [disabled]="isUploading">{{ isUploading ? 'Importing...' : 'Import' }}</button>
+                     <button type="button" class="btn-import" (click)="onImport()" [disabled]="isUploading()">{{ isUploading() ? 'Importing...' : 'Import' }}</button>
 
                      <!-- Instructions Block -->
                     <div class="instructions-block">
@@ -444,101 +474,238 @@ import { ApiService } from '../services/api.service';
             padding-left: 0;
         }
     }
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+    }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
+    }
   `]
 })
 export class PurchaseUploadComponent implements OnInit {
-    branchId = '';
-    branchName = 'SARATHY KOLLAM KTM';
-    invNo = '';
-    institution = '';
-    institutionId = '';
-    rcNo = '';
-    hsnCode = '';
-    rcDate = '19-02-2026';
-    address = '';
-    invoiceDate = '19-02-2026';
-    gstin = '';
-    institutionOptions: Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin?: string }> = [];
+    branchId = signal('');
+    branchName = signal('SARATHY KOLLAM KTM');
+    isAdmin = signal(false);
+    branches = signal<any[]>([]);
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
 
-    basicTotal = 0.00;
-    taxTotal = 0.00;
-    grandTotal = 0.00;
+    searchableBranchOptionsList = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branches().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term)
+        );
+    });
+
+    @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+    @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+
+    invNo = signal('');
+    institution = signal('');
+    institutionId = signal('');
+    rcNo = signal('');
+    hsnCode = signal('');
+    rcDate = signal('19-02-2026');
+    address = signal('');
+    invoiceDate = signal('19-02-2026');
+    gstin = signal('');
+    institutionOptions = signal<Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin?: string }>>([]);
+
+    basicTotal = signal(0.00);
+    taxTotal = signal(0.00);
+    grandTotal = signal(0.00);
     selectedFile: File | null = null;
-    selectedFileName = '';
-    isUploading = false;
-    uploadMessage = '';
-    uploadError = '';
+    selectedFileName = signal('');
+    isUploading = signal(false);
+    uploadMessage = signal('');
+    uploadError = signal('');
 
     constructor(private router: Router, private api: ApiService) { }
 
     ngOnInit(): void {
         const user = this.api.getCurrentUser();
         if (user) {
-            this.branchName = (user.branch_name || '').toString().trim() || this.branchName;
-            this.branchId = (user.branch_id || '').toString();
+            const admin = user.role == 1 || user.role_des === 'admin';
+            this.isAdmin.set(admin);
+
+            let bName = (user.branch_name || '').toString().trim();
+            if (bName === 'No Branch' || !bName) {
+                if (admin) {
+                    bName = 'Select Branch';
+                    this.branchId.set('');
+                } else {
+                    bName = 'SARATHY KOLLAM KTM';
+                    this.branchId.set((user.branch_id || '').toString().trim());
+                }
+            } else {
+                this.branchId.set((user.branch_id || '').toString().trim());
+            }
+            this.branchName.set(bName);
+            if (admin) this.loadBranches();
         }
         this.loadInstitutionOptions();
+    }
+
+    loadBranches() {
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res.success && Array.isArray(res.data)) {
+                    this.branches.set(res.data);
+                }
+            }
+        });
+    }
+
+    toggleBranchDropdown() {
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+            setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onBranchSelect(branch: any) {
+        this.branchId.set(branch.b_id.toString());
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+    }
+
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: Event) {
+        if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen.set(false);
+        }
     }
 
     private loadInstitutionOptions(): void {
         this.api.getBranches().subscribe({
             next: (res: any) => {
                 if (res?.success && Array.isArray(res.data)) {
-                    this.institutionOptions = res.data.map((b: any) => ({
+                    const mapped = res.data.map((b: any) => ({
                         b_id: parseInt(b.b_id, 10) || 0,
                         branch_name: (b.branch_name || '').toString().trim(),
                         branch_address: (b.branch_address || '').toString(),
                         branch_gstin: (b.branch_gstin || '').toString().trim()
                     })).filter((b: any) => !!b.branch_name);
+                    this.institutionOptions.set(mapped);
                 }
             }
         });
     }
 
     onInstitutionChange(): void {
-        const id = parseInt((this.institutionId || '').toString(), 10) || 0;
-        const selected = this.institutionOptions.find(b => b.b_id === id);
-        this.institution = selected?.branch_name || '';
-        this.address = selected?.branch_address || '';
-        this.gstin = selected?.branch_gstin || '';
+        const id = parseInt((this.institutionId() || '').toString(), 10) || 0;
+        const selected = this.institutionOptions().find(b => b.b_id === id);
+        this.institution.set(selected?.branch_name || '');
+        this.address.set(selected?.branch_address || '');
+        this.gstin.set(selected?.branch_gstin || '');
     }
 
     onFileSelected(event: Event): void {
         const input = event.target as HTMLInputElement;
         const file = input?.files && input.files.length ? input.files[0] : null;
         this.selectedFile = file;
-        this.selectedFileName = file?.name || '';
-        this.uploadMessage = '';
-        this.uploadError = '';
+        this.selectedFileName.set(file?.name || '');
+        this.uploadMessage.set('');
+        this.uploadError.set('');
     }
 
     onImport(): void {
-        this.uploadMessage = '';
-        this.uploadError = '';
-        if (!this.branchId) {
-            this.uploadError = 'Branch missing. Please login again.';
+        this.uploadMessage.set('');
+        this.uploadError.set('');
+        if (!this.branchId()) {
+            this.uploadError.set('Branch missing. Please login again.');
             return;
         }
         if (!this.selectedFile) {
-            this.uploadError = 'Please choose an Excel file.';
+            this.uploadError.set('Please choose an Excel file.');
             return;
         }
 
-        this.isUploading = true;
-        this.api.uploadPurchaseExcel(this.selectedFile, this.branchId).subscribe({
+        this.isUploading.set(true);
+        this.api.uploadPurchaseExcel(this.selectedFile, this.branchId()).subscribe({
             next: (res: any) => {
-                this.isUploading = false;
+                this.isUploading.set(false);
                 if (res?.success) {
                     const successCount = Number(res?.successCount || 0);
                     const errorCount = Number(res?.errorCount || 0);
-                    this.uploadMessage = `Import complete. Success: ${successCount}, Errors: ${errorCount}`;
+                    this.uploadMessage.set(`Import complete. Success: ${successCount}, Errors: ${errorCount}`);
                 } else {
-                    this.uploadError = res?.message || 'Import failed';
+                    this.uploadError.set(res?.message || 'Import failed');
                 }
             },
             error: (err: any) => {
-                this.isUploading = false;
-                this.uploadError = err?.error?.message || 'Upload failed';
+                this.isUploading.set(false);
+                this.uploadError.set(err?.error?.message || 'Upload failed');
             }
         });
     }

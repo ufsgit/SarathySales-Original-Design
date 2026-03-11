@@ -26,7 +26,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
           <i class="fas fa-th menu-icon"></i>
           <h2>List VSI Report</h2>
         </header>
@@ -480,6 +480,7 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class VsiReportComponent implements OnInit {
+    isAdmin = signal(false);
     branchId = signal('');
     branchName = signal('');
 
@@ -488,6 +489,7 @@ export class VsiReportComponent implements OnInit {
     ngOnInit() {
         const user = this.api.getCurrentUser();
         if (user) {
+            this.isAdmin.set(user.role == 1 || user.role_des === 'admin');
             this.branchId.set(user.branch_id || '');
             this.branchName.set(user.branch_name || 'No Branch');
         }

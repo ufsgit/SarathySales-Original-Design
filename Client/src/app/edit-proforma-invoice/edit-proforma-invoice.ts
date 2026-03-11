@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>EDIT INVOICE (Proforma)</h2>
@@ -540,6 +540,7 @@ input {
   `]
 })
 export class EditProformaInvoiceComponent implements OnInit {
+    isAdmin = signal(false);
     id: number = 0;
     branchId = '';
     branchName = 'SARATHY KOLLAM KTM';
@@ -596,6 +597,7 @@ export class EditProformaInvoiceComponent implements OnInit {
 
         const user = this.api.getCurrentUser();
         if (user) {
+            this.isAdmin.set(user.role == 1 || user.role_des === 'admin');
             this.branchName = user.branch_name || this.branchName;
             this.branchId = (user.branch_id || '').toString();
         }

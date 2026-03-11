@@ -29,11 +29,35 @@ export class ReportsStockVerification {
     fromDate = signal<string>(new Date().toISOString().split('T')[0]);
     toDate = signal<string>(new Date().toISOString().split('T')[0]);
 
+    branchName = signal<string>('Select Branch');
+    isBranchDropdownOpen = signal<boolean>(false);
+    branchSearchTerm = signal<string>('');
+
+    isAdmin = computed(() => {
+        const user = this.api.getCurrentUser();
+        return user?.role == 1 || user?.role_des === 'admin';
+    });
+
+    filteredBranches = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        if (!term) return this.branches();
+        return this.branches().filter(b =>
+            b.branch_name.toLowerCase().includes(term) ||
+            b.b_id.toString().includes(term)
+        );
+    });
+
     constructor(private api: ApiService) {
         // Initialize branch from token
         const user = this.api.getCurrentUser();
         if (user) {
-            this.branchId.set(user.branch_id?.toString() || '');
+            if (this.isAdmin()) {
+                this.branchId.set('');
+                this.branchName.set('All Branches');
+            } else {
+                this.branchId.set(user.branch_id?.toString() || '');
+                this.branchName.set(user.branch_name || 'My Branch');
+            }
         }
 
         // Fetch all branches for dropdown
@@ -44,14 +68,29 @@ export class ReportsStockVerification {
         });
 
         effect(() => {
-            if (this.branchId()) {
-                this.loadData();
-            }
+            // Load data whenever branch, date or other filters change
+            this.loadData();
         });
     }
 
+    toggleBranchDropdown() {
+        if (!this.isAdmin()) return;
+        this.isBranchDropdownOpen.set(!this.isBranchDropdownOpen());
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+        }
+    }
+
+    selectBranch(branch: any) {
+        this.branchId.set(branch.b_id.toString());
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+        this.page.set(1);
+        this.loadData();
+    }
+
     loadData() {
-        if (!this.branchId()) return;
+        if (!this.branchId() && !this.isAdmin()) return;
         this.loading.set(true);
         this.api.getStockVerification(
             this.branchId(),

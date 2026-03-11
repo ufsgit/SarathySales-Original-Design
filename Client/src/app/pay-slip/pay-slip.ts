@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, signal, computed } from '@angular/core';
+import { Component, OnInit, AfterViewInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -19,6 +19,44 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     // ── State Signals ──────────────────────────────────────────
     branchName = signal('SARATHY KOLLAM KTM');
     branchId = signal('');
+    isAdmin = signal(false);
+    branches = signal<any[]>([]);
+    branchSearchTerm = signal('');
+    isBranchDropdownOpen = signal(false);
+
+    @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+    @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+    @ViewChild('executiveDropdownRef') executiveDropdownRef!: ElementRef;
+    @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
+    @ViewChild('financeDropdownRef') financeDropdownRef!: ElementRef;
+    @ViewChild('financeSearchInput') financeSearchInput!: ElementRef;
+
+    searchableBranchList = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branches().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term) ||
+            (b.b_id || '').toString().toLowerCase().includes(term)
+        );
+    });
+
+    executiveSearchTerm = signal('');
+    isExecutiveDropdownOpen = signal(false);
+    searchableAdviserList = computed(() => {
+        const term = this.executiveSearchTerm().toLowerCase();
+        return this.advisers().filter(a =>
+            (a.e_first_name || '').toLowerCase().includes(term) ||
+            (a.emp_id || '').toString().toLowerCase().includes(term)
+        );
+    });
+
+    financeSearchTerm = signal('');
+    isFinanceDropdownOpen = signal(false);
+    searchableFinanceList = computed(() => {
+        const term = this.financeSearchTerm().toLowerCase();
+        const base = this.insuranceCompanies().map(f => ({ name: f.icompany_name }));
+        const list = [{ name: 'By Cash' }, ...base];
+        return list.filter(f => f.name.toLowerCase().includes(term));
+    });
 
     paySlipNo = signal('');
     slipNumbers = signal<string[]>([]);
@@ -143,29 +181,105 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         return !!checkbox?.checked;
     }
 
-    private resolveBranchContext(): string {
-        const user = this.api.getCurrentUser() || {};
-        const resolvedBranchId = (
-            this.branchId() ||
-            user.branch_id ||
-            user.b_id ||
-            user.branchId ||
-            ''
-        ).toString().trim();
-        const resolvedBranchName = (
-            user.branch_name ||
-            user.e_branch ||
-            this.branchName() ||
-            ''
-        ).toString().trim();
 
-        if (resolvedBranchName) this.branchName.set(resolvedBranchName);
-        this.branchId.set(resolvedBranchId);
-        return resolvedBranchId;
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: Event) {
+        if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen.set(false);
+        }
+        if (this.executiveDropdownRef && !this.executiveDropdownRef.nativeElement.contains(event.target)) {
+            this.isExecutiveDropdownOpen.set(false);
+        }
+        if (this.financeDropdownRef && !this.financeDropdownRef.nativeElement.contains(event.target)) {
+            this.isFinanceDropdownOpen.set(false);
+        }
+    }
+
+    toggleBranchDropdown() {
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+            setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onBranchSelect(branch: any) {
+        console.log('[PaySlip] Branch selected:', branch);
+        this.branchName.set(branch.branch_name);
+        this.branchId.set(String(branch.b_id));
+        this.isBranchDropdownOpen.set(false);
+
+        // Reset relative state
+        this.paySlipNo.set('');
+        this.successMessage.set('');
+        this.errorMessage.set('');
+
+        // Reload data for the new branch
+        this.loadSlipNo();
+        this.loadAdvisers();
+        this.loadFormData();
+    }
+
+    toggleExecutiveDropdown() {
+        this.isExecutiveDropdownOpen.update(v => !v);
+        if (this.isExecutiveDropdownOpen()) {
+            this.executiveSearchTerm.set('');
+            setTimeout(() => this.executiveSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onExecutiveSelect(adv: any) {
+        this.adviserId.set(adv.emp_id);
+        this.adviserName.set(adv.e_first_name || adv.name || '');
+        this.isExecutiveDropdownOpen.set(false);
+    }
+
+    toggleFinanceDropdown() {
+        this.isFinanceDropdownOpen.update(v => !v);
+        if (this.isFinanceDropdownOpen()) {
+            this.financeSearchTerm.set('');
+            setTimeout(() => this.financeSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onFinanceSelect(f: any) {
+        this.financeCash.set(f.name);
+        this.isFinanceDropdownOpen.set(false);
+    }
+
+    loadBranches() {
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res.success && Array.isArray(res.data)) {
+                    this.branches.set(res.data);
+                }
+            }
+        });
     }
 
     ngOnInit(): void {
-        this.initializePageData();
+        const user = this.api.getCurrentUser();
+        if (user) {
+            const admin = user.role == 1 || user.role_des === 'admin';
+            this.isAdmin.set(admin);
+
+            let bName = (user.branch_name || '').toString().trim();
+            if (bName === 'No Branch' || !bName) {
+                if (admin) {
+                    bName = 'Select Branch';
+                    this.branchId.set('');
+                } else {
+                    bName = 'SARATHY KOLLAM KTM';
+                    this.branchId.set(user.branch_id ? user.branch_id.toString() : '');
+                }
+            } else {
+                this.branchId.set(user.branch_id ? user.branch_id.toString() : '');
+            }
+            this.branchName.set(bName);
+
+            if (admin) this.loadBranches();
+        }
+        this.paySlipDate.set(this.todayIso);
 
         const idParam = this.route.snapshot.paramMap.get('id');
         if (idParam) {
@@ -174,9 +288,17 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 this.currentId = id;
                 this.loadPaySlip(id);
             }
+        } else {
+            this.loadInitialData();
         }
+    }
 
-        this.ensureInitialDataLoaded();
+    private loadInitialData(): void {
+        this.loadSlipNo();
+        this.loadAdvisers();
+        this.loadLabourCodes();
+        this.loadInsuranceCompanies();
+        this.loadFormData();
     }
 
     ngAfterViewInit(): void {
@@ -184,88 +306,42 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         setTimeout(() => this.enforceMaxDate(), 300);
     }
 
-    private initializePageData(): void {
-        const branchId = this.resolveBranchContext();
-        if (branchId) {
-            this.loadSlipNo();
-            this.loadAdvisers();
-            this.loadLabourCodes();
-            this.loadInsuranceCompanies();
-            return;
-        }
-
-        this.api.getBranches().subscribe({
-            next: (res: any) => {
-                const rows = Array.isArray(res?.data) ? res.data : [];
-                const targetName = (this.branchName() || '').toString().trim().toLowerCase();
-                const found = rows.find((b: any) => ((b.branch_name || '').toString().trim().toLowerCase() === targetName));
-                if (found?.b_id) {
-                    this.branchId.set(String(found.b_id).trim());
-                    this.branchName.set((found.branch_name || this.branchName() || '').toString().trim());
-                }
-                this.loadSlipNo();
-                this.loadAdvisers();
-                this.loadLabourCodes();
-                this.loadInsuranceCompanies();
-            },
-            error: () => {
-                this.loadSlipNo();
-                this.loadAdvisers();
-                this.loadLabourCodes();
-                this.loadInsuranceCompanies();
-            }
-        });
-    }
-
-    private ensureInitialDataLoaded(): void {
-        if (this.currentId) return;
-        if (this.initialLoadAttempts >= this.maxInitialLoadAttempts) return;
-
-        const hasCoreData = !!this.paySlipNo() && this.advisers().length > 0 && this.labourCodes().length > 0;
-        if (hasCoreData) return;
-
-        this.initialLoadAttempts += 1;
-        setTimeout(() => {
-            if (!this.paySlipNo()) this.loadSlipNo();
-            if (!this.advisers().length) this.loadAdvisers();
-            if (!this.labourCodes().length) this.loadLabourCodes();
-            if (!this.insuranceCompanies().length) this.loadInsuranceCompanies();
-            this.ensureInitialDataLoaded();
-        }, 400);
-    }
 
     loadSlipNo(): void {
         if (this.currentId) return;
-        if (this.paySlipNo()) return;
+        if (!this.branchId()) return;
+        if (this.paySlipNo() && this.paySlipNo() !== 'Error' && this.paySlipNo() !== 'Fetching...') return;
         if (this.isLoadingSlipNo) return;
 
-        const branchId = this.resolveBranchContext();
-        const branchName = (this.branchName() || '').toString().trim();
-        if (!branchId && !branchName) {
-            if (!this.slipNoRetryDone) {
-                this.slipNoRetryDone = true;
-                setTimeout(() => this.loadSlipNo(), 300);
-            }
-            return;
-        }
-        this.slipNoRetryDone = false;
+        const branchId = this.branchId();
+        const branchName = this.branchName();
+
         this.isLoadingSlipNo = true;
+        this.paySlipNo.set('Fetching...');
+
         this.api.getPaySlipNextNo(branchId || undefined, branchName || undefined).subscribe({
             next: (res: any) => {
                 this.isLoadingSlipNo = false;
+                console.log('[PaySlip] loadSlipNo response:', res);
                 if (res.success && res.paySlipNo) {
                     this.paySlipNo.set(res.paySlipNo);
+                } else {
+                    console.error('[PaySlip] loadSlipNo failed:', res.message);
+                    this.paySlipNo.set('Error');
+                    this.errorMessage.set(res.message || 'Failed to fetch pay slip number');
                 }
             },
-            error: () => {
+            error: (err: any) => {
                 this.isLoadingSlipNo = false;
-                this.errorMessage.set('Failed to fetch pay slip number');
+                console.error('[PaySlip] loadSlipNo error:', err);
+                this.paySlipNo.set('Error');
+                this.errorMessage.set(err?.error?.message || 'Failed to fetch pay slip number');
             }
         });
     }
 
     loadFormData(): void {
-        const branchId = this.resolveBranchContext();
+        const branchId = this.branchId();
         this.api.getPaySlipFormData(branchId || undefined).subscribe({
             next: (res: any) => {
                 const data = res?.data || {};
@@ -435,13 +511,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
     onSave(): void {
         this.enforceMaxDate();
-        const user = this.api.getCurrentUser() || {};
-        const branchIdForSave = (
-            this.branchId() ||
-            user.branch_id ||
-            user.b_id ||
-            ''
-        ).toString().trim();
+        const branchIdForSave = this.branchId();
 
         const missingFields: string[] = [];
         if (!this.paySlipNo()) missingFields.push('Pay slip number');

@@ -261,8 +261,11 @@ export class ApiService {
 
     // ─── Gate Pass ─────────────────────────────────────────────────────────────────
 
-    getGatePassNextNo(branchId?: string): Observable<ApiResponse> {
-        const q = branchId ? `?branchId=${branchId}` : '';
+    getGatePassNextNo(branchId?: string, branchName?: string): Observable<ApiResponse> {
+        const params: string[] = [];
+        if (branchId) params.push(`branchId=${encodeURIComponent(branchId)}`);
+        if (branchName) params.push(`branchName=${encodeURIComponent(branchName)}`);
+        const q = params.length ? `?${params.join('&')}` : '';
         return this.http.get<ApiResponse>(`${this.BASE_URL}/gate-pass/next-no${q}`)
             .pipe(catchError(err => this.handleError(err)));
     }
@@ -815,8 +818,9 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listChassis(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/vehicle-enquiry/chassis-list`)
+    listChassis(branchId?: string): Observable<ApiResponse> {
+        const q = branchId ? `?branchId=${branchId}` : '';
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/vehicle-enquiry/chassis-list${q}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -909,6 +913,14 @@ export class ApiService {
 
     updateStock(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/stock/update`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getSalesReturnReport(branchId?: string, page = 1, limit = 10, searchTerm = ''): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        if (branchId && branchId !== 'All Branches') params = params.set('branchId', branchId);
+        if (searchTerm) params = params.set('searchTerm', searchTerm);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-return/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 }

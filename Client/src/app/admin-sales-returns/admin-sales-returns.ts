@@ -1,33 +1,31 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
-import { UserNav } from '../user-nav/user-nav';
-import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../services/api.service';
+import { RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { ApiService } from '../services/api.service';
+import { AdminNav } from '../admin-nav/admin-nav';
+import { UserFooter } from '../user-footer/user-footer';
 
 @Component({
-    selector: 'app-previous-proforma-invoice',
+    selector: 'app-admin-sales-returns',
     standalone: true,
-    imports: [UserNav, UserFooter, RouterLink, FormsModule],
-    templateUrl: './previous-proforma-invoice.html',
-    styleUrl: './previous-proforma-invoice.css',
+    imports: [CommonModule, FormsModule, RouterLink, AdminNav, UserFooter],
+    templateUrl: './admin-sales-returns.html',
+    styleUrl: './admin-sales-returns.css'
 })
-export class PreviousProformaInvoice implements OnInit, OnDestroy {
-
+export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
+    // Signals for state management
     records = signal<any[]>([]);
     total = signal(0);
     page = signal(1);
-    limit = signal(25);
+    limit = signal(10);
     searchTerm = signal('');
     isLoading = signal(false);
-    isAdmin = computed(() => {
-        const user = this.api.getCurrentUser();
-        return user?.role == 1 || user?.role_des === 'admin';
-    });
     errorMsg = signal('');
 
+    // Pagination computed signals
     totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
     fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
     toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
@@ -70,39 +68,56 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
         this.loadData();
     }
 
-    ngOnDestroy(): void { this.destroy$.next(); this.destroy$.complete(); }
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
 
     loadData(): void {
-        const user = this.api.getCurrentUser();
-        if (!user) {
-            this.errorMsg.set('User info missing. Please re-login.');
-            return;
-        }
-
-        const isAdmin = user.role == 1 || user.role_des === 'admin';
-        const branchId = isAdmin ? undefined : user.branch_id;
-
-        if (!isAdmin && !branchId) {
-            this.errorMsg.set('Branch info missing. Please re-login.');
-            return;
-        }
-
         this.isLoading.set(true);
         this.errorMsg.set('');
-        this.api.listProformas(this.page(), this.limit(), this.searchTerm(), branchId).subscribe({
+
+        // For admin view, we pass undefined for branchId to get all branches
+        this.api.getSalesReturnReport(undefined, this.page(), this.limit(), this.searchTerm()).subscribe({
             next: (res) => {
                 this.isLoading.set(false);
-                if (res.success) { this.records.set(res.data ?? []); this.total.set(res.total ?? 0); }
-                else { this.errorMsg.set(res.message || 'Failed to load records.'); }
+                if (res.success) {
+                    this.records.set(res.data ?? []);
+                    this.total.set(res.total ?? 0);
+                } else {
+                    this.errorMsg.set(res.message || 'Failed to load records.');
+                }
             },
-            error: (err) => { this.isLoading.set(false); this.errorMsg.set(err?.error?.message || 'Server error.'); }
+            error: (err) => {
+                this.isLoading.set(false);
+                this.errorMsg.set(err?.error?.message || 'Server error.');
+            }
         });
     }
 
-    onSearchInput(value: string): void { this.searchInput$.next(value); }
-    onLimitChange(value: string): void { this.limit.set(Number(value)); this.page.set(1); this.loadData(); }
-    prevPage(): void { if (this.hasPrev()) { this.page.update(p => p - 1); this.loadData(); } }
-    nextPage(): void { if (this.hasNext()) { this.page.update(p => p + 1); this.loadData(); } }
+    onSearchInput(value: string): void {
+        this.searchInput$.next(value);
+    }
+
+    onLimitChange(value: string): void {
+        this.limit.set(Number(value));
+        this.page.set(1);
+        this.loadData();
+    }
+
+    prevPage(): void {
+        if (this.hasPrev()) {
+            this.page.update(p => p - 1);
+            this.loadData();
+        }
+    }
+
+    nextPage(): void {
+        if (this.hasNext()) {
+            this.page.update(p => p + 1);
+            this.loadData();
+        }
+    }
 
     goToPage(p: number | string): void {
         if (typeof p === 'number' && p !== this.page()) {
@@ -110,20 +125,26 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
             this.loadData();
         }
     }
-    rowIndex(i: number): number { return (this.page() - 1) * this.limit() + i + 1; }
+
+    rowIndex(i: number): number {
+        return (this.page() - 1) * this.limit() + i + 1;
+    }
+
     formatDate(d: string | null): string {
         if (!d) return '—';
         const dt = new Date(d);
-        return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-IN');
-    }
-    formatAmount(v: any): string {
-        const n = parseFloat(v);
-        return isNaN(n) ? (v || '—') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB');
     }
 
-    generatePdf(pro_quot_no: string): void {
-        if (!pro_quot_no) return;
-        const url = this.api.getProformaPdfUrl(pro_quot_no);
+    formatAmount(v: any): string {
+        const n = parseFloat(v);
+        return isNaN(n) ? (v || '0.00') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    generatePdf(inv_no: string) {
+        if (!inv_no) return;
+        // Assuming sales return also uses the same sales invoice PDF for now or a similar one
+        const url = this.api.getSalesPdfUrl(inv_no);
         window.open(url, '_blank');
     }
 }

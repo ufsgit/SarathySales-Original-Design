@@ -2,13 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
-import { AdminFooter } from '../admin-footer/admin-footer';
 import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-admin-productmasterlist',
   standalone: true,
-  imports: [CommonModule, AdminNav, AdminFooter, RouterLink],
+  imports: [CommonModule, AdminNav, RouterLink],
   template: `
 <div class="app-container">
   <app-admin-nav></app-admin-nav>
@@ -82,8 +81,6 @@ import { ApiService } from '../services/api.service';
   </main>
   
   <div style="height: 50px;"></div>
-  
-  <app-admin-footer></app-admin-footer>
 </div>
   `,
   styles: [`

@@ -44,6 +44,7 @@ app.use('/api/stock', require('./routes/stock'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/vehicle-enquiry', require('./routes/vehicleEnquiry'));
 app.use('/api/invoice-from-proforma', require('./routes/invoiceFromProforma'));
+app.use('/api/sales-return', require('./routes/salesReturn'));
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 

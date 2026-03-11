@@ -23,6 +23,10 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
   limit = signal(25);
   searchTerm = signal('');
   isLoading = signal(false);
+  isAdmin = computed(() => {
+    const user = this.api.getCurrentUser();
+    return user?.role == 1 || user?.role_des === 'admin';
+  });
   errorMsg = signal('');
 
   // ── Derived ────────────────────────────────────────────────
@@ -85,7 +89,15 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
   // ── Data loading ────────────────────────────────────────────
   loadData(): void {
     const user = this.api.getCurrentUser();
-    if (!user || !user.branch_id) {
+    if (!user) {
+      this.errorMsg.set('User info missing. Please re-login.');
+      return;
+    }
+
+    const isAdmin = user.role == 1 || user.role_des === 'admin';
+    const branchId = isAdmin ? undefined : user.branch_id;
+
+    if (!isAdmin && !branchId) {
       this.errorMsg.set('Branch info missing. Please re-login.');
       return;
     }
@@ -93,7 +105,7 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.errorMsg.set('');
 
-    this.api.listPaySlips(this.page(), this.limit(), this.searchTerm(), user.branch_id)
+    this.api.listPaySlips(this.page(), this.limit(), this.searchTerm(), branchId)
       .subscribe({
         next: (res) => {
           this.isLoading.set(false);

@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>Vehicle Enquiry</h2>
@@ -430,6 +430,7 @@ export class VehicleEnquiryComponent implements OnInit {
     @ViewChild('dropdownRef') dropdownRef!: ElementRef;
     @ViewChild('searchInputRef') searchInputRef!: ElementRef;
 
+    isAdmin = signal(false);
     chassisNo = signal('');
     invoiceNo = signal('');
     invoiceDate = signal('');
@@ -459,11 +460,17 @@ export class VehicleEnquiryComponent implements OnInit {
     constructor(private router: Router, private api: ApiService) { }
 
     ngOnInit(): void {
+        const user = this.api.getCurrentUser();
+        this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
         this.loadChassisList();
     }
 
     loadChassisList() {
-        this.api.listChassis().subscribe({
+        const user = this.api.getCurrentUser();
+        const isAdmin = user?.role == 1 || user?.role_des === 'admin';
+        const branchId = isAdmin ? undefined : user?.branch_id;
+
+        this.api.listChassis(branchId).subscribe({
             next: (res: any) => {
                 if (res.success) {
                     this.chassisList.set(res.data || []);
@@ -506,7 +513,8 @@ export class VehicleEnquiryComponent implements OnInit {
         }
 
         const user = this.api.getCurrentUser();
-        const branchId = user?.branch_id;
+        const isAdmin = user?.role == 1 || user?.role_des === 'admin';
+        const branchId = isAdmin ? undefined : user?.branch_id;
 
         this.api.getVehicleByChassis(selectedChassis, branchId).subscribe({
             next: (res) => {

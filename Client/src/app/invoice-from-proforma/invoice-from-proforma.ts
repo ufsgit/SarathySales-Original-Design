@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ElementRef, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ElementRef, ViewChild, HostListener, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>Sales Invoice</h2>
@@ -524,6 +524,7 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class InvoiceFromProformaComponent implements OnInit {
+    isAdmin = signal(false);
     @ViewChild('dropdownRef') dropdownRef!: ElementRef;
     @ViewChild('searchInputRef') searchInputRef!: ElementRef;
 
@@ -638,6 +639,7 @@ export class InvoiceFromProformaComponent implements OnInit {
         this.invoiceDate = this.formatTodayDate();
         this.loadHypothecationOptions();
         const user = this.api.getCurrentUser();
+        this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
         this.branchName = user?.branch_name || '';
         const loginBranchId = (user?.branch_id ?? '').toString().trim();
 

@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>Sales Invoice</h2>
@@ -47,7 +47,37 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Branch Name:</label>
-                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                        <ng-container *ngIf="isAdmin(); else staffBranch">
+                            <div class="custom-dropdown" #branchDropdownRef>
+                                <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                    {{ branchName() }}
+                                    <i class="fas fa-caret-down"></i>
+                                </div>
+                                <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                    <div class="dropdown-search">
+                                        <input type="text" placeholder="Search branch..."
+                                            [ngModel]="branchSearchTerm()"
+                                            (ngModelChange)="branchSearchTerm.set($event)"
+                                            name="branchSearch" #branchSearchInput
+                                            (click)="$event.stopPropagation()">
+                                    </div>
+                                    <div class="dropdown-options-list">
+                                        <div class="dropdown-option"
+                                            *ngFor="let b of searchableBranchOptionsList()"
+                                            (click)="onBranchSelect(b)">
+                                            {{ b.branch_name }}
+                                        </div>
+                                        <div class="dropdown-option no-results"
+                                            *ngIf="searchableBranchOptionsList().length === 0">
+                                            No branches found
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-container>
+                        <ng-template #staffBranch>
+                            <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                        </ng-template>
                     </div>
                     <div class="form-group">
                         <label>Invoice No :</label>
@@ -71,12 +101,32 @@ import { ApiService } from '../services/api.service';
                     </div>
                     <div class="form-group" *ngIf="issueType() === '02'">
                         <label>Customer Name:</label>
-                        <select class="form-control" [ngModel]="customerBranchId()" (ngModelChange)="customerBranchId.set($event); onCustomerBranchChange()" name="customerBranchId">
-                            <option value="">--Select--</option>
-                            <option *ngFor="let b of branchOptions()" [value]="b.b_id">
-                                {{ b.branch_name }} | {{ b.branch_address }} | {{ b.branch_gstin }}
-                            </option>
-                        </select>
+                        <div class="custom-dropdown" #customerDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="!customerBranchId()" (click)="toggleCustomerDropdown()">
+                                {{ getSelectedCustomerName() || '--Select--' }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isCustomerDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search branch..."
+                                        [ngModel]="customerSearchTerm()"
+                                        (ngModelChange)="customerSearchTerm.set($event)"
+                                        name="customerSearch" #customerSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableCustomerList()"
+                                        (click)="onCustomerSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableCustomerList().length === 0">
+                                        No branches found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Father/Husband:</label>
@@ -116,10 +166,33 @@ import { ApiService } from '../services/api.service';
                     </div>
                     <div class="form-group">
                         <label>Hypothication:</label>
-                        <select class="form-control" [ngModel]="hypothication()" (ngModelChange)="hypothication.set($event); onHypothecationChange()" name="hypothication">
-                            <option value="">--Select--</option>
-                            <option *ngFor="let h of currentHypothecationOptions()" [value]="h.value">{{ h.label }}</option>
-                        </select>
+                        <div class="custom-dropdown" #hypothecationDropdownRef>
+                            <div class="dropdown-toggle" (click)="toggleHypothecationDropdown()">
+                                {{ hypothication() || '--Select--' }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isHypothecationDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search..."
+                                        [ngModel]="hypothecationSearchTerm()"
+                                        (ngModelChange)="hypothecationSearchTerm.set($event)"
+                                        name="hypoSearch" #hypothecationSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option" (click)="onHypothecationSelect({value: ''})">--Select--</div>
+                                    <div class="dropdown-option"
+                                        *ngFor="let h of searchableHypothecationList()"
+                                        (click)="onHypothecationSelect(h)">
+                                        {{ h.label }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableHypothecationList().length === 0">
+                                        No results found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Place:</label>
@@ -139,10 +212,33 @@ import { ApiService } from '../services/api.service';
                     </div>
                      <div class="form-group">
                         <label>Executive Name:</label>
-                         <select class="form-control" [ngModel]="executive()" (ngModelChange)="executive.set($event); onExecutiveChange()" name="executive">
-                            <option value="">--select--</option>
-                            <option *ngFor="let ex of currentExecutiveOptions()" [value]="ex.value">{{ ex.label }}</option>
-                        </select>
+                        <div class="custom-dropdown" #executiveDropdownRef>
+                            <div class="dropdown-toggle" (click)="toggleExecutiveDropdown()">
+                                {{ (getExecutiveLabel() || '--select--') }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isExecutiveDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search executive..."
+                                        [ngModel]="executiveSearchTerm()"
+                                        (ngModelChange)="executiveSearchTerm.set($event)"
+                                        name="execSearch" #executiveSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option" (click)="onExecutiveSelect({value: '', label: ''})">--select--</div>
+                                    <div class="dropdown-option"
+                                        *ngFor="let ex of searchableExecutiveList()"
+                                        (click)="onExecutiveSelect(ex)">
+                                        {{ ex.label }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableExecutiveList().length === 0">
+                                        No executives found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -440,6 +536,10 @@ import { ApiService } from '../services/api.service';
         min-height: 28px;
     }
 
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
     .dropdown-menu {
         position: absolute;
         top: 100%;
@@ -525,6 +625,54 @@ export class SalesInvoiceComponent implements OnInit {
         );
     });
 
+    isAdmin = signal(false);
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
+
+    searchableBranchOptionsList = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branchOptions().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term)
+        );
+    });
+
+    isCustomerDropdownOpen = signal(false);
+    customerSearchTerm = signal('');
+    searchableCustomerList = computed(() => {
+        const term = this.customerSearchTerm().toLowerCase();
+        return this.branchOptions().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term) ||
+            (b.branch_address || '').toLowerCase().includes(term)
+        );
+    });
+
+    isHypothecationDropdownOpen = signal(false);
+    hypothecationSearchTerm = signal('');
+    searchableHypothecationList = computed(() => {
+        const term = this.hypothecationSearchTerm().toLowerCase();
+        return this.currentHypothecationOptions().filter(h =>
+            (h.label || '').toLowerCase().includes(term)
+        );
+    });
+
+    isExecutiveDropdownOpen = signal(false);
+    executiveSearchTerm = signal('');
+    searchableExecutiveList = computed(() => {
+        const term = this.executiveSearchTerm().toLowerCase();
+        return this.currentExecutiveOptions().filter(ex =>
+            (ex.label || '').toLowerCase().includes(term)
+        );
+    });
+
+    @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+    @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+    @ViewChild('customerDropdownRef') customerDropdownRef!: ElementRef;
+    @ViewChild('customerSearchInput') customerSearchInput!: ElementRef;
+    @ViewChild('hypothecationDropdownRef') hypothecationDropdownRef!: ElementRef;
+    @ViewChild('hypothecationSearchInput') hypothecationSearchInput!: ElementRef;
+    @ViewChild('executiveDropdownRef') executiveDropdownRef!: ElementRef;
+    @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
+
     toggleDropdown() {
         this.isDropdownOpen.update(v => !v);
         if (this.isDropdownOpen()) {
@@ -542,6 +690,90 @@ export class SalesInvoiceComponent implements OnInit {
         if (this.dropdownRef && !this.dropdownRef.nativeElement.contains(event.target)) {
             this.isDropdownOpen.set(false);
         }
+        if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen.set(false);
+        }
+        if (this.customerDropdownRef && !this.customerDropdownRef.nativeElement.contains(event.target)) {
+            this.isCustomerDropdownOpen.set(false);
+        }
+        if (this.hypothecationDropdownRef && !this.hypothecationDropdownRef.nativeElement.contains(event.target)) {
+            this.isHypothecationDropdownOpen.set(false);
+        }
+        if (this.executiveDropdownRef && !this.executiveDropdownRef.nativeElement.contains(event.target)) {
+            this.isExecutiveDropdownOpen.set(false);
+        }
+    }
+
+    toggleBranchDropdown() {
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+            setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    toggleCustomerDropdown() {
+        this.isCustomerDropdownOpen.update(v => !v);
+        if (this.isCustomerDropdownOpen()) {
+            this.customerSearchTerm.set('');
+            setTimeout(() => this.customerSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    toggleHypothecationDropdown() {
+        this.isHypothecationDropdownOpen.update(v => !v);
+        if (this.isHypothecationDropdownOpen()) {
+            this.hypothecationSearchTerm.set('');
+            setTimeout(() => this.hypothecationSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    toggleExecutiveDropdown() {
+        this.isExecutiveDropdownOpen.update(v => !v);
+        if (this.isExecutiveDropdownOpen()) {
+            this.executiveSearchTerm.set('');
+            setTimeout(() => this.executiveSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onCustomerSelect(branch: any) {
+        this.customerBranchId.set(branch.b_id.toString());
+        this.onCustomerBranchChange();
+        this.isCustomerDropdownOpen.set(false);
+    }
+
+    onHypothecationSelect(h: any) {
+        this.hypothication.set(h.value);
+        this.onHypothecationChange();
+        this.isHypothecationDropdownOpen.set(false);
+    }
+
+    onExecutiveSelect(ex: any) {
+        this.executive.set(ex.value);
+        this.onExecutiveChange();
+        this.isExecutiveDropdownOpen.set(false);
+    }
+
+    getSelectedCustomerName(): string {
+        const id = parseInt((this.customerBranchId() || '').toString(), 10) || 0;
+        const selected = this.branchOptions().find(b => b.b_id === id);
+        return selected ? selected.branch_name : '';
+    }
+
+    getExecutiveLabel(): string {
+        const code = this.executive();
+        if (!code) return '';
+        const opt = this.currentExecutiveOptions().find(ex => ex.value === code);
+        return opt ? opt.label : code;
+    }
+
+    onBranchSelect(branch: any) {
+        this.defaultBranchId.set(branch.b_id.toString());
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+        this.loadNextInvoiceNo(branch.b_id.toString());
+        this.loadChassisData(branch.b_id.toString());
+        this.loadExecutives(branch.branch_name);
     }
 
     selectChassis(row: any) {
@@ -624,8 +856,24 @@ export class SalesInvoiceComponent implements OnInit {
         this.loadHypothecationOptions();
         const user = this.api.getCurrentUser();
         const loginBranchId = (user?.branch_id ?? '').toString().trim();
-        if (user?.branch_name) {
-            this.branchName.set(user.branch_name);
+
+        if (user) {
+            const admin = user.role == 1 || user.role_des === 'admin';
+            this.isAdmin.set(admin);
+
+            let bName = (user.branch_name || '').toString().trim();
+            if (bName === 'No Branch' || !bName) {
+                if (admin) {
+                    bName = 'Select Branch';
+                    this.defaultBranchId.set('');
+                } else {
+                    bName = 'SARATHY KOLLAM KTM';
+                    this.defaultBranchId.set(loginBranchId);
+                }
+            } else {
+                this.defaultBranchId.set(loginBranchId);
+            }
+            this.branchName.set(bName);
         }
 
         this.api.getBranches().subscribe({
@@ -648,15 +896,42 @@ export class SalesInvoiceComponent implements OnInit {
                     const ownBranch = mapped.find(
                         (b: any) => String(b.b_id) === loginBranchId || (b.branch_name || '').toLowerCase().trim() === (this.branchName() || '').toLowerCase().trim()
                     );
-                    const bid = String(ownBranch?.b_id || mapped[0]?.b_id || '');
-                    this.defaultBranchId.set(bid);
-                    this.loadNextInvoiceNo(bid);
+                    if (ownBranch) {
+                        this.defaultBranchId.set(String(ownBranch.b_id));
+                        this.branchName.set(ownBranch.branch_name);
+                        this.loadNextInvoiceNo(String(ownBranch.b_id));
+                        this.loadExecutives(ownBranch.branch_name);
+                        this.loadChassisData(String(ownBranch.b_id));
+                    } else if (!this.isAdmin()) {
+                        const first = mapped[0];
+                        if (first) {
+                            const bid = String(first.b_id || '');
+                            this.defaultBranchId.set(bid);
+                            this.branchName.set(first.branch_name);
+                            if (bid) {
+                                this.loadNextInvoiceNo(bid);
+                                this.loadExecutives(first.branch_name);
+                                this.loadChassisData(bid);
+                            }
+                        }
+                    }
                     this.refreshIssueType02Filters();
                 }
             }
         });
 
-        this.api.getSalesInvoiceExecutives(this.branchName()).subscribe({
+        this.loadExecutives(this.branchName());
+    }
+
+    private loadExecutives(branchName: string): void {
+        const bName = (branchName || '').trim();
+        if (!bName || bName === 'Select Branch') {
+            this.executiveOptions.set([]);
+            this.refreshIssueType02Filters();
+            return;
+        }
+
+        this.api.getSalesInvoiceExecutives(bName).subscribe({
             next: (res: any) => {
                 if (res?.success && Array.isArray(res.data)) {
                     const mapped = res.data.map((ex: any) => {
@@ -678,8 +953,18 @@ export class SalesInvoiceComponent implements OnInit {
                 this.refreshIssueType02Filters();
             }
         });
+    }
 
-        this.api.getProformaChassisRecords(loginBranchId || undefined).subscribe({
+    private loadChassisData(branchId?: string): void {
+        const bid = (branchId || '').trim();
+        if (!bid || bid === 'Select Branch') {
+            this.chassisOptions.set([]);
+            this.chassisIndex.clear();
+            this.refreshIssueType02Filters();
+            return;
+        }
+
+        this.api.getProformaChassisRecords(bid).subscribe({
             next: (res: any) => {
                 const data = res?.success && Array.isArray(res.data) ? res.data : [];
                 this.chassisOptions.set(data);
@@ -776,23 +1061,10 @@ export class SalesInvoiceComponent implements OnInit {
 
         const text = (v: any) => (v ?? '').toString().trim();
         const normalize = (v: any) => text(v).toLowerCase().replace(/\s+/g, ' ');
-        const customerName = text(this.branchOptions().find(b => String(b.b_id) === String(this.customerBranchId()))?.branch_name);
-
         const rowsAll = [...this.chassisOptions()];
-
         let rows = [...rowsAll];
 
-        if (customerName) {
-            const customerNameN = normalize(customerName);
-            const byCustomer = rows.filter((r: any) => {
-                const invCusN = normalize(r.inv_cus);
-                return invCusN === customerNameN || invCusN.includes(customerNameN) || customerNameN.includes(invCusN);
-            });
-            // fallback: keep full 02 rows if strict customer mapping does not match
-            if (byCustomer.length > 0) rows = byCustomer;
-        }
-
-        // Removed hypothecation options overriding so it retains all values
+        // Decoupled from Customer Name search as requested
 
         this.issueType02ExecutiveOptions.set([...this.executiveOptions()]);
         const execValues = this.issueType02ExecutiveOptions().map(x => text(x.value));

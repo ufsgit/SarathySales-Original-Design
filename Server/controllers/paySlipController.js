@@ -56,12 +56,28 @@ function calculateTotals(data) {
 
 async function getNextNo(branchId) {
     const year = new Date().getFullYear().toString();
-    const [rows] = await db.execute('SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ?', [branchId]);
-    const lastNo = rows[0].last_no;
-    if (!lastNo) return `PS${year}${branchId}${padSerial(1)}`;
-    const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
-    const lastYear = lastNo.substring(2, 6);
-    return `PS${year}${branchId}${padSerial(lastYear === year ? lastSerial + 1 : 1)}`;
+    console.log(`[paySlipController] getNextNo for branchId: ${branchId}`);
+    try {
+        const [rows] = await db.execute('SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ?', [branchId]);
+        const lastNo = rows[0]?.last_no;
+        console.log(`[paySlipController] Last number found: ${lastNo}`);
+
+        if (!lastNo || typeof lastNo !== 'string') {
+            const next = `PS${year}${branchId}${padSerial(1)}`;
+            console.log(`[paySlipController] No existing number or invalid. Returning: ${next}`);
+            return next;
+        }
+
+        const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
+        const lastYear = lastNo.substring(2, 6);
+        const nextSerial = lastYear === year ? lastSerial + 1 : 1;
+        const next = `PS${year}${branchId}${padSerial(nextSerial)}`;
+        console.log(`[paySlipController] Generated next number: ${next}`);
+        return next;
+    } catch (error) {
+        console.error(`[paySlipController] Error in getNextNo:`, error);
+        throw error;
+    }
 }
 
 
@@ -69,27 +85,38 @@ const getNextPaySlipNo = async (req, res) => {
     let branchId = String(req.query.branchId || '').trim();
     const branchName = String(req.query.branchName || '').trim();
 
+    console.log(`[paySlipController] getNextPaySlipNo called with branchId='${branchId}', branchName='${branchName}'`);
+
     // Enforce branch scoping for non-admins (role 2)
     if (req.user && req.user.role == 2) {
         branchId = String(req.user.branch_id || '').trim();
+        console.log(`[paySlipController] Role 2 user, enforced branchId='${branchId}'`);
     }
 
     try {
         if (!branchId && branchName) {
+            console.log(`[paySlipController] Fetching branchId for branchName='${branchName}'`);
             const [branchRows] = await db.execute(
                 `SELECT b_id FROM tbl_branch WHERE TRIM(branch_name) = TRIM(?) LIMIT 1`,
                 [branchName]
             );
             if (branchRows.length) {
                 branchId = String(branchRows[0].b_id || '').trim();
+                console.log(`[paySlipController] Found branchId='${branchId}'`);
+            } else {
+                console.log(`[paySlipController] No branch found for name='${branchName}'`);
             }
         }
+
         if (!branchId) {
-            return res.status(400).json({ success: false, message: 'branchId is required' });
+            console.warn(`[paySlipController] No branchId provided or found. Cannot generate pay slip number.`);
+            return res.status(400).json({ success: false, message: 'Branch name is required' });
         }
-        res.json({ success: true, paySlipNo: await getNextNo(branchId) });
+
+        const nextNo = await getNextNo(branchId);
+        res.json({ success: true, paySlipNo: nextNo });
     } catch (err) {
-        console.error(err);
+        console.error(`[paySlipController] getNextPaySlipNo error:`, err);
         res.status(500).json({ success: false, message: 'Failed to generate pay slip number' });
     }
 };

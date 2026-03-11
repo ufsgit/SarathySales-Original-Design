@@ -66,7 +66,9 @@ export const routes: Routes = [
     { path: 'vsi-invoice', component: VsiInvoiceComponent },
     { path: 'vsi-list', component: VsiListComponent },
     { path: 'vsi-report', component: VsiReportComponent },
+    { path: 'admin-sales-returns', loadComponent: () => import('./admin-sales-returns/admin-sales-returns').then(m => m.AdminSalesReturnsComponent) },
     { path: 'user-home', component: UserHome },
     { path: 'admin-home', component: UserHome },
+    { path: 'admin-findvehicle', component: VehicleEnquiryComponent },
     { path: '', component: LoginComponent },
 ];

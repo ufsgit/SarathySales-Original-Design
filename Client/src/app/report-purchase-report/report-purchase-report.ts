@@ -21,12 +21,14 @@ export class ReportPurchaseReport implements OnInit {
     total = signal(0);
     loading = signal(false);
 
-    // Filter signals
     branchId = signal('');
     branchName = signal('');
     fromDate = signal(new Date().toISOString().split('T')[0]);
     toDate = signal(new Date().toISOString().split('T')[0]);
     searchOption = signal('Custom Date');
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
+    branches = signal<any[]>([]);
     selectedVehicleCodes = signal<string[]>([]);
     labourCodes = signal<any[]>([]);
     isVehicleDropdownOpen = signal(false);
@@ -60,6 +62,19 @@ export class ReportPurchaseReport implements OnInit {
         return pages;
     });
 
+    filteredBranches = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branches().filter(b =>
+            b.branch_name.toLowerCase().includes(term) ||
+            b.b_id.toString().includes(term)
+        );
+    });
+
+    isAdmin = computed(() => {
+        const user = this.api.getCurrentUser();
+        return user?.role == 1 || user?.role_des === 'admin';
+    });
+
     constructor(private api: ApiService) { }
 
     ngOnInit() {
@@ -67,6 +82,16 @@ export class ReportPurchaseReport implements OnInit {
         if (user) {
             this.branchId.set(user.branch_id || '');
             this.branchName.set(user.branch_name || 'No Branch');
+
+            if (this.isAdmin()) {
+                this.api.getBranches().subscribe({
+                    next: (res) => {
+                        if (res.success) {
+                            this.branches.set(res.data || []);
+                        }
+                    }
+                });
+            }
         }
         this.fetchLabourCodes();
         this.loadData();
@@ -207,6 +232,21 @@ export class ReportPurchaseReport implements OnInit {
 
     toggleVehicleDropdown() {
         this.isVehicleDropdownOpen.update(v => !v);
+    }
+
+    toggleBranchDropdown() {
+        if (!this.isAdmin()) return;
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+        }
+    }
+
+    selectBranch(branch: any) {
+        this.branchId.set(branch.b_id);
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+        this.onFilterChange();
     }
 
     viewPdf(id: number) {
