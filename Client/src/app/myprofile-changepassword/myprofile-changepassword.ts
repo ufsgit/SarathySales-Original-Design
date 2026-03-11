@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -18,6 +18,10 @@ export class MyProfileChangePassword {
     newPassword = '';
     verifyNewPassword = '';
     loading = false;
+    isAdmin = computed(() => {
+        const user = this.api.getCurrentUser();
+        return user?.role == 1 || user?.role_des === 'admin';
+    });
 
     constructor(private api: ApiService, private router: Router) { }
 

@@ -46,19 +46,28 @@ const listModels = async (req, res) => {
 };
 
 const getVehicleByChassisNo = async (req, res) => {
-    const { branchId } = req.query;
+    let { branchId } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
-        const [rows] = await db.execute(`
-
+        let query = `
             SELECT 
                 til.*, 
                 pb.invoiceNo as purchase_bill_no 
             FROM tbl_invoice_labour til
             LEFT JOIN purchaseitem pi ON pi.chassis_no = til.inv_chassis
-            INNER JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
-            WHERE til.inv_chassis = ?
-            ORDER BY til.inv_id DESC 
-            LIMIT 1`, [req.params.chassisNo]);
+            LEFT JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+            WHERE til.inv_chassis = ?`;
+
+        const params = [req.params.chassisNo];
+        if (branchId) {
+            query += " AND til.inv_branch = ?";
+            params.push(branchId);
+        }
+        query += " ORDER BY til.inv_id DESC LIMIT 1";
+
+        const [rows] = await db.execute(query, params);
 
         //     SELECT 
         //     til.*, 
@@ -75,10 +84,19 @@ const getVehicleByChassisNo = async (req, res) => {
 };
 
 const listChassis = async (req, res) => {
+    let { branchId } = req.query;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
     try {
-        const [rows] = await db.execute(
-            "SELECT DISTINCT inv_chassis FROM tbl_invoice_labour WHERE inv_chassis IS NOT NULL AND inv_chassis != '' ORDER BY inv_chassis"
-        );
+        let query = "SELECT DISTINCT inv_chassis FROM tbl_invoice_labour WHERE inv_chassis IS NOT NULL AND inv_chassis != ''";
+        const params = [];
+        if (branchId) {
+            query += " AND inv_branch = ?";
+            params.push(branchId);
+        }
+        query += " ORDER BY inv_chassis";
+        const [rows] = await db.execute(query, params);
         res.json({ success: true, data: rows.map(r => r.inv_chassis) });
     } catch (err) {
         console.error('ERROR in listChassis:', err);

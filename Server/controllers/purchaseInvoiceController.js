@@ -96,12 +96,39 @@ const savePurchaseInvoice = async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
+
+        // 1. Check for duplicate Invoice Number
+        const [existingBill] = await conn.execute(
+            'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?',
+            [invoiceNo]
+        );
+        if (existingBill.length > 0) {
+            await conn.rollback();
+            return res.status(400).json({ success: false, message: `Invoice number ${invoiceNo} already exists.` });
+        }
+
+        // 2. Check for duplicate Chassis Numbers in items
+        const chassisNos = (items || []).map(i => i.chassisNo).filter(c => !!c);
+        if (chassisNos.length > 0) {
+            // Check within the database
+            for (const chassis of chassisNos) {
+                const [existingChassis] = await conn.execute(
+                    'SELECT purchaseItemId FROM purchaseitem WHERE chassis_no = ?',
+                    [chassis]
+                );
+                if (existingChassis.length > 0) {
+                    await conn.rollback();
+                    return res.status(400).json({ success: false, message: `Chassis number ${chassis} already exists in the system.` });
+                }
+            }
+        }
+
         const [result] = await conn.execute(
             `INSERT INTO purchaseitembill (
                 invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName,
                 purcha_vend_addrs, rc_no, rac_date, bill_status, total_bill_amount, hsn_code, purc_gstin,
                 purc_basic_total, purc_tax_total, purc_grand_total
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 invoiceNo,
                 req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),

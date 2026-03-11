@@ -72,3 +72,34 @@
         width: 100%;
     }
 }
+
+/* Custom Dropdown Styles */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+    cursor: pointer;
+}
+
+.dropdown-selected {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    height: 40px;
+}
+
+.custom-dropdown.active .dropdown-selected {
+    border-color: #ff6a00;
+}
+
+.custom-dropdown.disabled .dropdown-selected {
+    background: #f5f5f5;
+}
+
+.placeholder {
+    color: #ff0000;
+}

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>INVOICE (Purchase)</h2>
@@ -48,7 +48,37 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    <ng-container *ngIf="isAdmin(); else staffBranch">
+                        <div class="custom-dropdown" #branchDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                {{ branchName() }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search branch..."
+                                        [ngModel]="branchSearchTerm()"
+                                        (ngModelChange)="branchSearchTerm.set($event)"
+                                        name="branchSearch" #branchSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableBranchList()"
+                                        (click)="onBranchSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableBranchList().length === 0">
+                                        No branches found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Inv No:</label>
@@ -56,10 +86,32 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Institution:</label>
-                    <select class="form-control" [ngModel]="institutionId()" (ngModelChange)="onInstitutionChange($event)" name="institutionId">
-                        <option value="">--Select--</option>
-                        <option *ngFor="let b of institutionOptions()" [value]="b.b_id">{{ b.branch_name }}</option>
-                    </select>
+                    <div class="custom-dropdown" #institutionDropdownRef>
+                        <div class="dropdown-toggle" [class.placeholder]="!institutionId()" (click)="toggleInstitutionDropdown()">
+                            {{ institution() || '--Select--' }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search institution..."
+                                    [ngModel]="institutionSearchTerm()"
+                                    (ngModelChange)="institutionSearchTerm.set($event)"
+                                    name="institutionSearch" #institutionSearchInput
+                                    (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option"
+                                    *ngFor="let b of searchableInstitutionList()"
+                                    (click)="onInstitutionSelect(b)">
+                                    {{ b.branch_name }}
+                                </div>
+                                <div class="dropdown-option no-results"
+                                    *ngIf="searchableInstitutionList().length === 0">
+                                    No institutions found
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-col">
                     <label>RC No(supplier):</label>
@@ -174,12 +226,13 @@ import { ApiService } from '../services/api.service';
                 <div class="td" style="flex: 1.5;">
                     <input
                         type="text"
-                        class="form-control table-input"
+                        class="form-control table-input readonly"
                         [ngModel]="item.description"
                         (ngModelChange)="onItemFieldChange(i, 'description', $event)"
                         name="desc{{i}}"
                         list="purchaseProductNameOptions"
-                        placeholder="Search name">
+                        placeholder="Search name"
+                        readonly>
                 </div>
                 <div class="td" style="flex: 1;">
                      <input type="text" class="form-control table-input" [ngModel]="item.chassisNo" (ngModelChange)="onItemFieldChange(i, 'chassisNo', $event)" name="chassis{{i}}">
@@ -203,7 +256,7 @@ import { ApiService } from '../services/api.service';
                      <input type="text" class="form-control table-input" [ngModel]="item.saleType" (ngModelChange)="onItemFieldChange(i, 'saleType', $event)" name="saleType{{i}}">
                 </div>
                 <div class="td" style="flex: 0.8;">
-                     <input type="number" class="form-control table-input" [ngModel]="item.amount" (ngModelChange)="onItemFieldChange(i, 'amount', $event)" name="amount{{i}}">
+                     <input type="number" class="form-control table-input readonly" [ngModel]="item.amount" (ngModelChange)="onItemFieldChange(i, 'amount', $event)" name="amount{{i}}" readonly>
                 </div>
                 <div class="td action-td" style="width: 30px;">
                     <button class="btn-remove" type="button" (click)="removeRow(i)">-</button>
@@ -522,11 +575,115 @@ import { ApiService } from '../services/api.service';
             display: none; /* Hide complex table on mobile or implement card view */
         }
     }
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+    }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
+    }
   `]
 })
 export class PurchaseInvoiceComponent implements OnInit {
   branchId = signal('');
   branchName = signal('SARATHY KOLLAM KTM');
+  isAdmin = signal(false);
+  branches = signal<any[]>([]);
+  isBranchDropdownOpen = signal(false);
+  branchSearchTerm = signal('');
+
+  searchableBranchList = computed(() => {
+    const term = this.branchSearchTerm().toLowerCase();
+    const selectedInstitution = (this.institution() || '').trim().toLowerCase();
+    return this.branches().filter(b =>
+      (b.branch_name || '').trim().toLowerCase() !== selectedInstitution &&
+      (b.branch_name || '').toLowerCase().includes(term)
+    );
+  });
+
+  isInstitutionDropdownOpen = signal(false);
+  institutionSearchTerm = signal('');
+  searchableInstitutionList = computed(() => {
+    const term = this.institutionSearchTerm().toLowerCase();
+    const selectedBranch = (this.branchName() || '').trim().toLowerCase();
+    return this.institutionOptions().filter(b =>
+      (b.branch_name || '').trim().toLowerCase() !== selectedBranch &&
+      (b.branch_name || '').toLowerCase().includes(term)
+    );
+  });
+
+  @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+  @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+  @ViewChild('institutionDropdownRef') institutionDropdownRef!: ElementRef;
+  @ViewChild('institutionSearchInput') institutionSearchInput!: ElementRef;
   invNo = signal('');
   institution = signal('');
   institutionId = signal('');
@@ -571,14 +728,80 @@ export class PurchaseInvoiceComponent implements OnInit {
   ngOnInit(): void {
     const user = this.api.getCurrentUser();
     if (user) {
-      this.branchName.set(user.branch_name || this.branchName());
-      this.branchId.set((user.branch_id || '').toString());
+      const admin = user.role == 1 || user.role_des === 'admin';
+      this.isAdmin.set(admin);
+
+      let bName = (user.branch_name || '').toString().trim();
+      if (bName === 'No Branch' || !bName) {
+        if (admin) {
+          bName = 'Select Branch';
+          this.branchId.set('');
+        } else {
+          bName = 'SARATHY KOLLAM KTM';
+          this.branchId.set((user.branch_id || '').toString().trim());
+        }
+      } else {
+        this.branchId.set((user.branch_id || '').toString().trim());
+      }
+      this.branchName.set(bName);
+      if (admin) this.loadBranches();
     }
     const today = new Date().toISOString().slice(0, 10);
     this.rcDate.set(today);
     this.invoiceDate.set(today);
     this.loadInstitutionOptions();
     this.loadProductOptions();
+  }
+
+  loadBranches() {
+    this.api.getBranches().subscribe({
+      next: (res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          this.branches.set(res.data);
+        }
+      }
+    });
+  }
+
+  toggleBranchDropdown() {
+    this.isBranchDropdownOpen.update(v => !v);
+    if (this.isBranchDropdownOpen()) {
+      this.branchSearchTerm.set('');
+      setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  onBranchSelect(branch: any) {
+    this.branchId.set(branch.b_id.toString());
+    this.branchName.set(branch.branch_name);
+    this.isBranchDropdownOpen.set(false);
+    // reload context if needed
+  }
+
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+      this.isBranchDropdownOpen.set(false);
+    }
+    if (this.institutionDropdownRef && !this.institutionDropdownRef.nativeElement.contains(event.target)) {
+      this.isInstitutionDropdownOpen.set(false);
+    }
+  }
+
+  toggleInstitutionDropdown() {
+    this.isInstitutionDropdownOpen.update(v => !v);
+    if (this.isInstitutionDropdownOpen()) {
+      this.institutionSearchTerm.set('');
+      setTimeout(() => this.institutionSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  onInstitutionSelect(branch: any) {
+    this.institutionId.set(branch.b_id.toString());
+    this.institution.set(branch.branch_name);
+    this.address.set(branch.branch_address || '');
+    this.gstin.set(branch.branch_gstin || '');
+    this.isInstitutionDropdownOpen.set(false);
   }
 
   private createEmptyItem() {
@@ -704,16 +927,22 @@ export class PurchaseInvoiceComponent implements OnInit {
     this.errorMessage.set('');
     this.successMessage.set('');
 
-    if (!this.invNo()) {
-      this.errorMessage.set('Invoice number required');
+    if (!this.branchId() || this.branchName() === 'Select Branch') {
+      this.errorMessage.set('Please select a branch');
       alert(this.errorMessage());
       return;
     }
-    if (!this.branchId()) {
-      this.errorMessage.set('Branch missing. Please login again.');
+    if (!this.institutionId()) {
+      this.errorMessage.set('Please select an Institution');
       alert(this.errorMessage());
       return;
     }
+
+    this.isSaving.set(true);
+    this.proceedWithSave();
+  }
+
+  private proceedWithSave(): void {
 
     // FIX: Format time to HH:mm:ss to avoid length issues in DB
     const formattedTime = new Date().toTimeString().split(' ')[0];

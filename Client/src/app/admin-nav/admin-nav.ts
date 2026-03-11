@@ -65,7 +65,7 @@ import { ApiService } from '../services/api.service';
                     <a routerLink="/previous-proforma-invoice">Proforma Invoice</a>
                     <a routerLink="/previous-purchase-invoice">Purchase Invoice</a>
                     <a routerLink="/previous-sales-invoice">Sales Invoice</a>
-                    <a routerLink="#">Sales Returns</a>
+                    <a routerLink="/admin-sales-returns">Sales Returns</a>
                     <a routerLink="/previous-branch-transfer">Branch Transfer</a>
                 </div>
             </div>

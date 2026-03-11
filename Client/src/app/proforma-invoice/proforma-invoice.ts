@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, AfterViewInit } from '@angular/core';
+import { Component, OnInit, signal, computed, AfterViewInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>INVOICE (Proforma)</h2>
@@ -47,20 +47,50 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    <ng-container *ngIf="isAdmin(); else staffBranch">
+                        <div class="custom-dropdown" #branchDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                {{ branchName() }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search branch..."
+                                        [ngModel]="branchSearchTerm()"
+                                        (ngModelChange)="branchSearchTerm.set($event)"
+                                        name="branchSearch" #branchSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableBranchList()"
+                                        (click)="onBranchSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableBranchList().length === 0">
+                                        No branches found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Customer Name:</label>
-                    <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
+                    <input type="text" class="form-control bg-white" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
                 </div>
                 <div class="form-col" style="grid-column: span 1;">
                     <label>Customer Address:</label>
-                    <textarea class="form-control" [ngModel]="customerAddress()" (ngModelChange)="customerAddress.set($event)" name="customerAddress" rows="1"></textarea>
+                    <textarea class="form-control" style="height: max-content;" [ngModel]="customerAddress()" (ngModelChange)="customerAddress.set($event)" name="customerAddress" rows="3"></textarea>
                 </div>
                 <div class="form-col">
                     <label>Date:</label>
                     <div class="date-input-wrapper">
-                        <input type="date" class="form-control" [ngModel]="date()" (ngModelChange)="date.set($event)" name="date">
+                        <input type="date" class="form-control bg-white" [ngModel]="date()" (ngModelChange)="date.set($event)" name="date">
                     </div>
                 </div>
             </div>
@@ -73,12 +103,12 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Contact No:</label>
-                    <input type="text" class="form-control" [ngModel]="contactNo()" (ngModelChange)="contactNo.set($event)" name="contactNo">
+                    <input type="text" class="form-control bg-white" [ngModel]="contactNo()" (ngModelChange)="contactNo.set($event)" name="contactNo">
                 </div>
                 <div class="form-col"></div> 
                 <div class="form-col">
                     <label>Reference:</label>
-                    <input type="text" class="form-control" [ngModel]="reference()" (ngModelChange)="reference.set($event)" name="reference">
+                    <input type="text" class="form-control bg-white" [ngModel]="reference()" (ngModelChange)="reference.set($event)" name="reference">
                 </div>
              </div>
 
@@ -94,10 +124,23 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Executive:</label>
-                    <select class="form-control" [ngModel]="executive()" (ngModelChange)="executive.set($event)" name="executive">
-                        <option value="">--Select--</option>
-                        <option *ngFor="let ex of executiveOptions()" [value]="ex">{{ ex }}</option>
-                    </select>
+                    <div class="custom-dropdown" #executiveDropdownRef>
+                        <div class="dropdown-toggle" [class.placeholder]="!branchId() || executive() === ''" (click)="toggleExecutiveDropdown()">
+                            {{ !branchId() ? 'Select Branch' : (executive() || '--Select--') }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isExecutiveDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search executive..." [ngModel]="executiveSearchTerm()" (ngModelChange)="executiveSearchTerm.set($event)" name="executiveSearchTerm" #executiveSearchInput (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" *ngFor="let ex of searchableExecutiveList()" (click)="onExecutiveSelect(ex)">
+                                    {{ ex }}
+                                </div>
+                                <div class="dropdown-option no-results" *ngIf="searchableExecutiveList().length === 0">No results found</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-col"></div>
                 <div class="form-col"></div>
@@ -117,16 +160,16 @@ import { ApiService } from '../services/api.service';
           <table class="invoice-table">
     <thead>
         <tr>
-            <th>Product Code</th>
-            <th>Product Description</th>
-            <th>Basic Price</th>
-            <th>Qty</th>
-            <th>Taxable Amt</th>
-            <th>SGST</th>
-            <th>CGST</th>
-            <th>CESS</th>
-            <th>Amount</th>
-            <th>
+            <th style="width: 130px;">Product Code</th>
+            <th style="width: 280px;">Product Description</th>
+            <th style="width: 100px;">Basic Price</th>
+            <th style="width: 60px;">Qty</th>
+            <th style="width: 100px;">Taxable Amt</th>
+            <th style="width: 90px;">SGST</th>
+            <th style="width: 90px;">CGST</th>
+            <th style="width: 90px;">CESS</th>
+            <th style="width: 110px;">Amount</th>
+            <th style="width: 40px;">
                 <button type="button" (click)="addRow()" class="btn-add">+</button>
             </th>
         </tr>
@@ -139,7 +182,7 @@ import { ApiService } from '../services/api.service';
             <td>
                 <input
                     type="text"
-                    class="in-box"
+                    class="in-box bg-white"
                     [ngModel]="item.productCode"
                     (ngModelChange)="onItemFieldChange(i, 'productCode', $event)"
                     name="code{{i}}"
@@ -147,8 +190,8 @@ import { ApiService } from '../services/api.service';
                     placeholder="Search product code">
             </td>
             <td><input type="text" class="in-box" [value]="item.description" name="desc{{i}}" readonly></td>
-            <td><input type="number" class="in-box basic-price" [ngModel]="item.basicPrice" (ngModelChange)="onItemFieldChange(i, 'basicPrice', $event)" name="basicPrice{{i}}"></td>
-            <td><input type="number" class="in-box qty" [ngModel]="item.qty" (ngModelChange)="onItemFieldChange(i, 'qty', $event)" name="qty{{i}}"></td>
+            <td><input type="number" class="in-box basic-price" [ngModel]="item.basicPrice" (ngModelChange)="onItemFieldChange(i, 'basicPrice', $event)" name="basicPrice{{i}}" readonly></td>
+            <td><input type="number" class="in-box qty bg-white" [ngModel]="item.qty" (ngModelChange)="onItemFieldChange(i, 'qty', $event)" name="qty{{i}}" min="1"></td>
             <td><input type="text" class="in-box gray" [value]="item.taxable.toFixed(2)" name="taxable{{i}}" readonly></td>
             <td><input type="text" class="in-box gray" [value]="item.sgst.toFixed(2)" name="sgst{{i}}" readonly></td>
             <td><input type="text" class="in-box gray" [value]="item.cgst.toFixed(2)" name="cgst{{i}}" readonly></td>
@@ -171,19 +214,19 @@ import { ApiService } from '../services/api.service';
             <td></td>
             <tr class="summary-row">
                 <td colspan="5"></td>
-                <td colspan="3" class="label">Missell-1 &nbsp; <input type="text" class="form-input mini-box" [ngModel]="missell1()" (ngModelChange)="missell1.set($event)" name="missell1"></td>
-                <td><input type="number" class="form-input gray-box" [ngModel]="missell1Amount()" (ngModelChange)="missell1Amount.set($event)" name="missell1Amount"></td>
+                <td colspan="3" class="label">Missell-1 &nbsp; <input type="text" class="form-input mini-box bg-white" [ngModel]="missell1()" (ngModelChange)="missell1.set($event)" name="missell1"></td>
+                <td><input type="number" class="form-input bg-white" [ngModel]="missell1Amount()" (ngModelChange)="missell1Amount.set($event)" name="missell1Amount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
                 <td colspan="5"></td>
-                <td colspan="3" class="label">Missell-2 &nbsp; <input type="text" class="form-input mini-box" [ngModel]="missell2()" (ngModelChange)="missell2.set($event)" name="missell2"></td>
-                <td><input type="number" class="form-input gray-box" [ngModel]="missell2Amount()" (ngModelChange)="missell2Amount.set($event)" name="missell2Amount"></td>
+                <td colspan="3" class="label">Missell-2 &nbsp; <input type="text" class="form-input mini-box bg-white" [ngModel]="missell2()" (ngModelChange)="missell2.set($event)" name="missell2"></td>
+                <td><input type="number" class="form-input bg-white" [ngModel]="missell2Amount()" (ngModelChange)="missell2Amount.set($event)" name="missell2Amount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
                 <td colspan="8" class="label">Less</td>
-                <td><input type="number" class="form-input gray-box" [ngModel]="lessAmount()" (ngModelChange)="lessAmount.set($event)" name="lessAmount"></td>
+                <td><input type="number" class="form-input bg-white" [ngModel]="lessAmount()" (ngModelChange)="lessAmount.set($event)" name="lessAmount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
@@ -501,6 +544,82 @@ import { ApiService } from '../services/api.service';
             display: none; /* Hide complex table on mobile or implement card view */
         }
     }
+
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+    }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
+    }
 .billing-container {
     font-family: Arial, sans-serif;
     padding: 20px;
@@ -513,16 +632,26 @@ table {
 
 th {
     text-align: left;
-    font-size: 12px;
-    padding-bottom: 10px;
+    font-size: 11px;
+    padding: 8px 4px;
+    white-space: nowrap;
 }
 
 input {
-    width: 80px;
+    width: 90px;
     padding: 4px;
     border: 1px solid #ccc;
-    background-color: #f0f0f0; /* Matches the gray inbox look */
+    background-color: #f0f0f0; 
     text-align: left;
+}
+
+.in-box {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.invoice-table td {
+    padding: 2px;
 }
 
 .label {
@@ -533,6 +662,14 @@ input {
 
 .summary-row td {
     padding-top: 5px;
+}
+
+.summary-row .form-input {
+    background-color: #fff;
+}
+
+.bg-white {
+    background-color: #fff !important;
 }
 
 .alert-msg {
@@ -565,6 +702,27 @@ input {
 export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   branchId = signal('');
   branchName = signal('SARATHY KOLLAM KTM');
+  isAdmin = signal(false);
+  branches = signal<any[]>([]);
+  isBranchDropdownOpen = signal(false);
+  branchSearchTerm = signal('');
+
+  searchableBranchList = computed(() => {
+    const term = this.branchSearchTerm().toLowerCase();
+    return this.branches().filter(b =>
+      (b.branch_name || '').toLowerCase().includes(term)
+    );
+  });
+
+  isExecutiveDropdownOpen = signal(false);
+  executiveSearchTerm = signal('');
+  searchableExecutiveList = computed(() => {
+    const term = this.executiveSearchTerm().toLowerCase();
+    return this.executiveOptions().filter(ex =>
+      (ex || '').toLowerCase().includes(term)
+    );
+  });
+
   date = signal('');
   quotationNo = signal('');
 
@@ -579,6 +737,11 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   successMessage = signal('');
   errorMessage = signal('');
   private quoteNoRetryDone = false;
+
+  @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+  @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+  @ViewChild('executiveDropdownRef') executiveDropdownRef!: ElementRef;
+  @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
 
   missell1 = signal('');
   missell1Amount = signal(0);
@@ -661,11 +824,80 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    this.resolveBranchContext();
+    const user = this.api.getCurrentUser();
+    if (user) {
+      const admin = user.role == 1 || user.role_des === 'admin';
+      this.isAdmin.set(admin);
+
+      let bName = (user.branch_name || '').toString().trim();
+      if (bName === 'No Branch' || !bName) {
+        if (admin) {
+          bName = 'Select Branch';
+          this.branchId.set('');
+        } else {
+          bName = 'SARATHY KOLLAM KTM';
+          this.branchId.set((user.branch_id || '').toString().trim());
+        }
+      } else {
+        this.branchId.set((user.branch_id || '').toString().trim());
+      }
+      this.branchName.set(bName);
+      if (admin) this.loadBranches();
+    }
+
     this.date.set(this.todayIso);
     this.initializePageData();
     this.loadProductOptions();
     this.loadExecutiveOptions();
+  }
+
+  loadBranches() {
+    this.api.getBranches().subscribe({
+      next: (res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          this.branches.set(res.data);
+        }
+      }
+    });
+  }
+
+  toggleBranchDropdown() {
+    this.isBranchDropdownOpen.update(v => !v);
+    if (this.isBranchDropdownOpen()) {
+      this.branchSearchTerm.set('');
+      setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  onBranchSelect(branch: any) {
+    this.branchId.set(branch.b_id.toString());
+    this.branchName.set(branch.branch_name);
+    this.isBranchDropdownOpen.set(false);
+    this.loadNextProformaNo();
+    this.loadExecutiveOptions();
+  }
+
+  toggleExecutiveDropdown() {
+    if (!this.branchId()) return;
+    this.isExecutiveDropdownOpen.update(v => !v);
+    if (this.isExecutiveDropdownOpen()) {
+      this.executiveSearchTerm.set('');
+      setTimeout(() => this.executiveSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  onExecutiveSelect(ex: string) {
+    this.executive.set(ex);
+    this.isExecutiveDropdownOpen.set(false);
+  }
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+      this.isBranchDropdownOpen.set(false);
+    }
+    if (this.executiveDropdownRef && !this.executiveDropdownRef.nativeElement.contains(event.target)) {
+      this.isExecutiveDropdownOpen.set(false);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -681,7 +913,7 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   }
 
   private initializePageData(): void {
-    this.resolveBranchContext();
+    // this.resolveBranchContext(); // Removed: Overwrites user selection with primary branch
     this.ensureQuotationNoVisible();
     if (this.branchId()) {
       this.loadNextProformaNo();
@@ -748,7 +980,8 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   }
 
   private loadNextProformaNo(): void {
-    this.resolveBranchContext();
+    if (!this.branchId()) return;
+    // this.resolveBranchContext(); // Removed: Overwrites user selection with primary branch
     this.ensureQuotationNoVisible();
     const branchName = (this.branchName() || '').toString().trim();
     this.api.getProformaNextNo(this.branchId() || undefined, branchName || undefined).subscribe({
@@ -818,7 +1051,10 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   }
 
   private loadExecutiveOptions(): void {
-    this.api.getAdvisers().subscribe({
+    const bName = this.branchName();
+    const filterBranch = (bName && bName !== 'Select Branch') ? bName : undefined;
+
+    this.api.getAdvisers(filterBranch).subscribe({
       next: (res: any) => {
         if (res?.success && Array.isArray(res.data)) {
           this.executiveOptions.set(res.data
@@ -895,9 +1131,9 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
     }
 
     if (this.date() > this.todayIso) {
-        this.errorMessage.set('Date cannot be in the future.');
-        alert(this.errorMessage());
-        return;
+      this.errorMessage.set('Date cannot be in the future.');
+      alert(this.errorMessage());
+      return;
     }
 
     const payload = {

@@ -1,34 +1,64 @@
 const db = require('../config/db');
 
 function padSerial(n) { return String(n).padStart(5, '0'); }
-async function getNextNo(branchId) {
+async function getNextNo(branchId, branchName = '') {
     const year = new Date().getFullYear().toString();
+    console.log(`[gatePassController] getNextNo called for branchId: ${branchId}, branchName: ${branchName}`);
+
     const [rows] = await db.execute('SELECT MAX(gate_pass_no) as last_no FROM tbl_gate_pass WHERE gate_branch_id = ?', [branchId]);
-    const lastNo = rows[0].last_no;
-    if (!lastNo) return `GP${year}${branchId}${padSerial(1)}`;
+    const lastNo = rows[0]?.last_no;
+
+    if (!lastNo) {
+        const fallback = `GP${year}${branchId}${padSerial(1)}`;
+        console.log(`[gatePassController] No existing gate pass found. Fallback: ${fallback}`);
+        return fallback;
+    }
+
+    console.log(`[gatePassController] Last gate pass number found: ${lastNo}`);
     const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
     const lastYear = lastNo.substring(2, 6);
-    return `GP${year}${branchId}${padSerial(lastYear === year ? lastSerial + 1 : 1)}`;
+    const nextNo = `GP${year}${branchId}${padSerial(lastYear === year ? lastSerial + 1 : 1)}`;
+    console.log(`[gatePassController] Generated next gate pass number: ${nextNo}`);
+    return nextNo;
 }
 
 const getNextGatePassNo = async (req, res) => {
     let branchId = req.query.branchId;
+    let branchName = req.query.branchName || '';
+
+    console.log('[gatePassController] Invoking getNextGatePassNo', {
+        query: req.query,
+        user: req.user ? { id: req.user.id, role: req.user.role, branch: req.user.branch_id } : 'none'
+    });
+
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
+        branchName = req.user.branch_name || '';
+        console.log(`[gatePassController] Role 2 detected. Enforcing branchId: ${branchId}`);
     }
+
+    if (!branchId) {
+        console.error('[gatePassController] Error: branchId not provided');
+        return res.status(400).json({ success: false, message: 'branchId is required' });
+    }
+
     try {
-        res.json({ success: true, gatePassNo: await getNextNo(branchId) });
+        const gatePassNo = await getNextNo(branchId, branchName);
+        res.json({ success: true, gatePassNo });
     } catch (err) {
-        console.error(err);
+        console.error('[gatePassController] getNextGatePassNo error:', err);
         res.status(500).json({ success: false, message: 'Failed to generate gate pass number' });
     }
 };
 
 const getGatePassInvoices = async (req, res) => {
     let branchId = req.query.branchId || null;
+    console.log('[gatePassController] getGatePassInvoices', { branchId, user: req.user?.id });
+
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
     }
+
     try {
         let sql = `SELECT inv_id, inv_no
                    FROM tbl_invoice_labour
@@ -54,9 +84,9 @@ const getGatePassInvoices = async (req, res) => {
             data.push({ inv_id: r.inv_id, inv_no: no });
         }
 
-        res.json({ success: true, data });
+        res.json({ success: true, count: data.length, data });
     } catch (err) {
-        console.error('getGatePassInvoices error:', err);
+        console.error('[gatePassController] getGatePassInvoices error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch invoice numbers' });
     }
 };
@@ -64,6 +94,8 @@ const getGatePassInvoices = async (req, res) => {
 const getGatePassInvoiceDetails = async (req, res) => {
     const invoiceNo = (req.query.invoiceNo || '').toString().trim();
     let branchId = req.query.branchId || null;
+
+    console.log('[gatePassController] getGatePassInvoiceDetails', { invoiceNo, branchId });
 
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
@@ -88,6 +120,7 @@ const getGatePassInvoiceDetails = async (req, res) => {
         detailSql += ' ORDER BY inv_id DESC LIMIT 1';
         const [rows] = await db.execute(detailSql, params);
         if (!rows.length) {
+            console.log(`[gatePassController] Invoice detail not found for: ${invoiceNo}`);
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
 
@@ -124,17 +157,23 @@ const getGatePassInvoiceDetails = async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('getGatePassInvoiceDetails error:', err);
+        console.error('[gatePassController] getGatePassInvoiceDetails error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch invoice details' });
     }
 };
 
 const listGatePasses = async (req, res) => {
-    const branchId = req.query.branchId || null;
+    let branchId = req.query.branchId || null;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const search = (req.query.search || '').trim();
     const offset = (page - 1) * limit;
+
+    console.log('[gatePassController] listGatePasses', { branchId, page, limit, search });
+
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
 
     try {
         let conditions = [];
@@ -145,27 +184,14 @@ const listGatePasses = async (req, res) => {
             params.push(branchId);
         }
         if (search) {
-            conditions.push('(gate_pass_no LIKE ? OR pass_cus_name LIKE ? OR pass_invoic_no LIKE ? OR pass_vehicle LIKE ?)');
-            params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            conditions.push('(gate_pass_no LIKE ? OR gate_cus_name LIKE ? OR gate_vehicle_model LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
-        // LIMIT/OFFSET inlined — MySQL2 execute() can't bind them reliably via ?
-        // Also: pool.execute(sql, []) throws 'undefined' error in some mysql2 versions
         const mainSql = `SELECT
-                tbl_gate_pass.gate_pass_id,
-                tbl_gate_pass.gate_pass_no,
-                tbl_gate_pass.gate_pass_date,
-                tbl_gate_pass.pass_cus_name,
-                tbl_gate_pass.pass_cus_addrs,
-                tbl_gate_pass.pass_invoic_no,
-                tbl_gate_pass.pass_vehicle,
-                tbl_gate_pass.pass_chassis_no,
-                tbl_gate_pass.pass_engine_no,
-                tbl_gate_pass.pass_vehicle_color,
-                tbl_gate_pass.selection_date,
-                tbl_gate_pass.pass_status,
+                tbl_gate_pass.*,
                 tbl_branch.branch_name
              FROM tbl_gate_pass
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_gate_pass.gate_branch_id
@@ -175,7 +201,6 @@ const listGatePasses = async (req, res) => {
 
         const countSql = `SELECT COUNT(*) as total
              FROM tbl_gate_pass
-             LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_gate_pass.gate_branch_id
              ${where}`;
 
         const [rows] = params.length ? await db.execute(mainSql, params) : await db.execute(mainSql);
@@ -190,18 +215,26 @@ const listGatePasses = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('listGatePasses error:', err.message || err);
+        console.error('[gatePassController] listGatePasses error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch gate passes' });
     }
 };
 
 const saveGatePass = async (req, res) => {
+    console.log('[gatePassController] saveGatePass payload:', req.body);
     const { gatePassNo, branchId, gatePassDate, customerName, address,
         reason, vehicleModel, chassisNo, engineNo, amount, remarks } = req.body;
+
     if (!gatePassNo) return res.status(400).json({ success: false, message: 'Gate pass number required' });
+    if (!branchId) return res.status(400).json({ success: false, message: 'branchId required' });
+
     try {
         const [dupCheck] = await db.execute('SELECT gate_pass_id FROM tbl_gate_pass WHERE gate_pass_no = ?', [gatePassNo]);
-        if (dupCheck.length > 0) return res.status(409).json({ success: false, message: 'Gate pass number already exists' });
+        if (dupCheck.length > 0) {
+            console.warn(`[gatePassController] Duplicate gate pass number detected: ${gatePassNo}`);
+            return res.status(409).json({ success: false, message: 'Gate pass number already exists' });
+        }
+
         const [result] = await db.execute(
             `INSERT INTO tbl_gate_pass (gate_branch_id, gate_pass_no, gate_pass_date, gate_cus_name,
              gate_cus_address, gate_reason, gate_vehicle_model, gate_chassis_no, gate_engine_no, gate_amount, gate_remarks)
@@ -209,15 +242,17 @@ const saveGatePass = async (req, res) => {
             [branchId, gatePassNo, gatePassDate || new Date(), customerName || '',
                 address || '', reason || '', vehicleModel || '', chassisNo || '', engineNo || '', amount || 0, remarks || '']
         );
+        console.log(`[gatePassController] Gate pass saved successfully. ID: ${result.insertId}`);
         res.json({ success: true, message: 'Gate pass saved', gate_pass_id: result.insertId });
     } catch (err) {
-        console.error(err);
+        console.error('[gatePassController] saveGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to save gate pass' });
     }
 };
 
 const getGatePass = async (req, res) => {
     try {
+        console.log(`[gatePassController] Fetching gate pass ID: ${req.params.id}`);
         const [rows] = await db.execute(
             `SELECT tbl_gate_pass.*, tbl_branch.branch_name FROM tbl_gate_pass
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_gate_pass.gate_branch_id
@@ -226,12 +261,13 @@ const getGatePass = async (req, res) => {
         if (!rows.length) return res.status(404).json({ success: false, message: 'Gate pass not found' });
         res.json({ success: true, data: rows[0] });
     } catch (err) {
-        console.error(err);
+        console.error('[gatePassController] getGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch gate pass' });
     }
 };
 
 const updateGatePass = async (req, res) => {
+    console.log(`[gatePassController] Updating gate pass ID: ${req.params.id}`, req.body);
     const { gatePassDate, customerName, address, reason, vehicleModel, chassisNo, engineNo, amount, remarks } = req.body;
     try {
         await db.execute(
@@ -242,7 +278,7 @@ const updateGatePass = async (req, res) => {
         );
         res.json({ success: true, message: 'Gate pass updated' });
     } catch (err) {
-        console.error(err);
+        console.error('[gatePassController] updateGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to update gate pass' });
     }
 };

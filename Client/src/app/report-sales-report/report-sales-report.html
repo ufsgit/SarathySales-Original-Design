@@ -10,7 +10,7 @@
     <main class="page-content">
         <div class="report-container">
             <!-- Header -->
-            <div class="report-header">
+            <div class="report-header" [style.background]="isAdmin() ? '#385dc4ff' : null">
                 <h1>List Sales Report</h1>
                 <button class="header-excel-btn" (click)="exportToExcel()">EXCEL</button>
             </div>
@@ -20,7 +20,32 @@
                 <div class="filter-row top-row">
                     <div class="filter-group">
                         <label>Branch</label>
-                        <input type="text" class="form-control" [value]="branchName()" disabled>
+                        <div class="custom-dropdown" [class.active]="isBranchDropdownOpen()"
+                            [class.disabled]="!isAdmin()">
+                            <div class="dropdown-selected" (click)="toggleBranchDropdown()">
+                                <span [class.placeholder]="branchName() === 'Select Branch'">{{ branchName() || 'Select
+                                    Branch' }}</span>
+                                <i class="fas fa-chevron-down arrow"></i>
+                            </div>
+                            @if (isBranchDropdownOpen()) {
+                            <div class="dropdown-menu">
+                                <div class="search-container">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" placeholder="Search branch..." [ngModel]="branchSearchTerm()"
+                                        (ngModelChange)="branchSearchTerm.set($event)"
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="options-container">
+                                    @for (branch of filteredBranches(); track branch.b_id) {
+                                    <div class="option" (click)="selectBranch(branch)">
+                                        <span class="branch-name">{{ branch.branch_name }}</span>
+                                        <span class="branch-id">({{ branch.b_id }})</span>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                            }
+                        </div>
                     </div>
                     <div class="filter-group">
                         <label>Search Option</label>

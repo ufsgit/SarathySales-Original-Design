@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,42 +28,75 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
           <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>Vehicle Selection Slip</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="navigate('/previous-gate-pass')">List Gate Pass</button>
-             <button class="btn-save" (click)="onSave()" [disabled]="isSaving">{{ isSaving ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
           </div>
         </header>
 
         <div class="page-card-content">
-          <div *ngIf="successMessage" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ successMessage }}</div>
-          <div *ngIf="errorMessage" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ errorMessage }}</div>
+          <div *ngIf="successMessage()" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ successMessage() }}</div>
+          <div *ngIf="errorMessage()" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ errorMessage() }}</div>
           <form class="ledger-form">
             
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName" readonly>
+                    <!-- Admin searchable dropdown -->
+                    <div class="custom-dropdown" *ngIf="isAdmin(); else staffBranch" #dropdownRef>
+                        <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleDropdown()">
+                            {{ branchName() }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search..." [ngModel]="branchSearchTerm()" (ngModelChange)="branchSearchTerm.set($event)" name="branchSearchTerm" #searchInputRef (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" *ngFor="let b of searchableBranchList()" (click)="onBranchSelect(b)">
+                                    {{ b.branch_name }}
+                                </div>
+                                <div class="dropdown-option no-results" *ngIf="searchableBranchList().length === 0">No results found</div>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Invoice No:</label>
-                    <select class="form-control" [(ngModel)]="invoiceNo" name="invoiceNo" (change)="onInvoiceChange()">
-                        <option value="">--Select--</option>
-                        <option *ngFor="let inv of invoiceOptions" [value]="inv.inv_no">{{ inv.inv_no }}</option>
-                    </select>
+                    <div class="custom-dropdown" #invoiceDropdownRef>
+                        <div class="dropdown-toggle" [class.placeholder]="!branchId() || invoiceNo() === ''" (click)="toggleInvoiceDropdown()">
+                            {{ !branchId() ? 'Select Branch' : (invoiceNo() || '--Select--') }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isInvoiceDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search invoice..." [ngModel]="invoiceSearchTerm()" (ngModelChange)="invoiceSearchTerm.set($event)" name="invoiceSearchTerm" #invoiceSearchInputRef (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" *ngFor="let inv of searchableInvoiceList()" (click)="onInvoiceSelect(inv)">
+                                    {{ inv.inv_no }}
+                                </div>
+                                <div class="dropdown-option no-results" *ngIf="searchableInvoiceList().length === 0">No results found</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-col">
                     <label>Chassis No:</label>
-                    <input type="text" class="form-control readonly" [value]="chassisNo" readonly>
+                    <input type="text" class="form-control readonly" [value]="chassisNo()" readonly>
                 </div>
                 <div class="form-col">
                     <label>Color:</label>
-                    <input type="text" class="form-control readonly" [value]="color" readonly>
+                    <input type="text" class="form-control readonly" [value]="color()" readonly>
                 </div>
             </div>
 
@@ -71,19 +104,19 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Gate Pass No:</label>
-                    <input type="text" class="form-control readonly" [value]="gatePassNo" readonly>
+                    <input type="text" class="form-control readonly" [value]="gatePassNo()" readonly>
                 </div>
                 <div class="form-col">
                     <label>Customer Name:</label>
-                    <input type="text" class="form-control readonly" [value]="customerName" readonly>
+                    <input type="text" class="form-control readonly" [value]="customerName()" readonly>
                 </div>
                 <div class="form-col">
                      <label>Engine No:</label>
-                     <input type="text" class="form-control readonly" [value]="engineNo" readonly>
+                     <input type="text" class="form-control readonly" [value]="engineNo()" readonly>
                 </div>
                  <div class="form-col">
                      <label>Product Code:</label>
-                     <input type="text" class="form-control readonly" [value]="productCode" readonly>
+                     <input type="text" class="form-control readonly" [value]="productCode()" readonly>
                 </div>
             </div>
 
@@ -92,21 +125,21 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col">
                     <label>Gate Pass Date:</label>
                     <div class="date-input-wrapper">
-                        <input type="date" class="form-control" [(ngModel)]="passDate" name="passDate">
+                        <input type="date" class="form-control" [ngModel]="passDate()" (ngModelChange)="passDate.set($event)" name="passDate">
                     </div>
                 </div>
                 <div class="form-col">
                     <label>Address:</label>
-                    <textarea class="form-control" [(ngModel)]="address" name="address" rows="1" readonly></textarea>
+                    <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1" readonly></textarea>
                 </div>
                 <div class="form-col">
                     <label>Vehicle:</label>
-                    <input type="text" class="form-control readonly" [value]="vehicleModel" readonly>
+                    <input type="text" class="form-control readonly" [value]="vehicleModel()" readonly>
                 </div>
                 <div class="form-col">
                     <label>Selection Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="date" class="form-control" [(ngModel)]="selectionDate" name="selectionDate">
+                         <input type="date" class="form-control" [ngModel]="selectionDate()" (ngModelChange)="selectionDate.set($event)" name="selectionDate">
                     </div>
                 </div>
             </div>
@@ -115,7 +148,7 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Issue Type:</label>
-                    <input type="text" class="form-control" [(ngModel)]="issueType" name="issueType">
+                    <input type="text" class="form-control" [ngModel]="issueType()" (ngModelChange)="issueType.set($event)" name="issueType">
                 </div>
                 <div class="form-col">
                       <!-- Empty -->
@@ -305,63 +338,208 @@ import { ApiService } from '../services/api.service';
         max-width: 100%;
     }
 
-    /* Responsive */
-    @media (max-width: 1200px) {
-        .form-grid-row {
-            grid-template-columns: repeat(2, 1fr);
-        }
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
     }
-    @media (max-width: 768px) {
-        .form-grid-row {
-            grid-template-columns: 1fr;
-        }
-        .form-col {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 5px;
-        }
-        .form-col label {
-            text-align: left;
-        }
-        .form-control {
-            max-width: 100%;
-        }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
     }
   `]
 })
 export class GatePassComponent implements OnInit {
-  branchName = 'SARATHY KOLLAM KTM';
-  branchId = '';
-  gatePassNo = '';
-  passDate = '';
-  issueType = '';
-  invoiceNo = '';
-  gateInvoiceId = 0;
-  invoiceOptions: Array<{ inv_id: number; inv_no: string }> = [];
-  customerName = '';
-  selectionDate = '';
-  address = '';
-  vehicleModel = '';
-  chassisNo = '';
-  engineNo = '';
-  color = '';
-  productCode = '';
-  isSaving = false;
-  successMessage = '';
-  errorMessage = '';
+  @ViewChild('dropdownRef') dropdownRef!: ElementRef;
+  @ViewChild('searchInputRef') searchInputRef!: ElementRef;
+  @ViewChild('invoiceDropdownRef') invoiceDropdownRef!: ElementRef;
+  @ViewChild('invoiceSearchInputRef') invoiceSearchInputRef!: ElementRef;
+
+  branchName = signal('SARATHY KOLLAM KTM');
+  branchId = signal('');
+  isAdmin = signal(false);
+  branches = signal<any[]>([]);
+  isBranchDropdownOpen = signal(false);
+  branchSearchTerm = signal('');
+
+  searchableBranchList = computed(() => {
+    const term = this.branchSearchTerm().toLowerCase();
+    return this.branches().filter(b =>
+      (b.branch_name || '').toLowerCase().includes(term)
+    );
+  });
+
+  isInvoiceDropdownOpen = signal(false);
+  invoiceSearchTerm = signal('');
+  searchableInvoiceList = computed(() => {
+    const term = this.invoiceSearchTerm().toLowerCase();
+    return this.invoiceOptions().filter(i =>
+      (i.inv_no || '').toLowerCase().includes(term)
+    );
+  });
+
+  gatePassNo = signal('');
+  passDate = signal('');
+  issueType = signal('');
+  invoiceNo = signal('');
+  gateInvoiceId = signal(0);
+  invoiceOptions = signal<Array<{ inv_id: number; inv_no: string }>>([]);
+  customerName = signal('');
+  selectionDate = signal('');
+  address = signal('');
+  vehicleModel = signal('');
+  chassisNo = signal('');
+  engineNo = signal('');
+  color = signal('');
+  productCode = signal('');
+  isSaving = signal(false);
+  successMessage = signal('');
+  errorMessage = signal('');
 
   constructor(private router: Router, private api: ApiService) { }
+
+  toggleDropdown() {
+    this.isBranchDropdownOpen.update(v => !v);
+    if (this.isBranchDropdownOpen()) {
+      this.branchSearchTerm.set('');
+      setTimeout(() => this.searchInputRef?.nativeElement.focus(), 0);
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    if (this.dropdownRef && !this.dropdownRef.nativeElement.contains(event.target)) {
+      this.isBranchDropdownOpen.set(false);
+    }
+    if (this.invoiceDropdownRef && !this.invoiceDropdownRef.nativeElement.contains(event.target)) {
+      this.isInvoiceDropdownOpen.set(false);
+    }
+  }
+
+  onBranchSelect(branch: any) {
+    this.branchId.set(branch.b_id.toString());
+    this.branchName.set(branch.branch_name);
+    this.isBranchDropdownOpen.set(false);
+    this.loadNextGatePassNo();
+    this.loadInvoiceOptions();
+  }
+
+  toggleInvoiceDropdown() {
+    if (!this.branchId()) return;
+    this.isInvoiceDropdownOpen.update(v => !v);
+    if (this.isInvoiceDropdownOpen()) {
+      this.invoiceSearchTerm.set('');
+      setTimeout(() => this.invoiceSearchInputRef?.nativeElement.focus(), 0);
+    }
+  }
+
+  onInvoiceSelect(inv: any) {
+    this.invoiceNo.set(inv.inv_no);
+    this.isInvoiceDropdownOpen.set(false);
+    this.onInvoiceChange();
+  }
 
   ngOnInit(): void {
     const user = this.api.getCurrentUser();
     if (user) {
-      this.branchName = (user.branch_name || '').toString().trim() || this.branchName;
-      this.branchId = user.branch_id || '';
+      const admin = user.role == 1 || user.role_des === 'admin';
+      this.isAdmin.set(admin);
+
+      let bName = (user.branch_name || '').toString().trim();
+      if (bName === 'No Branch' || !bName) {
+        if (admin) {
+          bName = 'Select Branch';
+          this.branchId.set('');
+        } else {
+          bName = 'SARATHY KOLLAM KTM';
+          this.branchId.set((user.branch_id || '').toString().trim());
+        }
+      } else {
+        this.branchId.set((user.branch_id || '').toString().trim());
+      }
+      this.branchName.set(bName);
+      if (admin) this.loadBranches();
     }
-    this.passDate = this.today();
-    this.selectionDate = this.today();
+    this.passDate.set(this.today());
+    this.selectionDate.set(this.today());
     this.loadNextGatePassNo();
     this.loadInvoiceOptions();
+  }
+
+  private loadBranches(): void {
+    this.api.getBranches().subscribe({
+      next: (res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          this.branches.set(res.data);
+        }
+      }
+    });
   }
 
   private today(): string {
@@ -369,107 +547,121 @@ export class GatePassComponent implements OnInit {
   }
 
   private loadNextGatePassNo(): void {
-    this.api.getGatePassNextNo(this.branchId).subscribe({
+    if (!this.branchId()) return;
+    this.gatePassNo.set('Fetching...');
+    console.log(`[GatePass] Loading next gate pass number for branch: ${this.branchId()} (${this.branchName()})`);
+
+    this.api.getGatePassNextNo(this.branchId(), this.branchName()).subscribe({
       next: (res: any) => {
-        if (res.success && res.gatePassNo) this.gatePassNo = res.gatePassNo;
+        console.log('[GatePass] Next gate pass number response:', res);
+        if (res?.success && res.gatePassNo) {
+          this.gatePassNo.set(res.gatePassNo);
+        } else {
+          this.gatePassNo.set('Error');
+        }
       },
-      error: () => {
-        this.errorMessage = 'Failed to load gate pass number';
+      error: (err) => {
+        console.error('[GatePass] Error loading next gate pass number:', err);
+        this.gatePassNo.set('Error');
+        this.errorMessage.set('Failed to load gate pass number');
       }
     });
   }
 
   private loadInvoiceOptions(): void {
-    this.api.getGatePassInvoices(this.branchId).subscribe({
+    if (!this.branchId()) return;
+    this.api.getGatePassInvoices(this.branchId()).subscribe({
       next: (res: any) => {
         if (res.success && Array.isArray(res.data)) {
-          this.invoiceOptions = res.data;
+          this.invoiceOptions.set(res.data);
         }
       },
       error: () => {
-        this.invoiceOptions = [];
+        this.invoiceOptions.set([]);
       }
     });
   }
 
   onInvoiceChange(): void {
-    const selected = this.invoiceOptions.find(i => i.inv_no === this.invoiceNo);
-    this.gateInvoiceId = selected?.inv_id || 0;
-    if (!this.invoiceNo) {
-      this.customerName = '';
-      this.address = '';
-      this.chassisNo = '';
-      this.engineNo = '';
-      this.vehicleModel = '';
-      this.color = '';
-      this.productCode = '';
+    const no = this.invoiceNo().trim();
+    const selected = this.invoiceOptions().find(i => i.inv_no === no);
+    this.gateInvoiceId.set(selected?.inv_id || 0);
+
+    if (!no) {
+      this.customerName.set('');
+      this.address.set('');
+      this.chassisNo.set('');
+      this.engineNo.set('');
+      this.vehicleModel.set('');
+      this.color.set('');
+      this.productCode.set('');
       return;
     }
 
-    this.api.getGatePassInvoiceDetails(this.invoiceNo, this.branchId).subscribe({
+    this.api.getGatePassInvoiceDetails(no, this.branchId()).subscribe({
       next: (res: any) => {
         if (res.success && res.data) {
           const d = res.data;
-          this.gateInvoiceId = d.inv_id || this.gateInvoiceId;
-          this.customerName = d.customerName || '';
-          this.address = d.address || '';
-          this.chassisNo = d.chassisNo || '';
-          this.engineNo = d.engineNo || '';
-          this.vehicleModel = d.vehicleModel || '';
-          this.color = d.color || '';
-          this.productCode = d.productCode || '';
+          this.gateInvoiceId.set(d.inv_id || this.gateInvoiceId());
+          this.customerName.set(d.customerName || '');
+          this.address.set(d.address || '');
+          this.chassisNo.set(d.chassisNo || '');
+          this.engineNo.set(d.engineNo || '');
+          this.vehicleModel.set(d.vehicleModel || '');
+          this.color.set(d.color || '');
+          this.productCode.set(d.productCode || '');
           if (d.selectionDate) {
-            this.selectionDate = new Date(d.selectionDate).toISOString().slice(0, 10);
+            this.selectionDate.set(new Date(d.selectionDate).toISOString().slice(0, 10));
           }
         }
       },
       error: () => {
-        this.errorMessage = 'Failed to load invoice details';
+        this.errorMessage.set('Failed to load invoice details');
       }
     });
   }
 
   onSave(): void {
-    this.errorMessage = '';
-    this.successMessage = '';
-    if (!this.gatePassNo) {
-      this.errorMessage = 'Gate pass number required';
+    this.errorMessage.set('');
+    this.successMessage.set('');
+    if (!this.gatePassNo()) {
+      this.errorMessage.set('Gate pass number required');
       return;
     }
 
     const payload = {
-      gatePassNo: this.gatePassNo,
-      branchId: this.branchId,
-      branchName: this.branchName,
-      gate_invoice_id: this.gateInvoiceId || 0,
-      gatePassDate: this.passDate || this.today(),
-      issueType: this.issueType,
-      customerName: this.customerName,
-      invoiceNo: this.invoiceNo,
-      address: this.address,
-      selectionDate: this.selectionDate || this.passDate || this.today(),
-      chassisNo: this.chassisNo,
-      engineNo: this.engineNo,
-      vehicleModel: this.vehicleModel,
-      color: this.color,
-      productCode: this.productCode,
+      gatePassNo: this.gatePassNo(),
+      branchId: this.branchId(),
+      branchName: this.branchName(),
+      gate_invoice_id: this.gateInvoiceId() || 0,
+      gatePassDate: this.passDate() || this.today(),
+      issueType: this.issueType(),
+      customerName: this.customerName(),
+      invoiceNo: this.invoiceNo(),
+      address: this.address(),
+      selectionDate: this.selectionDate() || this.passDate() || this.today(),
+      chassisNo: this.chassisNo(),
+      engineNo: this.engineNo(),
+      vehicleModel: this.vehicleModel(),
+      color: this.color(),
+      productCode: this.productCode(),
       status: 1
     };
 
-    this.isSaving = true;
+    this.isSaving.set(true);
     this.api.saveGatePass(payload).subscribe({
       next: (res: any) => {
-        this.isSaving = false;
+        this.isSaving.set(false);
         if (res.success) {
-          this.successMessage = 'Gate pass saved';
+          this.successMessage.set('Gate pass saved');
           this.loadNextGatePassNo();
         } else {
-          this.errorMessage = res.message || 'Save failed';
+          this.errorMessage.set(res.message || 'Save failed');
         }
       },
       error: (err: any) => {
-        this.isSaving = false;
-        this.errorMessage = err?.error?.message || 'Server error';
+        this.isSaving.set(false);
+        this.errorMessage.set(err.error?.message || 'Server error');
       }
     });
   }

@@ -3,13 +3,12 @@ import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
-import { AdminFooter } from '../admin-footer/admin-footer';
 import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-admin-empolyee',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, AdminFooter, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
   template: `
 <div class="app-container" (click)="closeDropdowns()">
   <app-admin-nav></app-admin-nav>
@@ -152,7 +151,6 @@ import { ApiService } from '../services/api.service';
   </main>
   
   <div style="height: 50px;"></div>
-  <app-admin-footer></app-admin-footer>
 </div>
   `,
   styles: [`
@@ -252,30 +250,30 @@ export class AdminEmpolyee implements OnInit {
   });
 
   constructor(
-    private apiService: ApiService, 
+    private apiService: ApiService,
     private router: Router,
     private route: ActivatedRoute
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadBranches();
     this.loadDesignations();
-    
+
     this.route.queryParams.subscribe(params => {
-        if (params['id']) {
-            this.isEdit.set(true);
-            this.editId.set(params['id']);
-            this.employee.prefix = params['prefix'] || 'Mr.';
-            this.employee.name = params['name'] || '';
-            this.employee.institute = params['institute'] || '';
-            this.employee.address = params['address'] || '';
-            this.employee.mobile = params['mobile'] || '';
-            this.employee.code = params['code'] || '';
-            this.employee.designation = params['designation'] || '';
-            this.employee.email = params['email'] || '';
-            this.instituteSearch.set(this.employee.institute);
-            this.designationSearch.set(this.employee.designation);
-        }
+      if (params['id']) {
+        this.isEdit.set(true);
+        this.editId.set(params['id']);
+        this.employee.prefix = params['prefix'] || 'Mr.';
+        this.employee.name = params['name'] || '';
+        this.employee.institute = params['institute'] || '';
+        this.employee.address = params['address'] || '';
+        this.employee.mobile = params['mobile'] || '';
+        this.employee.code = params['code'] || '';
+        this.employee.designation = params['designation'] || '';
+        this.employee.email = params['email'] || '';
+        this.instituteSearch.set(this.employee.institute);
+        this.designationSearch.set(this.employee.designation);
+      }
     });
   }
 
@@ -302,7 +300,7 @@ export class AdminEmpolyee implements OnInit {
           this.designationsSignal.set(merged);
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -364,35 +362,35 @@ export class AdminEmpolyee implements OnInit {
     };
 
     if (this.isEdit()) {
-        this.apiService.updateEmployee(this.editId()!, payload).subscribe({
-            next: (res: any) => {
-                if (res.success) {
-                    alert('Employee details has been updated successfully!');
-                    this.viewList();
-                } else {
-                    alert('Failed to update employee: ' + res.message);
-                }
-            },
-            error: (err: any) => {
-                console.error('Error updating employee', err);
-                alert('Server error occurred while updating employee details');
-            }
-        });
+      this.apiService.updateEmployee(this.editId()!, payload).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            alert('Employee details has been updated successfully!');
+            this.viewList();
+          } else {
+            alert('Failed to update employee: ' + res.message);
+          }
+        },
+        error: (err: any) => {
+          console.error('Error updating employee', err);
+          alert('Server error occurred while updating employee details');
+        }
+      });
     } else {
-        this.apiService.addEmployee(payload).subscribe({
-            next: (res: any) => {
-                if (res.success) {
-                    alert('Employee details has been saved successfully!');
-                    this.resetForm();
-                } else {
-                    alert('Failed to save employee: ' + res.message);
-                }
-            },
-            error: (err: any) => {
-                console.error('Error adding employee', err);
-                alert('Server error occurred while saving employee details');
-            }
-        });
+      this.apiService.addEmployee(payload).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            alert('Employee details has been saved successfully!');
+            this.resetForm();
+          } else {
+            alert('Failed to save employee: ' + res.message);
+          }
+        },
+        error: (err: any) => {
+          console.error('Error adding employee', err);
+          alert('Server error occurred while saving employee details');
+        }
+      });
     }
   }
 

@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
+import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-vsi-list',
@@ -27,7 +28,7 @@ import { UserFooter } from '../user-footer/user-footer';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>VSI BILL LIST</h2>
@@ -326,7 +327,14 @@ import { UserFooter } from '../user-footer/user-footer';
     }
   `]
 })
-export class VsiListComponent {
-  constructor(private router: Router) { }
+export class VsiListComponent implements OnInit {
+  isAdmin = signal(false);
+  constructor(private router: Router, private api: ApiService) { }
+
+  ngOnInit(): void {
+    const user = this.api.getCurrentUser();
+    this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
+  }
+
   navigate(path: string) { this.router.navigate([path]); }
 }

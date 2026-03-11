@@ -3,13 +3,12 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
-import { AdminFooter } from '../admin-footer/admin-footer';
 import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-admin-productmaster',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, AdminFooter, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
   template: `
 <div class="app-container">
   <app-admin-nav></app-admin-nav>
@@ -167,7 +166,6 @@ import { ApiService } from '../services/api.service';
   </main>
   
   <div style="height: 50px;"></div>
-  <app-admin-footer></app-admin-footer>
 </div>
   `,
   styles: [`

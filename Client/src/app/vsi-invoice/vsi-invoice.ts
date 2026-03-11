@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
+import { ApiService } from '../services/api.service';
 
 @Component({
     selector: 'app-vsi-invoice',
@@ -27,7 +28,7 @@ import { UserFooter } from '../user-footer/user-footer';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>VSI TAX INVOICE</h2>
@@ -417,7 +418,8 @@ import { UserFooter } from '../user-footer/user-footer';
     }
   `]
 })
-export class VsiInvoiceComponent {
+export class VsiInvoiceComponent implements OnInit {
+    isAdmin = signal(false);
     branchName = 'SARATHY KOLLAM KTM';
     invoiceNo = 'VSI2026131770001';
     invoiceDate = '19-02-2026';
@@ -444,6 +446,12 @@ export class VsiInvoiceComponent {
         }
     }
 
-    constructor(private router: Router) { }
+    constructor(private router: Router, private api: ApiService) { }
+
+    ngOnInit(): void {
+        const user = this.api.getCurrentUser();
+        this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
+    }
+
     navigate(path: string) { this.router.navigate([path]); }
 }

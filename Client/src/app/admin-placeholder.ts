@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminNav } from './admin-nav/admin-nav';
-import { AdminFooter } from './admin-footer/admin-footer';
 
 @Component({
   selector: 'app-admin-placeholder',
   standalone: true,
-  imports: [AdminNav, AdminFooter, RouterLink],
+  imports: [AdminNav, RouterLink],
   template: `
 <app-admin-nav></app-admin-nav>
 <main class="page-container">
@@ -26,7 +25,6 @@ import { AdminFooter } from './admin-footer/admin-footer';
         </div>
     </div>
 </main>
-<app-admin-footer></app-admin-footer>
   `,
   styles: [`
     .page-container { padding: 20px; background: #f4f4f4; min-height: 80vh; }

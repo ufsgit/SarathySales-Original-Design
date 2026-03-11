@@ -1,29 +1,26 @@
 <header>
-    <app-user-nav></app-user-nav>
+    <app-admin-nav></app-admin-nav>
 </header>
 
 <main class="main-container">
 
-    <!-- Breadcrumb Strip -->
     <div class="breadcrumb-strip">
         <span class="home-icon"><i class="fas fa-home"></i></span>
-        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <a routerLink="/admin-home" class="breadcrumb-link">Home</a>
         <span class="breadcrumb-separator">></span>
-        <span class="breadcrumb-current">List Previous Gate Pass</span>
+        <span class="breadcrumb-current">List Sales Return Bills</span>
     </div>
 
-    <!-- Main Content -->
     <div class="content-wrapper">
-        <h2 class="page-title" [style.color]="isAdmin() ? '#385dc4ff' : null">Previous Gate Pass (Vehicle)</h2>
+        <h2 class="page-title">Previous Sales return Bills(Vehicle)</h2>
 
         <div class="data-card">
+            
 
-            <!-- Controls Row -->
             <div class="controls-row">
                 <div class="search-group">
                     <label>Search:</label>
-                    <input type="text" class="search-input" title="Gate pass no, customer, vehicle…"
-                        placeholder="Gate pass no, customer, vehicle…"
+                    <input type="text" class="search-input" [ngModel]="searchTerm()"
                         (input)="onSearchInput($any($event.target).value)">
                 </div>
                 <div class="entries-group">
@@ -37,10 +34,8 @@
                     </select>
                     <label>entries</label>
                 </div>
-
             </div>
 
-            <!-- Loading / Error -->
             @if (isLoading()) {
             <div class="status-row">
                 <span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</span>
@@ -50,7 +45,6 @@
             <div class="status-row error-text">{{ errorMsg() }}</div>
             }
 
-            <!-- Table -->
             <div class="table-responsive">
                 <table class="custom-table">
                     <thead>
@@ -58,13 +52,13 @@
                             <th>Sl:No</th>
                             <th>Customer Details</th>
                             <th>Branch</th>
-                            <th>Gate Pass Date</th>
-                            <th>Gate Pass No</th>
+                            <th>Chassis No</th>
                             <th>Invoice No</th>
+                            <th>Invoice Date</th>
+                            <th>Sale Type</th>
                             <th>Vehicle</th>
-                            <th>Chassis / Engine No</th>
-                            <th>Color</th>
-                            <th>Selection Date</th>
+                            <th>Return Date</th>
+                            <th>Total Amount</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -73,41 +67,32 @@
                             <td colspan="10">No data available in table</td>
                         </tr>
                         }
-                        @for (row of records(); track row.gate_pass_id; let i = $index) {
+                        @for (row of records(); track row.inv_id; let i = $index) {
                         <tr>
                             <td>{{ rowIndex(i) }}</td>
                             <td>
                                 <div class="customer-info">
-                                    <span class="highlight-red">{{ row.pass_cus_name || '—' }}</span>
-                                    <span class="sub-name">{{ row.pass_cus_addrs || '' }}</span>
+                                    <span class="highlight-red" (click)="generatePdf(row.inv_no)">{{ row.inv_cus || '—'
+                                        }}</span><br>
+                                    <span class="sub-name">{{ row.inv_cus_addres || '' }}</span>
                                 </div>
                             </td>
                             <td>{{ row.branch_name || '—' }}</td>
-                            <td>{{ formatDate(row.gate_pass_date) }}</td>
-                            <td>{{ row.gate_pass_no }}</td>
-                            <td>{{ row.pass_invoic_no || '—' }}</td>
-                            <td>{{ row.pass_vehicle || '—' }}</td>
-                            <td>
-                                <div class="chassis-engine">
-                                    <span>{{ row.pass_chassis_no || '—' }}</span>
-                                    @if (row.pass_engine_no) {
-                                    <span class="sub-name">{{ row.pass_engine_no }}</span>
-                                    }
-                                </div>
-                            </td>
-                            <td>{{ row.pass_vehicle_color || '—' }}</td>
-                            <td>{{ formatDate(row.selection_date) }}</td>
+                            <td>{{ row.inv_chassis || '—' }}</td>
+                            <td>{{ row.inv_no }}</td>
+                            <td>{{ formatDate(row.inv_inv_date) }}</td>
+                            <td>{{ row.inv_type || '—' }}</td>
+                            <td>{{ row.inv_vehicle || '—' }}</td>
+                            <td>{{ formatDate(row.return_date) }}</td>
+                            <td class="text-right">{{ formatAmount(row.inv_total) }}</td>
                         </tr>
                         }
                     </tbody>
                 </table>
             </div>
 
-            <!-- Footer / Pagination -->
             <div class="table-footer">
-                <div class="showing-text">
-                    Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries
-                </div>
+                <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
                 <div class="dt-pagination">
                     <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
                         [class.disabled]="!hasPrev()">Previous</button>

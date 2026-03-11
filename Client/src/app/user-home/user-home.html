@@ -14,7 +14,7 @@
         <h1 class="fade-in">Welcome back, {{ user()?.emp_name || 'Guest' }}!</h1>
 
         <div class="user-profile-card scale-up" *ngIf="user()">
-            <div class="card-header">
+            <div class="card-header" [style.background]="isAdmin() ? '#385dc4ff' : null">
                 <i class="fas fa-user-circle profile-icon"></i>
                 <div class="header-text">
                     <h3>Employee Profile</h3>

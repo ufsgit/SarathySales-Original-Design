@@ -3,14 +3,13 @@ import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminNav } from '../admin-nav/admin-nav';
-import { AdminFooter } from '../admin-footer/admin-footer';
 import { ApiService } from '../services/api.service';
 import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-admin-productmasterlist',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, AdminFooter, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
   template: `
 <div class="app-container" (click)="closeAllDropdowns()">
   <app-admin-nav></app-admin-nav>
@@ -93,7 +92,6 @@ import { HttpClient } from '@angular/common/http';
   </main>
   
   <div style="height: 50px;"></div>
-  <app-admin-footer></app-admin-footer>
 </div>
 
 <!-- ===== Upload Price Modal ===== -->
@@ -239,7 +237,7 @@ export class AdminProductmasterlist implements OnInit {
   editProductId: number | null = null;
   editData: any = {};
 
-  constructor(private apiService: ApiService, private http: HttpClient) {}
+  constructor(private apiService: ApiService, private http: HttpClient) { }
 
   ngOnInit(): void {
     this.loadProducts();

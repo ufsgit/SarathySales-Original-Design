@@ -27,6 +27,9 @@ export class ReportBranchTransfer implements OnInit {
     fromDate = signal(new Date().toISOString().split('T')[0]);
     toDate = signal(new Date().toISOString().split('T')[0]);
     searchOption = signal('Custom Date');
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
+    branches = signal<any[]>([]);
 
     // Computed signals for pagination
     totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
@@ -58,6 +61,19 @@ export class ReportBranchTransfer implements OnInit {
         return pages;
     });
 
+    filteredBranches = computed(() => {
+        const term = this.branchSearchTerm().toLowerCase();
+        return this.branches().filter(b =>
+            b.branch_name.toLowerCase().includes(term) ||
+            b.b_id.toString().includes(term)
+        );
+    });
+
+    isAdmin = computed(() => {
+        const user = this.api.getCurrentUser();
+        return user?.role == 1 || user?.role_des === 'admin';
+    });
+
     constructor(private router: Router, private api: ApiService) { }
 
     ngOnInit() {
@@ -65,6 +81,16 @@ export class ReportBranchTransfer implements OnInit {
         if (user) {
             this.branchId.set(user.branch_id || '');
             this.branchName.set(user.branch_name || 'No Branch');
+
+            if (this.isAdmin()) {
+                this.api.getBranches().subscribe({
+                    next: (res) => {
+                        if (res.success) {
+                            this.branches.set(res.data || []);
+                        }
+                    }
+                });
+            }
         }
         this.loadData();
     }
@@ -203,6 +229,21 @@ export class ReportBranchTransfer implements OnInit {
         const limit = this.limit();
         const url = this.api.getBranchTransferPagedCsvUrl(branchId, from, to, page, limit);
         window.open(url, '_blank');
+    }
+
+    toggleBranchDropdown() {
+        if (!this.isAdmin()) return;
+        this.isBranchDropdownOpen.update(v => !v);
+        if (this.isBranchDropdownOpen()) {
+            this.branchSearchTerm.set('');
+        }
+    }
+
+    selectBranch(branch: any) {
+        this.branchId.set(branch.b_id);
+        this.branchName.set(branch.branch_name);
+        this.isBranchDropdownOpen.set(false);
+        this.onFilterChange();
     }
 
     viewPdf(id: number) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, AfterViewInit } from '@angular/core';
+import { Component, OnInit, signal, computed, AfterViewInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -28,7 +28,7 @@ import { ApiService } from '../services/api.service';
 
       <!-- Main Card -->
       <div class="theme-card">
-        <header class="orange-header-strip">
+        <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
              <i class="fas fa-bars menu-icon"></i>
              <h2>Branch Transfer</h2>
@@ -49,7 +49,37 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Branch Name:</label>
-                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                        <ng-container *ngIf="isAdmin(); else staffBranch">
+                            <div class="custom-dropdown" #branchDropdownRef>
+                                <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                    {{ branchName() }}
+                                    <i class="fas fa-caret-down"></i>
+                                </div>
+                                <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                    <div class="dropdown-search">
+                                        <input type="text" placeholder="Search branch..."
+                                            [ngModel]="branchSearchTerm()"
+                                            (ngModelChange)="branchSearchTerm.set($event)"
+                                            name="branchSearch" #branchSearchInput
+                                            (click)="$event.stopPropagation()">
+                                    </div>
+                                    <div class="dropdown-options-list">
+                                        <div class="dropdown-option"
+                                            *ngFor="let b of searchableBranchList()"
+                                            (click)="onBranchSelect(b)">
+                                            {{ b.branch_name }}
+                                        </div>
+                                        <div class="dropdown-option no-results"
+                                            *ngIf="searchableBranchList().length === 0">
+                                            No branches found
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-container>
+                        <ng-template #staffBranch>
+                            <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                        </ng-template>
                     </div>
                     <div class="form-group">
                         <label>Debit Note No :</label>
@@ -71,10 +101,32 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Institution:</label>
-                        <select class="form-control" [ngModel]="institution()" (ngModelChange)="onInstitutionChange($event)" name="institution">
-                            <option value="">--Select--</option>
-                            <option *ngFor="let b of institutionOptions()" [value]="b.b_id">{{ b.branch_name }} | {{ b.branch_address }}</option>
-                        </select>
+                        <div class="custom-dropdown" #institutionDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="!institution()" (click)="toggleInstitutionDropdown()">
+                                {{ getSelectedInstitutionName() || '--Select--' }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search institution..."
+                                        [ngModel]="institutionSearchTerm()"
+                                        (ngModelChange)="institutionSearchTerm.set($event)"
+                                        name="institutionSearch" #institutionSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableInstitutionList()"
+                                        (click)="onInstitutionSelect(b)">
+                                        {{ b.branch_name }} | {{ b.branch_address }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableInstitutionList().length === 0">
+                                        No institutions found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Customer Name:</label>
@@ -90,10 +142,32 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Chassis No:</label>
-                        <select class="form-control" [ngModel]="chassisNo()" (ngModelChange)="onChassisChange($event)" name="chassisNo">
-                            <option value="">--Select--</option>
-                            <option *ngFor="let s of chassisOptions()" [value]="s.chassis_no">{{ s.chassis_no }}</option>
-                        </select>
+                        <div class="custom-dropdown" #chassisDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="!chassisNo()" (click)="toggleChassisDropdown()">
+                                {{ chassisNo() || '--Select--' }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isChassisDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search chassis..."
+                                        [ngModel]="chassisSearchTerm()"
+                                        (ngModelChange)="chassisSearchTerm.set($event)"
+                                        name="chassisSearch" #chassisSearchInput
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let s of searchableChassisList()"
+                                        (click)="onChassisSelect(s)">
+                                        {{ s.chassis_no }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableChassisList().length === 0">
+                                        No chassis found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Engine No:</label>
@@ -340,38 +414,130 @@ import { ApiService } from '../services/api.service';
     }
 
 
-    /* Responsive */
-    @media (max-width: 1200px) {
-        .form-cols-wrapper {
-            grid-template-columns: repeat(2, 1fr);
-        }
+    /* Custom Dropdown Styles */
+    .custom-dropdown {
+        position: relative;
+        width: 100%;
     }
-    @media (max-width: 768px) {
-        .form-cols-wrapper {
-            grid-template-columns: 1fr;
-        }
-        .form-group {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 5px;
-        }
-        .form-group label {
-            text-align: left;
-        }
+
+    .dropdown-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #fff;
+        cursor: pointer;
+        min-height: 28px;
+        width: 100%;
+    }
+
+    .dropdown-toggle.placeholder {
+        color: red !important;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        margin-top: 1px;
+    }
+
+    .dropdown-search {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-search input {
+        width: 100%;
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #eee;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dropdown-option {
+        padding: 6px 10px;
+        font-size: 12px;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dropdown-option:hover {
+        background-color: #f36f21;
+        color: white;
+    }
+
+    .no-results {
+        color: #999;
+        text-align: center;
+        font-style: italic;
     }
   `]
 })
 export class BranchTransferComponent implements OnInit, AfterViewInit {
   branchName = signal('SARATHY KOLLAM KTM');
   branchId = signal('');
+  isAdmin = signal(false);
+  branches = signal<any[]>([]);
+  isBranchDropdownOpen = signal(false);
+  branchSearchTerm = signal('');
+
+  isInstitutionDropdownOpen = signal(false);
+  institutionSearchTerm = signal('');
+
+  isChassisDropdownOpen = signal(false);
+  chassisSearchTerm = signal('');
+
+  searchableBranchList = computed(() => {
+    const term = this.branchSearchTerm().toLowerCase();
+    const instId = this.institution().toString().trim();
+    return this.branches().filter(b => {
+      const match = (b.branch_name || '').toLowerCase().includes(term);
+      const isSelectedInOther = instId && String(b.b_id) === instId;
+      return match && !isSelectedInOther;
+    });
+  });
+
+  searchableInstitutionList = computed(() => {
+    const term = this.institutionSearchTerm().toLowerCase();
+    const brId = this.branchId().toString().trim();
+    return this.institutionOptions().filter(b => {
+      const match = (b.branch_name || '').toLowerCase().includes(term) ||
+        (b.branch_address || '').toLowerCase().includes(term);
+      const isSelectedInOther = brId && String(b.b_id) === brId;
+      return match && !isSelectedInOther;
+    });
+  }, { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) });
+
+  searchableChassisList = computed(() => {
+    const term = this.chassisSearchTerm().toLowerCase();
+    return this.chassisOptions().filter(s =>
+      (s.chassis_no || '').toLowerCase().includes(term)
+    );
+  });
+
   debitNoteNo = signal('');
   transferDate = signal('');
-
   issueType = signal('');
   institution = signal('');
   customerName = signal('');
   address = signal('');
-
   chassisNo = signal('');
   engineNo = signal('');
   vehicle = signal('');
@@ -386,16 +552,95 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
   successMessage = signal('');
   errorMessage = signal('');
   private quoteNoRetryDone = false;
-
   readonly todayIso = new Date().toISOString().slice(0, 10);
 
+  @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
+  @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+  @ViewChild('institutionDropdownRef') institutionDropdownRef!: ElementRef;
+  @ViewChild('institutionSearchInput') institutionSearchInput!: ElementRef;
+  @ViewChild('chassisDropdownRef') chassisDropdownRef!: ElementRef;
+  @ViewChild('chassisSearchInput') chassisSearchInput!: ElementRef;
+
   constructor(private router: Router, private api: ApiService) { }
+
+  loadBranches() {
+    this.api.getBranches().subscribe({
+      next: (res: any) => {
+        if (res.success && Array.isArray(res.data)) {
+          this.branches.set(res.data);
+        }
+      }
+    });
+  }
+
+  toggleBranchDropdown() {
+    this.isBranchDropdownOpen.update(v => !v);
+    if (this.isBranchDropdownOpen()) {
+      this.branchSearchTerm.set('');
+      setTimeout(() => this.branchSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  toggleInstitutionDropdown() {
+    this.isInstitutionDropdownOpen.update(v => !v);
+    if (this.isInstitutionDropdownOpen()) {
+      this.institutionSearchTerm.set('');
+      setTimeout(() => this.institutionSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  toggleChassisDropdown() {
+    this.isChassisDropdownOpen.update(v => !v);
+    if (this.isChassisDropdownOpen()) {
+      this.chassisSearchTerm.set('');
+      setTimeout(() => this.chassisSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  onInstitutionSelect(branch: any) {
+    this.onInstitutionChange(branch.b_id);
+    this.isInstitutionDropdownOpen.set(false);
+  }
+
+  onChassisSelect(chassis: any) {
+    this.onChassisChange(chassis.chassis_no);
+    this.isChassisDropdownOpen.set(false);
+  }
+
+  getSelectedInstitutionName(): string {
+    const id = parseInt((this.institution() || '').toString(), 10) || 0;
+    const selected = this.institutionOptions().find(b => b.b_id === id);
+    return selected ? selected.branch_name : '';
+  }
+
+  onBranchSelect(branch: any) {
+    this.branchId.set(branch.b_id.toString());
+    this.branchName.set(branch.branch_name);
+    this.isBranchDropdownOpen.set(false);
+    this.loadNextTransferNo();
+    this.loadChassisOptions();
+  }
 
   ngOnInit(): void {
     const user = this.api.getCurrentUser();
     if (user) {
-      this.branchName.set((user.branch_name || '').toString().trim() || this.branchName());
-      this.branchId.set((user.branch_id || '').toString().trim());
+      const admin = user.role == 1 || user.role_des === 'admin';
+      this.isAdmin.set(admin);
+
+      let bName = (user.branch_name || '').toString().trim();
+      if (bName === 'No Branch' || !bName) {
+        if (admin) {
+          bName = 'Select Branch';
+          this.branchId.set('');
+        } else {
+          bName = 'SARATHY KOLLAM KTM';
+          this.branchId.set((user.branch_id || '').toString().trim());
+        }
+      } else {
+        this.branchId.set((user.branch_id || '').toString().trim());
+      }
+      this.branchName.set(bName);
+      if (admin) this.loadBranches();
     }
     this.transferDate.set(this.todayIso);
     this.loadInitialData();
@@ -413,6 +658,19 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
     }
   }
 
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+      this.isBranchDropdownOpen.set(false);
+    }
+    if (this.institutionDropdownRef && !this.institutionDropdownRef.nativeElement.contains(event.target)) {
+      this.isInstitutionDropdownOpen.set(false);
+    }
+    if (this.chassisDropdownRef && !this.chassisDropdownRef.nativeElement.contains(event.target)) {
+      this.isChassisDropdownOpen.set(false);
+    }
+  }
+
   private loadInitialData(): void {
     this.loadNextTransferNo();
     this.api.getBranches().subscribe({
@@ -425,7 +683,7 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
           }));
           this.institutionOptions.set(mapped);
 
-          if (!this.branchId()) {
+          if (!this.isAdmin() && !this.branchId()) {
             const own = mapped.find(
               (b: any) => (b.branch_name || '').toLowerCase() === (this.branchName() || '').toLowerCase()
             );
@@ -471,7 +729,13 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
   }
 
   private loadChassisOptions(): void {
-    this.api.getAvailableStockForTransfer(this.branchId() || undefined).subscribe({
+    const bid = (this.branchId() || '').trim();
+    if (!bid || bid === 'Select Branch') {
+      this.chassisOptions.set([]);
+      return;
+    }
+
+    this.api.getAvailableStockForTransfer(bid).subscribe({
       next: (res: any) => {
         if (res?.success && Array.isArray(res.data)) {
           this.chassisOptions.set(res.data.map((r: any) => ({
@@ -482,8 +746,11 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
             p_code: (r.stock_type || r.stock_prd_code || r.materialsId || r.p_code || r.stock_product_code || '').toString().trim(),
             amount: Number((r.lc_rate ?? r.total_bill_amount ?? r.purc_grand_total ?? r.rate ?? r.amount ?? 0).toString().replace(/,/g, '')) || 0
           })).filter((x: any) => x.chassis_no));
+        } else {
+          this.chassisOptions.set([]);
         }
-      }
+      },
+      error: () => this.chassisOptions.set([])
     });
   }
 
