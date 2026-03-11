@@ -177,6 +177,7 @@ import { ApiService, ApiResponse } from '../services/api.service';
 
     .page-container {
         padding: 2px 0 0 0;
+        flex: 1;
     }
 
     .page-content-wrapper {

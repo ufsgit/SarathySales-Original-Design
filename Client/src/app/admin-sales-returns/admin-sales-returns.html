@@ -15,7 +15,7 @@
         <h2 class="page-title">Previous Sales return Bills(Vehicle)</h2>
 
         <div class="data-card">
-            
+
 
             <div class="controls-row">
                 <div class="search-group">
@@ -72,7 +72,7 @@
                             <td>{{ rowIndex(i) }}</td>
                             <td>
                                 <div class="customer-info">
-                                    <span class="highlight-red" (click)="generatePdf(row.inv_no)">{{ row.inv_cus || '—'
+                                    <span class="highlight-red" (click)="generatePdf(row.inv_id)">{{ row.inv_cus || '—'
                                         }}</span><br>
                                     <span class="sub-name">{{ row.inv_cus_addres || '' }}</span>
                                 </div>

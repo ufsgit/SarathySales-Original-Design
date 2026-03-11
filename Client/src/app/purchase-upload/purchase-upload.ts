@@ -30,7 +30,6 @@ import { ApiService } from '../services/api.service';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
-             <i class="fas fa-bars menu-icon"></i>
              <h2>INVOICE (Purchase)</h2>
           </div>
           <div class="header-actions">

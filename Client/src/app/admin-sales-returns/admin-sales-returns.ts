@@ -141,10 +141,9 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
         return isNaN(n) ? (v || '0.00') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    generatePdf(inv_no: string) {
-        if (!inv_no) return;
-        // Assuming sales return also uses the same sales invoice PDF for now or a similar one
-        const url = this.api.getSalesPdfUrl(inv_no);
+    generatePdf(id: string | number) {
+        if (!id) return;
+        const url = this.api.getSalesReturnPdfUrl(id);
         window.open(url, '_blank');
     }
 }

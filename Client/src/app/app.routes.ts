@@ -45,7 +45,6 @@ import { AdminInstitutionmasterlist } from './admin-institutionmaster/admin-inst
 import { AdminProductmaster } from './admin-productmaster/admin-productmaster';
 import { AdminHypothicationmaster } from './admin-hypothicationmaster/admin-hypothicationmaster';
 import { AdminHypothicationmasterlist } from './admin-hypothicationmasterlist/admin-hypothicationmasterlist';
-import { AdminFindvehicle } from './admin-findvehicle/admin-findvehicle';
 import { AdminColor } from './admin-color/admin-color';
 import { AdminColorlist } from './admin-colorlist/admin-colorlist';
 import { AdminStock } from './admin-stock/admin-stock';
@@ -64,7 +63,6 @@ export const routes: Routes = [
     { path: 'admin-productmaster', component: AdminProductmaster },
     { path: 'admin-hypothicationmaster', component: AdminHypothicationmaster },
     { path: 'admin-hypothicationmasterlist', component: AdminHypothicationmasterlist },
-    { path: 'admin-findvehicle', component: AdminFindvehicle },
     { path: 'admin-color', component: AdminColor },
     { path: 'admin-colorlist', component: AdminColorlist },
     { path: 'admin-stock', component: AdminStock },

@@ -979,5 +979,9 @@ export class ApiService {
         return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-return/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
+
+    getSalesReturnPdfUrl(id: string | number): string {
+        return `${this.BASE_URL}/sales-return/pdf/${id}`;
+    }
 }
 
