@@ -1205,8 +1205,8 @@ export class SalesInvoiceComponent implements OnInit {
                 chassisNo: this.chassisNo(),
                 engineNo: this.engineNo(),
                 vehicle: this.vehicle(),
-                color: this.color(),
-                pCode: this.pCode(), 
+                color: this.invColorCode() || this.color(), // Send code if available
+                pCode: this.invProductId() || this.pCode(), // Send product ID if available
                 hsnCode: this.hsnCode(),
                 basicAmount: this.basicAmount(),
                 discountAmount: this.discountAmount(),
@@ -1215,8 +1215,7 @@ export class SalesInvoiceComponent implements OnInit {
                 cgst: this.cgst(),
                 cess: this.cess(),
                 totalAmount: Number(this.totalAmountDisplay()),
-                invProductId: this.invProductId(),
-                invColorCode: this.invColorCode()
+                invProductId: this.invProductId()
             };
 
             this.api.saveSalesInvoice(payload).subscribe({

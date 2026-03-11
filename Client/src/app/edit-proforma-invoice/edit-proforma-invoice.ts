@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, signal } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, signal, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -44,7 +44,25 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName" disabled>
+                    <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef style="width: 180px;">
+                        <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
+                            {{ branchName || '--Select Branch--' }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isBranchDropdownOpen">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search..." [(ngModel)]="branchSearchTerm" name="branchSearchTerm" (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" (click)="selectBranch(null)">--Select Branch--</div>
+                                <div class="dropdown-option" *ngFor="let b of searchableBranchOptions" (click)="selectBranch(b)">
+                                    {{ b.branch_name }}
+                                </div>
+                                <div class="dropdown-option no-results" *ngIf="searchableBranchOptions.length === 0">No results found</div>
+                            </div>
+                        </div>
+                    </div>
+                    <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled>
                 </div>
                 <div class="form-col">
                     <label>Customer Name:</label>
@@ -343,11 +361,13 @@ import { ApiService } from '../services/api.service';
         max-width: 180px; /* Limit input width to look like screenshot */
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
         height: 28px;
+        background-color: #fff;
     }
     
     textarea.form-control {
         resize: none;
         height: 30px; 
+        background-color: #fff;
     }
 
     .form-control.readonly {
@@ -536,10 +556,78 @@ input {
     vertical-align: middle;
 }
 
+/* Custom Dropdown Styles */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+}
+.dropdown-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    min-height: 38px;
+}
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 1001;
+    max-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+.dropdown-search {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    background: #f9f9f9;
+}
+.dropdown-search input {
+    width: 100% !important;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    max-width: none !important;
+}
+.dropdown-options-list {
+    overflow-y: auto;
+    max-height: 240px;
+}
+.dropdown-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: background 0.2s;
+}
+.dropdown-option:hover {
+    background: #f36f21;
+    color: white;
+}
+.dropdown-option.no-results {
+    color: #999;
+    font-style: italic;
+    cursor: default;
+}
+
   `]
 })
 export class EditProformaInvoiceComponent implements OnInit {
     isAdmin = signal(false);
+    @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
     id: number = 0;
     branchId = '';
     branchName = 'SARATHY KOLLAM KTM';
@@ -553,6 +641,10 @@ export class EditProformaInvoiceComponent implements OnInit {
     paymentMode = 'Cash';
     executive = '';
     executiveOptions: string[] = [];
+    branchOptions: any[] = [];
+    selectedBranchId = '';
+    isBranchDropdownOpen = false;
+    branchSearchTerm = '';
     isSaving = false;
 
     missell1 = '';
@@ -570,6 +662,41 @@ export class EditProformaInvoiceComponent implements OnInit {
         cgstValue: number;
         cessValue: number;
     }> = [];
+
+    get searchableBranchOptions() {
+        const term = this.branchSearchTerm.toLowerCase().trim();
+        if (!term) return this.branchOptions;
+        return this.branchOptions.filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term)
+        );
+    }
+
+    toggleBranchDropdown() {
+        this.isBranchDropdownOpen = !this.isBranchDropdownOpen;
+        if (this.isBranchDropdownOpen) {
+            this.branchSearchTerm = '';
+        }
+    }
+
+    selectBranch(b: any) {
+        if (!b) {
+            this.selectedBranchId = '';
+            this.branchName = '';
+        } else {
+            this.selectedBranchId = String(b.b_id);
+            this.branchName = b.branch_name || '';
+        }
+        this.isBranchDropdownOpen = false;
+        this.loadExecutiveOptions();
+        this.cdr.detectChanges();
+    }
+
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: Event) {
+        if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen = false;
+        }
+    }
 
     items: Array<{
         productId: number;
@@ -602,10 +729,20 @@ export class EditProformaInvoiceComponent implements OnInit {
         }
         this.date = new Date().toISOString().slice(0, 10);
         this.loadProductOptions();
-        this.loadExecutiveOptions();
 
-        if (this.id) {
-            this.loadProformaData();
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res?.success && Array.isArray(res.data)) {
+                    this.branchOptions = res.data;
+                    if (this.id) {
+                        this.loadProformaData();
+                    }
+                }
+            }
+        });
+
+        if (!this.id) {
+            this.loadExecutiveOptions();
         }
     }
 
@@ -667,6 +804,15 @@ export class EditProformaInvoiceComponent implements OnInit {
                     this.reference = p.pro_ref || '';
                     this.paymentMode = p.pro_type_loan || 'Cash';
                     this.executive = p.pro_executive || '';
+
+                    if (p.pro_branch) {
+                        this.selectedBranchId = String(p.pro_branch);
+                        const b = this.branchOptions.find(opt => String(opt.b_id) === this.selectedBranchId);
+                        if (b) {
+                            this.branchName = b.branch_name || '';
+                        }
+                        this.loadExecutiveOptions();
+                    }
 
                     this.missell1Amount = this.toNumber(p.pro_missal1_amt);
                     this.missell2Amount = this.toNumber(p.pro_missal2_amt);
@@ -797,6 +943,7 @@ export class EditProformaInvoiceComponent implements OnInit {
         for (const item of this.items) this.recalculateRow(item);
 
         const payload = {
+            proformaNo: this.quotationNo,
             proformaDate: this.date,
             customerName: this.customerName,
             address: this.customerAddress,
@@ -804,6 +951,7 @@ export class EditProformaInvoiceComponent implements OnInit {
             paymentMode: this.paymentMode,
             reference: this.reference,
             executive: this.executive,
+            branchId: this.selectedBranchId,
             missell1: this.missell1,
             missell1Amount: this.toNumber(this.missell1Amount),
             missell2: this.missell2,

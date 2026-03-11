@@ -46,11 +46,29 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Branch Name:</label>
-                        <input type="text" class="form-control readonly" [value]="branchName" disabled>
+                        <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef>
+                            <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
+                                {{ branchName || '--Select Branch--' }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search..." [(ngModel)]="branchSearchTerm" name="branchSearchTerm" (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option" (click)="selectBranch(null)">--Select Branch--</div>
+                                    <div class="dropdown-option" *ngFor="let b of searchableBranchOptions" (click)="selectBranch(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results" *ngIf="searchableBranchOptions.length === 0">No results found</div>
+                                </div>
+                            </div>
+                        </div>
+                        <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled>
                     </div>
                     <div class="form-group">
                         <label>Invoice No :</label>
-                        <input type="text" class="form-control readonly" [value]="invoiceNo" disabled>
+                        <input type="text" class="form-control readonly" [(ngModel)]="invoiceNo" name="invoiceNo" disabled>
                     </div>
                     <div class="form-group">
                         <label>Invoice Date :</label>
@@ -525,16 +543,44 @@ import { ApiService } from '../services/api.service';
 export class InvoiceFromProformaComponent implements OnInit {
     isAdmin = signal(false);
     @ViewChild('dropdownRef') dropdownRef!: ElementRef;
+    @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
     @ViewChild('searchInputRef') searchInputRef!: ElementRef;
 
     isDropdownOpen = false;
+    isBranchDropdownOpen = false;
     searchTerm = '';
+    branchSearchTerm = '';
 
     get searchableChassisList() {
         const term = this.searchTerm.toLowerCase();
         return this.filteredChassisOptions.filter((c: any) =>
             (c.inv_chassis || '').toString().toLowerCase().includes(term)
         );
+    }
+
+    get searchableBranchOptions() {
+        const term = this.branchSearchTerm.toLowerCase().trim();
+        if (!term) return this.branchOptions;
+        return this.branchOptions.filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term)
+        );
+    }
+
+    toggleBranchDropdown() {
+        this.isBranchDropdownOpen = !this.isBranchDropdownOpen;
+        if (this.isBranchDropdownOpen) {
+            this.branchSearchTerm = '';
+        }
+    }
+
+    selectBranch(b: any) {
+        if (!b) {
+            this.selectedBranchId = '';
+        } else {
+            this.selectedBranchId = String(b.b_id);
+        }
+        this.isBranchDropdownOpen = false;
+        this.onBranchChange();
     }
 
     toggleDropdown() {
@@ -553,6 +599,9 @@ export class InvoiceFromProformaComponent implements OnInit {
     onClickOutside(event: Event) {
         if (this.dropdownRef && !this.dropdownRef.nativeElement.contains(event.target)) {
             this.isDropdownOpen = false;
+        }
+        if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
+            this.isBranchDropdownOpen = false;
         }
     }
 
@@ -624,6 +673,7 @@ export class InvoiceFromProformaComponent implements OnInit {
     filteredChassisOptions: any[] = [];
     isSaving = false;
     defaultBranchId = '';
+    selectedBranchId = '';
     private chassisIndex = new Map<string, any>();
 
     constructor(private router: Router, private route: ActivatedRoute, private api: ApiService, private cdr: ChangeDetectorRef) { }
@@ -639,9 +689,10 @@ export class InvoiceFromProformaComponent implements OnInit {
         this.loadHypothecationOptions();
         const user = this.api.getCurrentUser();
         this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
-        this.branchName = user?.branch_name || '';
+        const loginBranchName = user?.branch_name || '';
         const loginBranchId = (user?.branch_id ?? '').toString().trim();
 
+        // 1. Fetch Branches first
         this.api.getBranches().subscribe({
             next: (res: any) => {
                 if (res?.success && Array.isArray(res.data)) {
@@ -657,17 +708,30 @@ export class InvoiceFromProformaComponent implements OnInit {
                         branch_location: (b.branch_location || '').toString().trim(),
                         branch_prefix: (b.branch_prefix || '').toString().trim()
                     }));
+
                     const ownBranch = this.branchOptions.find(
-                        b => String(b.b_id) === loginBranchId || (b.branch_name || '').toLowerCase().trim() === (this.branchName || '').toLowerCase().trim()
+                        b => String(b.b_id) === loginBranchId || (b.branch_name || '').toLowerCase().trim() === loginBranchName.toLowerCase().trim()
                     );
                     this.defaultBranchId = String(ownBranch?.b_id || this.branchOptions[0]?.b_id || '');
-                    this.loadNextInvoiceNo(this.defaultBranchId);
-                    this.refreshIssueType02Filters();
+
+                    // 2. If proformaId exists, load proforma data first to get the branch
+                    if (this.proformaId) {
+                        this.loadProformaData();
+                    } else {
+                        // 3. Normal flow for login branch
+                        this.branchName = loginBranchName;
+                        this.selectedBranchId = this.defaultBranchId;
+                        this.loadNextInvoiceNo(this.selectedBranchId);
+                        this.loadExecutivesForBranch(this.branchName);
+                        this.loadChassisRecordsForBranch(this.selectedBranchId);
+                    }
                 }
             }
         });
+    }
 
-        this.api.getInvoiceFromProformaExecutives(this.branchName).subscribe({
+    private loadExecutivesForBranch(branchName: string): void {
+        this.api.getInvoiceFromProformaExecutives(branchName).subscribe({
             next: (res: any) => {
                 if (res?.success && Array.isArray(res.data)) {
                     this.executiveOptions = res.data.map((ex: any) => {
@@ -682,31 +746,63 @@ export class InvoiceFromProformaComponent implements OnInit {
                     this.executiveOptions = [];
                 }
                 this.refreshIssueType02Filters();
+                this.cdr.detectChanges();
             },
             error: () => {
                 this.executiveOptions = [];
                 this.refreshIssueType02Filters();
             }
         });
+    }
 
-        this.api.getProformaChassisRecords(loginBranchId || undefined).subscribe({
+    private loadChassisRecordsForBranch(bid: string | undefined): void {
+        this.api.getProformaChassisRecords(bid || undefined).subscribe({
             next: (res: any) => {
                 this.chassisOptions = res?.success && Array.isArray(res.data) ? res.data : [];
                 this.buildChassisIndex();
                 this.refreshIssueType02Filters();
-                if (this.proformaId) {
-                    this.loadProformaData();
-                }
+                this.cdr.detectChanges();
             },
             error: () => {
                 this.chassisOptions = [];
                 this.chassisIndex.clear();
                 this.refreshIssueType02Filters();
-                if (this.proformaId) {
-                    this.loadProformaData();
-                }
             }
         });
+    }
+
+    onBranchChange(): void {
+        const branch = this.branchOptions.find(b => String(b.b_id) === String(this.selectedBranchId));
+        this.branchName = branch?.branch_name || '';
+        const bid = branch?.b_id ? String(branch.b_id) : '';
+
+        // Reset fields when branch changes
+        this.chassisNo = '';
+        this.engineNo = '';
+        this.vehicle = '';
+        this.color = '';
+        this.pCode = '';
+        this.hsnCode = '';
+        this.basicAmount = 0;
+        this.discountAmount = 0;
+        this.taxableAmount = 0;
+        this.sgst = 0;
+        this.cgst = 0;
+        this.cess = 0;
+        this.totalAmountDisplay = '00.00';
+        this.executive = '';
+
+        if (bid) {
+            this.loadNextInvoiceNo(bid);
+            this.loadExecutivesForBranch(this.branchName);
+            this.loadChassisRecordsForBranch(bid);
+        } else {
+            this.invoiceNo = '';
+            this.executiveOptions = [];
+            this.chassisOptions = [];
+            this.chassisIndex.clear();
+            this.refreshIssueType02Filters();
+        }
     }
 
     private loadProformaData(): void {
@@ -714,7 +810,20 @@ export class InvoiceFromProformaComponent implements OnInit {
             next: (res: any) => {
                 if (res && res.success && res.proforma) {
                     const p = res.proforma;
-                    this.issueType = '01'; // Defaulting to 01 for manual customer entry as proformas are generally manual
+
+                    // Set branch from proforma
+                    if (p.pro_branch) {
+                        this.selectedBranchId = String(p.pro_branch);
+                        const branch = this.branchOptions.find(b => String(b.b_id) === this.selectedBranchId);
+                        this.branchName = branch?.branch_name || p.branch_name || '';
+                    }
+
+                    // Load branch dependent data
+                    this.loadNextInvoiceNo(this.selectedBranchId);
+                    this.loadExecutivesForBranch(this.branchName);
+                    this.loadChassisRecordsForBranch(this.selectedBranchId);
+
+                    this.issueType = '01';
                     this.customerNameManual = p.pro_cus_name || '';
                     this.address = p.pro_cus_address || '';
                     this.mobileNo = p.pro_contact || p.pro_cus_phone || '';
@@ -1018,6 +1127,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                 const nextNo = (res?.invoiceNo || '').toString().trim();
                 if (nextNo) {
                     this.invoiceNo = nextNo;
+                    this.cdr.detectChanges();
                 }
             },
             error: () => {

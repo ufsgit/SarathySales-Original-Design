@@ -1057,35 +1057,90 @@ const createRtoBillPdf = async (req, res) => {
 }
 
 const saveInvoice = async (req, res) => {
-    console.log(req.body)
+    console.log(req.body);
+
     let {
         invoiceNo, branchId, invoiceDate, customerName, chassisNo, engineNo,
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
-        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode,
-        invColorCode, invProductId
+        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
     } = req.body;
 
-    // Enforce branch scoping for non-admins (role 2)
+    // Enforce branch scoping for non-admins
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
     }
 
-    if (!invoiceNo) return res.status(400).json({ success: false, message: 'Invoice number required' });
+    if (!invoiceNo) {
+        return res.status(400).json({
+            success: false,
+            message: "Invoice number required"
+        });
+    }
+
     const conn = await db.getConnection();
+
     try {
+
         await conn.beginTransaction();
+
+        // 🔹 Fetch vehicle details using chassis number
+        const [purchaseRows] = await conn.execute(
+            `SELECT materialsId, color_id, product_id 
+             FROM purchaseitem
+             WHERE chassis_no = ?
+             LIMIT 1`,
+            [chassisNo]
+        );
+
+        if (purchaseRows.length === 0) {
+            throw new Error("Vehicle not found for this chassis number");
+        }
+
+        const vehicleCode = purchaseRows[0].materialsId;
+        const colorCode = purchaseRows[0].color_id;
+        const productId = purchaseRows[0].product_id;
 
         const insertSql = `
             INSERT INTO tbl_invoice_labour (
-                inv_no, inv_branch, inv_inv_date, inv_cus, inv_chassis, in_engine, 
-                inv_regn, inv_advisername, inv_total, inv_pho, inv_cus_father_hus, 
-                inv_cus_addres, inv_type, inv_age, inv_cdms_no, inv_area, inv_hypothication, inv_place, 
-                inv_receipt_no, inv_finance_dues, inv_vehicle, inv_vehicle_code, inv_color, inv_gstin, 
-                inv_basic_amt, inv_discount_amt, inv_hsncode, inv_taxable_amt, inv_sgst, inv_cgst, inv_cess, 
-                inv_pincode, status, inv_color_code, inv_product_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                inv_no,
+                inv_branch,
+                inv_inv_date,
+                inv_cus,
+                inv_chassis,
+                in_engine,
+                inv_regn,
+                inv_advisername,
+                inv_total,
+                inv_pho,
+                inv_cus_father_hus,
+                inv_cus_addres,
+                inv_type,
+                inv_age,
+                inv_cdms_no,
+                inv_area,
+                inv_hypothication,
+                inv_place,
+                inv_receipt_no,
+                inv_finance_dues,
+                inv_vehicle,
+                inv_vehicle_code,
+                inv_color,
+                inv_gstin,
+                inv_basic_amt,
+                inv_discount_amt,
+                inv_hsncode,
+                inv_taxable_amt,
+                inv_sgst,
+                inv_cgst,
+                inv_cess,
+                inv_pincode,
+                status,
+                inv_color_code,
+                inv_product_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         `;
 
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
@@ -1112,7 +1167,7 @@ const saveInvoice = async (req, res) => {
             receiptNo || '',
             financeDues || '',
             vehicle || '',
-            pCode || '',
+            vehicleCode,      // inv_vehicle_code ← materialsId
             color || '',
             gstin || '',
             basicAmount || 0,
@@ -1123,18 +1178,30 @@ const saveInvoice = async (req, res) => {
             cgst || 0,
             cess || 0,
             pincode || '',
-            invColorCode || color || '', 
-            invProductId || pCode || ''
+            colorCode,        // inv_color_code ← color_id
+            productId         // inv_product_id ← product_id
         ];
 
         const [result] = await conn.execute(insertSql, params);
 
         await conn.commit();
-        res.json({ success: true, message: 'Sales invoice saved successfully', inv_id: result.insertId });
+
+        res.json({
+            success: true,
+            message: "Sales invoice saved successfully",
+            inv_id: result.insertId
+        });
+
     } catch (err) {
+
         await conn.rollback();
-        console.error('Failed to save sales invoice:', err);
-        res.status(500).json({ success: false, message: 'Failed to save sales invoice' });
+        console.error("Failed to save sales invoice:", err);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to save sales invoice"
+        });
+
     } finally {
         conn.release();
     }
