@@ -50,11 +50,9 @@ import { AdminColorlist } from './admin-colorlist/admin-colorlist';
 import { AdminStock } from './admin-stock/admin-stock';
 import { AdminStocklist } from './admin-stocklist/admin-stocklist';
 import { AdminEmpolyeelist } from './admin-empolyee/admin-empolyeelist';
-import { AdminIntro } from './admin-intro/admin-intro';
 
 export const routes: Routes = [
     { path: 'admin-home', component: AdminHome },
-    { path: 'admin-intro', component: AdminIntro },
     { path: 'admin-empolyee', component: AdminEmpolyee },
     { path: 'admin-empolyeelist', component: AdminEmpolyeelist },
     { path: 'admin-productmasterlist', component: AdminProductmasterlist },

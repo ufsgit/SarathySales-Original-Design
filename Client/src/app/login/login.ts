@@ -36,7 +36,8 @@ export class LoginComponent {
           } else if (user && (user.role_des === 'admin' || user.role == 1)) {
             this.router.navigate(['/admin-home']);
           } else {
-            this.router.navigate(['/user-home']); // Default fallback
+            alert('Access Denied: You do not have permission to access the system.');
+            this.api.logout();
           }
         }
       },
