@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const adminMiddleware = require('../middleware/adminMiddleware');
+
+// Apply adminMiddleware to all routes in this router
+router.use(adminMiddleware);
+
 const {
     listEmployees,
     addEmployee,
