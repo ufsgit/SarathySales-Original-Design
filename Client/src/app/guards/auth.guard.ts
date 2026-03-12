@@ -30,6 +30,7 @@ export const authGuard: CanActivateFn = (
   }
 
   // Not logged in, redirect to login page with return url
+  alert('Token not Found, Please Login First');
   router.navigate(['/']);
   return false;
 };
