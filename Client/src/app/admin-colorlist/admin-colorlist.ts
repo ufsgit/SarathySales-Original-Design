@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +39,20 @@ import { ApiService } from '../services/api.service';
         </header>
 
         <div class="page-card-content">
+          <!-- Page Controls -->
+          <div class="controls-row">
+            <div class="entries-group">
+              <label>Show</label>
+              <select class="entries-select" [value]="limit()" (change)="onLimitChange($any($event.target).value)">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <label>entries</label>
+            </div>
+          </div>
+
           <div class="table-container">
             <table class="report-table">
               <thead>
@@ -54,7 +68,7 @@ import { ApiService } from '../services/api.service';
                   <td colspan="4" class="no-data">No color data found</td>
                 </tr>
                 <tr *ngFor="let c of colors(); let i = index">
-                  <td>{{ i + 1 }}</td>
+                  <td>{{ rowIndex(i) }}</td>
                   <td>{{ c.color_code }}</td>
                   <td>{{ c.description }}</td>
                   <td class="action-cell">
@@ -75,6 +89,23 @@ import { ApiService } from '../services/api.service';
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="table-footer" *ngIf="total() > 0">
+            <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+            <div class="dt-pagination">
+              <button class="dt-page-btn" [disabled]="!hasPrev()" (click)="prevPage()" [class.disabled]="!hasPrev()">Previous</button>
+
+              <ng-container *ngFor="let p of visiblePages()">
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                  [disabled]="p === '...'" (click)="goToPage(p)">
+                  {{ p }}
+                </button>
+              </ng-container>
+
+              <button class="dt-page-btn" [disabled]="!hasNext()" (click)="nextPage()" [class.disabled]="!hasNext()">Next</button>
+            </div>
           </div>
         </div>
       </div>
@@ -106,6 +137,10 @@ import { ApiService } from '../services/api.service';
     .btn-add { background-color: #c92127; color: white; border: none; padding: 6px 15px; font-size: 12px; cursor: pointer; font-weight: 600; border-radius: 3px; }
     
     .page-card-content { padding: 0; background: #fff; }
+
+    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+    .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+    .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
     
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -124,6 +159,16 @@ import { ApiService } from '../services/api.service';
     .dropdown-item i { width: 14px; text-align: center; }
     .dropdown-item.delete { color: #d9534f; border-top: 1px solid #eee; }
 
+    /* Pagination Footer */
+    .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 15px; border-top: 1px solid #eee; }
+    .showing-text { font-size: 13px; color: #666; }
+    .dt-pagination { display: flex; gap: 5px; }
+    .dt-page-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .dt-page-btn:hover:not([disabled]) { background: #f0f0f0; border-color: #ccc; }
+    .dt-page-btn.active { background: #0b5ed7; color: #fff; border-color: #0b5ed7; }
+    .dt-page-btn.disabled { cursor: not-allowed; opacity: 0.6; }
+    .dt-page-btn.ellipsis { cursor: default; background: transparent; border: none; }
+
     @media (max-width: 768px) {
        .report-table { min-width: 600px; }
     }
@@ -131,7 +176,34 @@ import { ApiService } from '../services/api.service';
 })
 export class AdminColorlist implements OnInit {
   colors = signal<any[]>([]);
+  total = signal(0);
+  page = signal(1);
+  limit = signal(25);
   openDropdownIndex: number | null = null;
+
+  totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
+  fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
+  toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
+  hasPrev = computed(() => this.page() > 1);
+  hasNext = computed(() => this.page() < this.totalPages());
+
+  visiblePages = computed(() => {
+    const total = this.totalPages();
+    const current = this.page();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 4) pages.push('...');
+      const start = Math.max(2, current - 2);
+      const end = Math.min(total - 1, current + 2);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 3) pages.push('...');
+      if (total > 1) pages.push(total);
+    }
+    return pages;
+  });
 
   constructor(private apiService: ApiService, private router: Router) {}
 
@@ -140,14 +212,46 @@ export class AdminColorlist implements OnInit {
   }
 
   loadColors() {
-    this.apiService.listColors().subscribe({
+    this.apiService.listColors(this.page(), this.limit()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.colors.set(res.data || []);
+          this.total.set(res.total || 0);
         }
       },
       error: (err: any) => console.error('Error loading colors', err)
     });
+  }
+
+  onLimitChange(value: string): void {
+    this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadColors();
+  }
+
+  prevPage(): void {
+    if (this.hasPrev()) {
+      this.page.update(p => p - 1);
+      this.loadColors();
+    }
+  }
+
+  nextPage(): void {
+    if (this.hasNext()) {
+      this.page.update(p => p + 1);
+      this.loadColors();
+    }
+  }
+
+  goToPage(p: number | string): void {
+    if (typeof p === 'number' && p !== this.page()) {
+      this.page.set(p);
+      this.loadColors();
+    }
+  }
+
+  rowIndex(i: number): number {
+    return (this.page() - 1) * this.limit() + i + 1;
   }
 
   toggleDropdown(index: number) {
@@ -184,3 +288,4 @@ export class AdminColorlist implements OnInit {
     }
   }
 }
+

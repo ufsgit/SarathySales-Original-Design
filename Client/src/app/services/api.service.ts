@@ -851,8 +851,9 @@ export class ApiService {
     }
     // ─── Admin Masters ────────────────────────────────────────────────────────────
 
-    listEmployees(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/employees/list`)
+    listEmployees(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/employees/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -871,8 +872,9 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listProducts(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list`)
+    listProducts(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -881,8 +883,9 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listHypothecations(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/list`)
+    listHypothecations(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -906,13 +909,15 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listColors(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/colors/list`)
+    listColors(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/colors/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listCompanies(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/companies/list`)
+    listCompanies(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/companies/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -931,8 +936,9 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listInstitutions(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/institutions/list`)
+    listInstitutions(page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/institutions/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -961,9 +967,10 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listStocks(branchId?: string): Observable<ApiResponse> {
-        const q = branchId ? `?branchId=${branchId}` : '';
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/list${q}`)
+    listStocks(branchId?: string, page = 1, limit = 25): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        if (branchId) params = params.set('branchId', branchId);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 

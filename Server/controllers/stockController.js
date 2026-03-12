@@ -6,22 +6,38 @@ const getStockList = async (req, res) => {
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
     }
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
         let sql = `SELECT tbl_stock.*, tbl_branch.branch_name FROM tbl_stock
                    LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_item_branch`;
+        let countSql = `SELECT COUNT(*) as total FROM tbl_stock`;
         let params = [];
+        let countParams = [];
 
         if (branchId) {
             sql += ` WHERE tbl_stock.stock_item_branch = ?`;
+            countSql += ` WHERE tbl_stock.stock_item_branch = ?`;
             params.push(branchId);
+            countParams.push(branchId);
         }
 
-        sql += ` ORDER BY tbl_stock.stock_id DESC`;
+        sql += ` ORDER BY tbl_stock.stock_id DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [rows] = await db.execute(sql, params);
-        res.json({ success: true, data: rows });
+        const [totalRows] = await db.execute(countSql, countParams);
+
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0] ? totalRows[0].total : 0,
+            page,
+            limit
+        });
     } catch (err) { 
-        console.error(err); 
+        console.error('getStockList Error:', err); 
         res.status(500).json({ success: false, message: 'Failed to fetch stock: ' + err.message }); 
     }
 };

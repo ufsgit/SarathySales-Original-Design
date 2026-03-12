@@ -2,11 +2,25 @@ const db = require('../config/db');
 
 // --- Employee Master ---
 const listEmployees = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT * FROM tbl_employee ORDER BY e_first_name');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT * FROM tbl_employee ORDER BY e_first_name LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_employee');
+        
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Employees Error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch employees' });
     }
 };
@@ -59,11 +73,25 @@ const deleteEmployee = async (req, res) => {
 
 // --- Product Master ---
 const listProducts = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT * FROM tbl_labour_code ORDER BY labour_title');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT * FROM tbl_labour_code ORDER BY labour_title LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_labour_code');
+        
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Products Error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch products' });
     }
 };
@@ -103,11 +131,25 @@ const addProduct = async (req, res) => {
 };
 
 const listHypothecations = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT com_id as id, icompany_name as name, icompany_address as address, icompany_gst as gstin FROM tbl_insurance_company ORDER BY icompany_name ASC');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT com_id as id, icompany_name as name, icompany_address as address, icompany_gst as gstin FROM tbl_insurance_company ORDER BY icompany_name ASC LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_insurance_company');
+        
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Hypothecations Error:', err);
         res.status(500).json({ success: false, message: 'Database error' });
     }
 };
@@ -153,11 +195,25 @@ const deleteHypothecation = async (req, res) => {
 };
 
 const listCompanies = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT * FROM customer_details ORDER BY c_name ASC');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT * FROM customer_details ORDER BY c_name ASC LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM customer_details');
+        
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Companies Error:', err);
         res.status(500).json({ success: false, message: 'Database error' });
     }
 };
@@ -222,11 +278,25 @@ const deleteCompany = async (req, res) => {
 };
 
 const listInstitutions = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT * FROM tbl_branch ORDER BY branch_name ASC');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT * FROM tbl_branch ORDER BY branch_name ASC LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_branch');
+        
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Institutions Error:', err);
         res.status(500).json({ success: false, message: 'Database error' });
     }
 };
@@ -291,11 +361,25 @@ const deleteInstitution = async (req, res) => {
 };
 
 const listColors = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await db.execute('SELECT model_id as id, mod_code as color_code, mod_name as description FROM tbl_model ORDER BY mod_code ASC');
-        res.json({ success: true, data: rows });
+        const [rows] = await db.execute(
+            `SELECT model_id as id, mod_code as color_code, mod_name as description FROM tbl_model ORDER BY mod_code ASC LIMIT ${limit} OFFSET ${offset}`
+        );
+        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_model');
+
+        res.json({ 
+            success: true, 
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
     } catch (err) {
-        console.error(err);
+        console.error('List Colors Error:', err);
         res.status(500).json({ success: false, message: 'Database error' });
     }
 };

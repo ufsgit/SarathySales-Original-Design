@@ -39,30 +39,25 @@ import { FormsModule } from '@angular/forms';
         </header>
 
         <div class="page-card-content">
-          
-          <!-- Filter Bar -->
-          <div class="filter-row">
-            <div class="search-box">
-              <label>Search:</label>
-              <input type="text" [(ngModel)]="searchText" (input)="onSearchInput($event)" class="form-control-sm" placeholder="Search...">
-            </div>
-            <div class="entries-box">
-              <label>Show </label>
-              <select class="form-control-sm">
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
+          <!-- Page Controls -->
+          <div class="controls-row">
+            <div class="entries-group">
+              <label>Show</label>
+              <select class="entries-select" [value]="limit()" (change)="onLimitChange($any($event.target).value)">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
               </select>
-              <span> entries</span>
+              <label>entries</label>
             </div>
           </div>
 
-          <!-- Added padding bottom and min-height to prevent clipping -->
           <div class="table-container">
             <table class="report-table">
               <thead>
                 <tr>
-                  <th>Serial No</th>
+                  <th>SI No</th>
                   <th>Company Id</th>
                   <th>Company Name</th>
                   <th>Company Address</th>
@@ -75,8 +70,8 @@ import { FormsModule } from '@angular/forms';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let comp of filteredCompanies(); let i = index">
-                  <td>{{ i + 1 }}</td>
+                <tr *ngFor="let comp of companies(); let i = index">
+                  <td>{{ rowIndex(i) }}</td>
                   <td>{{ comp.c_reg_no }}</td>
                   <td>{{ comp.c_name }}</td>
                   <td>{{ comp.c_address }}</td>
@@ -101,20 +96,27 @@ import { FormsModule } from '@angular/forms';
                     </div>
                   </td>
                 </tr>
-                <tr *ngIf="filteredCompanies().length === 0">
+                <tr *ngIf="companies().length === 0">
                   <td colspan="10" class="no-data">No records found</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Footer Stats area hidden by padding in container above, restored here -->
-          <div class="table-footer">
-            <div class="stats">Showing 1 to {{ filteredCompanies().length }} of {{ companies().length }} entries</div>
-            <div class="pagination">
-               <button class="paginate-btn">Previous</button>
-               <button class="paginate-btn active">1</button>
-               <button class="paginate-btn">Next</button>
+          <!-- Pagination Footer -->
+          <div class="table-footer" *ngIf="total() > 0">
+            <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+            <div class="dt-pagination">
+              <button class="dt-page-btn" [disabled]="!hasPrev()" (click)="prevPage()" [class.disabled]="!hasPrev()">Previous</button>
+
+              <ng-container *ngFor="let p of visiblePages()">
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                  [disabled]="p === '...'" (click)="goToPage(p)">
+                  {{ p }}
+                </button>
+              </ng-container>
+
+              <button class="dt-page-btn" [disabled]="!hasNext()" (click)="nextPage()" [class.disabled]="!hasNext()">Next</button>
             </div>
           </div>
 
@@ -137,78 +139,77 @@ import { FormsModule } from '@angular/forms';
     .breadcrumb-bar .active { font-weight: 500; color: #333; }
     .separator { color: #999; }
 
-    .theme-card { background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+    .theme-card { background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
     
-    .blue-header-strip { background: #1a62bf; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; color: white; }
+    .blue-header-strip { background: #0b5ed7; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; color: white; }
     .header-left { display: flex; align-items: center; gap: 15px; }
     .blue-header-strip h2 { margin: 0; font-size: 16px; font-weight: 600; text-transform: none; }
     
-    .btn-add { background-color: #c92127; color: white; border: none; padding: 8px 15px; font-size: 13px; cursor: pointer; font-weight: 600; border-radius: 4px; }
+    .btn-add { background-color: #c92127; color: white; border: none; padding: 8px 15px; font-size: 13px; cursor: pointer; font-weight: 600; border-radius: 0; }
     
-    .page-card-content { padding: 20px; background: #fff; border-top: 5px solid #1a62bf; min-height: 450px; }
+    .page-card-content { padding: 0; background: #fff; }
+
+    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+    .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+    .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
     
-    .filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 14px; }
-    .search-box { display: flex; align-items: center; gap: 10px; }
-    .search-box input { border: 1px solid #ccc; padding: 5px 10px; border-radius: 2px; outline: none; }
-    .entries-box select { border: 1px solid #ccc; padding: 2px 5px; border-radius: 2px; }
-
-    /* Fix: Allow dropdown to overflow the container and add bottom space */
-    .table-container { 
-      overflow-x: auto; 
-      overflow-y: visible; 
-      border: 1px solid #eee; 
-      margin-bottom: 15px;
-      padding-bottom: 80px; /* Crucial: provides space for the action dropdown */
-    }
-
+    .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .report-table th { background: #f8f9fa; color: #333; font-weight: 600; padding: 12px 15px; text-align: left; border-right: 1px solid #eee; border-bottom: 2px solid #ddd; }
-    .report-table td { padding: 12px 15px; border-right: 1px solid #eee; border-bottom: 1px solid #eee; color: #444; vertical-align: top; }
-    .report-table tr:nth-child(even) { background: #fdfdfd; }
+    .report-table th { background: #f1f1f1; color: #333; font-weight: 600; padding: 10px; text-align: left; border: 1px solid #ddd; white-space: nowrap; }
+    .report-table td { padding: 8px 10px; border: 1px solid #ddd; color: #444; vertical-align: middle; }
+    .report-table tr:nth-child(even) { background: #fafafa; }
     .no-data { text-align: center; padding: 40px !important; font-style: italic; color: #999; }
 
     /* Action Dropdown */
-    .action-cell { position: relative; width: 120px; text-align: center; }
+    .action-cell { position: relative; }
     .action-wrapper { position: relative; display: inline-block; }
-    .btn-action { background: #c92127; color: white; border: none; padding: 6px 15px; font-size: 12px; font-weight: 600; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    
-    /* Repositioned to ensure it's "outside" the tight button area and clearly visible */
-    .action-dropdown { 
-      position: absolute; 
-      top: 100%; 
-      right: 0; 
-      background: #fff; 
-      border: 1px solid #ddd; 
-      border-radius: 4px; 
-      min-width: 130px; 
-      z-index: 9999; 
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2); 
-      margin-top: 5px;
-    }
-
-    .dropdown-item { padding: 12px 15px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; text-align: left; color: #333; transition: all 0.2s; }
-    .dropdown-item:hover { background: #f8f9fa; transform: translateX(3px); }
+    .btn-action { background: #c92127; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .action-dropdown { position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 4px; min-width: 130px; z-index: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .dropdown-item { padding: 10px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-align: left; }
+    .dropdown-item:hover { background: #f5f5f5; }
     .dropdown-item.edit { color: #0b5ed7; }
     .dropdown-item.delete { color: #c92127; border-top: 1px solid #f0f0f0; }
 
-    .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; font-size: 13px; color: #c92127; font-weight: 600; margin-top: -60px; position: relative; z-index: 10; }
-    .paginate-btn { background: #fff; border: 1px solid #ddd; padding: 5px 12px; font-size: 13px; cursor: pointer; color: #666; }
-    .paginate-btn.active { background: #0b5ed7; color: #fff; border-color: #0b5ed7; }
+    /* Pagination Footer */
+    .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 15px; border-top: 1px solid #eee; }
+    .showing-text { font-size: 13px; color: #666; }
+    .dt-pagination { display: flex; gap: 5px; }
+    .dt-page-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .dt-page-btn:hover:not([disabled]) { background: #f0f0f0; border-color: #ccc; }
+    .dt-page-btn.active { background: #0b5ed7; color: #fff; border-color: #0b5ed7; }
+    .dt-page-btn.disabled { cursor: not-allowed; opacity: 0.6; }
+    .dt-page-btn.ellipsis { cursor: default; background: transparent; border: none; }
   `]
 })
 export class AdminCompanymasterlist implements OnInit {
   companies = signal<any[]>([]);
-  searchText = signal('');
+  total = signal(0);
+  page = signal(1);
+  limit = signal(25);
   openDropdownIndex: number | null = null;
 
-  filteredCompanies = computed(() => {
-    const query = this.searchText().toLowerCase().trim();
-    if (!query) return this.companies();
-    return this.companies().filter(c => 
-      c.c_name?.toLowerCase().includes(query) ||
-      c.c_reg_no?.toLowerCase().includes(query) ||
-      c.c_address?.toLowerCase().includes(query)
-    );
+  totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
+  fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
+  toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
+  hasPrev = computed(() => this.page() > 1);
+  hasNext = computed(() => this.page() < this.totalPages());
+
+  visiblePages = computed(() => {
+    const total = this.totalPages();
+    const current = this.page();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 4) pages.push('...');
+      const start = Math.max(2, current - 2);
+      const end = Math.min(total - 1, current + 2);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 3) pages.push('...');
+      if (total > 1) pages.push(total);
+    }
+    return pages;
   });
 
   constructor(private apiService: ApiService, private router: Router) {}
@@ -218,18 +219,46 @@ export class AdminCompanymasterlist implements OnInit {
   }
 
   loadCompanies() {
-    this.apiService.listCompanies().subscribe({
+    this.apiService.listCompanies(this.page(), this.limit()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.companies.set(res.data || []);
+          this.total.set(res.total || 0);
         }
       },
       error: (err: any) => console.error(err)
     });
   }
 
-  onSearchInput(event: any) {
-    this.searchText.set(event.target.value);
+  onLimitChange(value: string): void {
+    this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadCompanies();
+  }
+
+  prevPage(): void {
+    if (this.hasPrev()) {
+      this.page.update(p => p - 1);
+      this.loadCompanies();
+    }
+  }
+
+  nextPage(): void {
+    if (this.hasNext()) {
+      this.page.update(p => p + 1);
+      this.loadCompanies();
+    }
+  }
+
+  goToPage(p: number | string): void {
+    if (typeof p === 'number' && p !== this.page()) {
+      this.page.set(p);
+      this.loadCompanies();
+    }
+  }
+
+  rowIndex(i: number): number {
+    return (this.page() - 1) * this.limit() + i + 1;
   }
 
   toggleDropdown(index: number) {
@@ -279,3 +308,4 @@ export class AdminCompanymasterlist implements OnInit {
     this.router.navigate(['/admin-companymaster']);
   }
 }
+

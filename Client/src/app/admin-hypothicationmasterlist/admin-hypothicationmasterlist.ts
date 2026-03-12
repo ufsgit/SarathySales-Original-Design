@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -31,6 +31,20 @@ import { HttpClient } from '@angular/common/http';
         </header>
 
         <div class="page-card-content">
+          <!-- Page Controls -->
+          <div class="controls-row">
+            <div class="entries-group">
+              <label>Show</label>
+              <select class="entries-select" [value]="limit()" (change)="onLimitChange($any($event.target).value)">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <label>entries</label>
+            </div>
+          </div>
+
           <div class="table-container">
             <table class="report-table">
               <thead>
@@ -47,7 +61,7 @@ import { HttpClient } from '@angular/common/http';
                   <td colspan="5" class="no-data">No data available</td>
                 </tr>
                 <tr *ngFor="let item of hypothecations(); let i = index">
-                  <td style="text-align: center;">{{ i + 1 }}</td>
+                  <td style="text-align: center;">{{ rowIndex(i) }}</td>
                   <td>{{ item.name }}</td>
                   <td class="desc-cell">{{ item.address }}</td>
                   <td style="text-align: center;">{{ item.gstin || '0' }}</td>
@@ -69,6 +83,23 @@ import { HttpClient } from '@angular/common/http';
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="table-footer" *ngIf="total() > 0">
+            <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+            <div class="dt-pagination">
+              <button class="dt-page-btn" [disabled]="!hasPrev()" (click)="prevPage()" [class.disabled]="!hasPrev()">Previous</button>
+
+              <ng-container *ngFor="let p of visiblePages()">
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                  [disabled]="p === '...'" (click)="goToPage(p)">
+                  {{ p }}
+                </button>
+              </ng-container>
+
+              <button class="dt-page-btn" [disabled]="!hasNext()" (click)="nextPage()" [class.disabled]="!hasNext()">Next</button>
+            </div>
           </div>
         </div>
       </div>
@@ -125,6 +156,11 @@ import { HttpClient } from '@angular/common/http';
     .btn-add { background: #c92127; color: white; border: none; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     
     .page-card-content { padding: 0; background: #fff; }
+
+    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+    .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+    .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .report-table th { background: #f1f1f1; color: #333; font-weight: 600; padding: 12px 10px; text-align: left; border: 1px solid #ddd; white-space: nowrap; border-bottom: 2px solid #ccc; }
@@ -143,6 +179,16 @@ import { HttpClient } from '@angular/common/http';
     .dropdown-item:hover { background: #f5f5f5; }
     .dropdown-item.edit { color: #0b5ed7; }
     .dropdown-item.delete { color: #c92127; border-top: 1px solid #f0f0f0; }
+
+    /* Pagination Footer */
+    .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 15px; border-top: 1px solid #eee; }
+    .showing-text { font-size: 13px; color: #666; }
+    .dt-pagination { display: flex; gap: 5px; }
+    .dt-page-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .dt-page-btn:hover:not([disabled]) { background: #f0f0f0; border-color: #ccc; }
+    .dt-page-btn.active { background: #0b5ed7; color: #fff; border-color: #0b5ed7; }
+    .dt-page-btn.disabled { cursor: not-allowed; opacity: 0.6; }
+    .dt-page-btn.ellipsis { cursor: default; background: transparent; border: none; }
 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
@@ -168,7 +214,34 @@ import { HttpClient } from '@angular/common/http';
 })
 export class AdminHypothicationmasterlist implements OnInit {
   hypothecations = signal<any[]>([]);
+  total = signal(0);
+  page = signal(1);
+  limit = signal(25);
   openDropdownIndex: number | null = null;
+
+  totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
+  fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
+  toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
+  hasPrev = computed(() => this.page() > 1);
+  hasNext = computed(() => this.page() < this.totalPages());
+
+  visiblePages = computed(() => {
+    const total = this.totalPages();
+    const current = this.page();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 4) pages.push('...');
+      const start = Math.max(2, current - 2);
+      const end = Math.min(total - 1, current + 2);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 3) pages.push('...');
+      if (total > 1) pages.push(total);
+    }
+    return pages;
+  });
 
   // Edit modal
   showEditModal = false;
@@ -183,10 +256,46 @@ export class AdminHypothicationmasterlist implements OnInit {
   }
 
   loadData() {
-    this.apiService.listHypothecations().subscribe({
-      next: (res: any) => { if (res.success) this.hypothecations.set(res.data); },
+    this.apiService.listHypothecations(this.page(), this.limit()).subscribe({
+      next: (res: any) => { 
+        if (res.success) {
+          this.hypothecations.set(res.data || []);
+          this.total.set(res.total || 0);
+        }
+      },
       error: (err: any) => console.error('Error loading hypothecations', err)
     });
+  }
+
+  onLimitChange(value: string): void {
+    this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadData();
+  }
+
+  prevPage(): void {
+    if (this.hasPrev()) {
+      this.page.update(p => p - 1);
+      this.loadData();
+    }
+  }
+
+  nextPage(): void {
+    if (this.hasNext()) {
+      this.page.update(p => p + 1);
+      this.loadData();
+    }
+  }
+
+  goToPage(p: number | string): void {
+    if (typeof p === 'number' && p !== this.page()) {
+      this.page.set(p);
+      this.loadData();
+    }
+  }
+
+  rowIndex(i: number): number {
+    return (this.page() - 1) * this.limit() + i + 1;
   }
 
   // ---- Action Dropdown ----
@@ -259,3 +368,4 @@ export class AdminHypothicationmasterlist implements OnInit {
     });
   }
 }
+

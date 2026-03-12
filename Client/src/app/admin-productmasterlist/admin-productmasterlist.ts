@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -35,6 +35,20 @@ import { HttpClient } from '@angular/common/http';
         </header>
 
         <div class="page-card-content">
+          <!-- Page Controls -->
+          <div class="controls-row">
+            <div class="entries-group">
+              <label>Show</label>
+              <select class="entries-select" [value]="limit()" (change)="onLimitChange($any($event.target).value)">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <label>entries</label>
+            </div>
+          </div>
+
           <div class="table-container">
             <table class="report-table">
               <thead>
@@ -57,7 +71,7 @@ import { HttpClient } from '@angular/common/http';
                   <td colspan="11" class="no-data">No data available</td>
                 </tr>
                 <tr *ngFor="let product of products(); let i = index">
-                  <td>{{ i + 1 }}</td>
+                  <td>{{ rowIndex(i) }}</td>
                   <td>{{ product.labour_code }}</td>
                   <td>{{ product.labour_title }}</td>
                   <td>{{ product.repair_type }}</td>
@@ -85,6 +99,23 @@ import { HttpClient } from '@angular/common/http';
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="table-footer" *ngIf="total() > 0">
+            <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
+            <div class="dt-pagination">
+              <button class="dt-page-btn" [disabled]="!hasPrev()" (click)="prevPage()" [class.disabled]="!hasPrev()">Previous</button>
+
+              <ng-container *ngFor="let p of visiblePages()">
+                <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                  [disabled]="p === '...'" (click)="goToPage(p)">
+                  {{ p }}
+                </button>
+              </ng-container>
+
+              <button class="dt-page-btn" [disabled]="!hasNext()" (click)="nextPage()" [class.disabled]="!hasNext()">Next</button>
+            </div>
           </div>
         </div>
       </div>
@@ -135,7 +166,7 @@ import { HttpClient } from '@angular/common/http';
         <div class="edit-row"><label>H.P</label><input class="edit-input" [(ngModel)]="editData.hp"></div>
         <div class="edit-row"><label>Description</label><input class="edit-input" [(ngModel)]="editData.description"></div>
         <div class="edit-row"><label>C.C</label><input class="edit-input" [(ngModel)]="editData.cc"></div>
-        <div class="edit-row"><label>Type Of Body</label><input class="edit-input" [(ngModel)]="editData.typeOfBody"></div>
+        <div class="edit-row"><label>Type Of Body</label><input class="edit-input" [(ngModel)]="editData.tbody"></div>
         <div class="edit-row"><label>No of Cylinders</label><input class="edit-input" [(ngModel)]="editData.noOfCylinders"></div>
         <div class="edit-row"><label>Fuel</label><input class="edit-input" [(ngModel)]="editData.fuel"></div>
         <div class="edit-row"><label>Wheel Base</label><input class="edit-input" [(ngModel)]="editData.wheelBase"></div>
@@ -165,7 +196,7 @@ import { HttpClient } from '@angular/common/http';
     .breadcrumb-bar { font-size: 13px; color: #555; padding: 10px 0; display: flex; align-items: center; gap: 8px; }
     .breadcrumb-bar a { color: #555; text-decoration: none; cursor: pointer; }
     .breadcrumb-bar .active { font-weight: 500; color: #333; }
-
+ 
     .theme-card { background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
     .blue-header-strip { background: #0b5ed7; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; color: white; }
     .header-left { display: flex; align-items: center; gap: 15px; }
@@ -174,6 +205,11 @@ import { HttpClient } from '@angular/common/http';
     .btn-add { background: #c92127; color: white; border: none; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-update { background: #28a745; color: white; border: none; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .page-card-content { padding: 0; background: #fff; }
+
+    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+    .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+    .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .report-table th { background: #f1f1f1; color: #333; font-weight: 600; padding: 10px; text-align: left; border: 1px solid #ddd; white-space: nowrap; }
@@ -181,7 +217,7 @@ import { HttpClient } from '@angular/common/http';
     .desc-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .report-table tr:nth-child(even) { background: #fafafa; }
     .no-data { text-align: center; padding: 40px !important; font-style: italic; color: #999; }
-
+ 
     /* Action Dropdown */
     .action-cell { position: relative; }
     .action-wrapper { position: relative; display: inline-block; }
@@ -192,6 +228,16 @@ import { HttpClient } from '@angular/common/http';
     .dropdown-item.edit { color: #0b5ed7; }
     .dropdown-item.delete { color: #c92127; border-top: 1px solid #f0f0f0; }
 
+    /* Pagination Footer */
+    .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 15px; border-top: 1px solid #eee; }
+    .showing-text { font-size: 13px; color: #666; }
+    .dt-pagination { display: flex; gap: 5px; }
+    .dt-page-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .dt-page-btn:hover:not([disabled]) { background: #f0f0f0; border-color: #ccc; }
+    .dt-page-btn.active { background: #0b5ed7; color: #fff; border-color: #0b5ed7; }
+    .dt-page-btn.disabled { cursor: not-allowed; opacity: 0.6; }
+    .dt-page-btn.ellipsis { cursor: default; background: transparent; border: none; }
+ 
     /* Modals */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9000; display: flex; align-items: center; justify-content: center; }
     .modal-box { background: #fff; border-radius: 4px; width: 420px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column; }
@@ -202,7 +248,7 @@ import { HttpClient } from '@angular/common/http';
     .btn-modal-primary { background: #0b5ed7; color: white; border: none; padding: 8px 28px; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; }
     .btn-modal-primary:disabled { background: #a0b8e0; cursor: not-allowed; }
     .btn-modal-cancel { background: #fff; color: #333; border: 1px solid #ccc; padding: 8px 28px; font-size: 14px; border-radius: 4px; cursor: pointer; }
-
+ 
     /* Upload Modal */
     .upload-hint { background: #fffbe6; border: 1px solid #ffe58f; color: #8a6d00; padding: 8px 14px; border-radius: 3px; font-size: 13px; margin-bottom: 16px; }
     .file-row { display: flex; align-items: center; gap: 12px; }
@@ -210,7 +256,7 @@ import { HttpClient } from '@angular/common/http';
     .upload-status { margin-top: 12px; padding: 8px 12px; border-radius: 3px; font-size: 13px; }
     .upload-status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .upload-status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-
+ 
     /* Edit Form */
     .edit-form-body { padding: 15px 20px; }
     .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
@@ -222,7 +268,34 @@ import { HttpClient } from '@angular/common/http';
 })
 export class AdminProductmasterlist implements OnInit {
   products = signal<any[]>([]);
+  total = signal(0);
+  page = signal(1);
+  limit = signal(25);
   openDropdownIndex: number | null = null;
+ 
+  totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
+  fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
+  toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
+  hasPrev = computed(() => this.page() > 1);
+  hasNext = computed(() => this.page() < this.totalPages());
+
+  visiblePages = computed(() => {
+    const total = this.totalPages();
+    const current = this.page();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 4) pages.push('...');
+      const start = Math.max(2, current - 2);
+      const end = Math.min(total - 1, current + 2);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 3) pages.push('...');
+      if (total > 1) pages.push(total);
+    }
+    return pages;
+  });
 
   // Upload modal
   showUploadModal = false;
@@ -230,35 +303,71 @@ export class AdminProductmasterlist implements OnInit {
   uploading = false;
   uploadStatus = '';
   uploadSuccess = false;
-
+ 
   // Edit modal
   showEditModal = false;
   saving = false;
   editProductId: number | null = null;
   editData: any = {};
-
+ 
   constructor(private apiService: ApiService, private http: HttpClient) { }
-
+ 
   ngOnInit(): void {
     this.loadProducts();
   }
-
+ 
   loadProducts() {
-    this.apiService.listProducts().subscribe({
-      next: (res: any) => { if (res.success) this.products.set(res.data); },
+    this.apiService.listProducts(this.page(), this.limit()).subscribe({
+      next: (res: any) => { 
+        if (res.success) {
+          this.products.set(res.data || []);
+          this.total.set(res.total || 0);
+        }
+      },
       error: (err: any) => console.error('Error loading products', err)
     });
   }
 
+  onLimitChange(value: string): void {
+    this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadProducts();
+  }
+
+  prevPage(): void {
+    if (this.hasPrev()) {
+      this.page.update(p => p - 1);
+      this.loadProducts();
+    }
+  }
+
+  nextPage(): void {
+    if (this.hasNext()) {
+      this.page.update(p => p + 1);
+      this.loadProducts();
+    }
+  }
+
+  goToPage(p: number | string): void {
+    if (typeof p === 'number' && p !== this.page()) {
+      this.page.set(p);
+      this.loadProducts();
+    }
+  }
+
+  rowIndex(i: number): number {
+    return (this.page() - 1) * this.limit() + i + 1;
+  }
+ 
   // ---- Action Dropdown ----
   toggleDropdown(index: number) {
     this.openDropdownIndex = this.openDropdownIndex === index ? null : index;
   }
-
+ 
   closeAllDropdowns() {
     this.openDropdownIndex = null;
   }
-
+ 
   // ---- Upload Modal ----
   openUploadModal() {
     this.showUploadModal = true;
@@ -266,14 +375,14 @@ export class AdminProductmasterlist implements OnInit {
     this.uploadStatus = '';
     this.uploading = false;
   }
-
+ 
   closeModalOverlay(event: MouseEvent, type: string) {
     if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
       if (type === 'upload') this.showUploadModal = false;
       if (type === 'edit') this.showEditModal = false;
     }
   }
-
+ 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -281,13 +390,13 @@ export class AdminProductmasterlist implements OnInit {
       this.uploadStatus = '';
     }
   }
-
+ 
   uploadFile() {
     if (!this.selectedFile) return;
     this.uploading = true;
     const formData = new FormData();
     formData.append('file', this.selectedFile);
-
+ 
     this.http.post<any>('http://localhost:5000/api/admin/products/upload-price', formData).subscribe({
       next: (res) => {
         this.uploading = false;
@@ -302,7 +411,7 @@ export class AdminProductmasterlist implements OnInit {
       }
     });
   }
-
+ 
   // ---- Edit Modal ----
   openEditModal(product: any) {
     this.openDropdownIndex = null;
@@ -336,7 +445,7 @@ export class AdminProductmasterlist implements OnInit {
     };
     this.showEditModal = true;
   }
-
+ 
   calcEditTotal() {
     const b = Number(this.editData.basicPrice) || 0;
     const c = Number(this.editData.cgst) || 0;
@@ -344,11 +453,11 @@ export class AdminProductmasterlist implements OnInit {
     const ce = Number(this.editData.cess) || 0;
     this.editData.totalPrice = b + c + s + ce;
   }
-
+ 
   saveEdit() {
     if (!this.editProductId) return;
     this.saving = true;
-
+ 
     this.http.put<any>(`http://localhost:5000/api/admin/products/edit/${this.editProductId}`, this.editData).subscribe({
       next: (res) => {
         this.saving = false;
@@ -366,13 +475,13 @@ export class AdminProductmasterlist implements OnInit {
       }
     });
   }
-
+ 
   // ---- Delete ----
   confirmDelete(product: any) {
     this.openDropdownIndex = null;
     const confirm = window.confirm(`Are you sure you want to delete:\n"${product.labour_title}" (${product.labour_code})?`);
     if (!confirm) return;
-
+ 
     this.http.delete<any>(`http://localhost:5000/api/admin/products/delete/${product.labour_id}`).subscribe({
       next: (res) => {
         if (res.success) {
