@@ -167,7 +167,7 @@ import { ApiService } from '../services/api.service';
                 <!-- Column 3 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Chassis No:</label>
+                        <label>Chassis No <span style="color:red">*</span>:</label>
                         <div class="custom-dropdown" #dropdownRef>
                             <div class="dropdown-toggle" (click)="toggleDropdown()">
                                 {{ chassisNo || '--Select--' }}
@@ -1036,6 +1036,11 @@ export class InvoiceFromProformaComponent implements OnInit {
 
         if (!customerName) {
             alert('Customer Name is required');
+            return;
+        }
+
+        if (!this.chassisNo) {
+            alert('Chassis No. is a required field');
             return;
         }
 
