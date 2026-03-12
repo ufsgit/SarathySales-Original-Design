@@ -19,7 +19,7 @@ import { ApiService } from '../services/api.service';
       
       <!-- Breadcrumb -->
       <div class="breadcrumb-bar">
-        <a (click)="navigate('/user-home')"><i class="fas fa-home"></i> Home</a>
+        <a (click)="navigate(isAdmin() ? '/admin-home' : '/user-home')"><i class="fas fa-home"></i> Home</a>
         <span> > </span>
         <span>Transaction</span>
         <span> > </span>
@@ -46,7 +46,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group">
                         <label>Branch Name:</label>
-                        <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef>
+                        <!-- <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef>
                             <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
                                 {{ branchName || '--Select Branch--' }}
                                 <i class="fas fa-caret-down"></i>
@@ -64,7 +64,8 @@ import { ApiService } from '../services/api.service';
                                 </div>
                             </div>
                         </div>
-                        <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled>
+                        <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled> -->
+                        <input type="text" class="form-control readonly" [value]="branchName" disabled>
                     </div>
                     <div class="form-group">
                         <label>Invoice No :</label>
@@ -1086,7 +1087,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                     this.isSaving = false;
                     if (res?.success) {
                         alert('Sales invoice saved successfully');
-                        this.navigate('/previous-sales-invoice');
+                        // this.navigate('/previous-sales-invoice');
                     } else {
                         alert(res?.message || 'Failed to save sales invoice');
                     }

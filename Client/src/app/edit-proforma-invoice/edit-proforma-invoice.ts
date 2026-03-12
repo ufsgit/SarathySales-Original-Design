@@ -19,7 +19,7 @@ import { ApiService } from '../services/api.service';
       
       <!-- Breadcrumb -->
       <div class="breadcrumb-bar">
-        <a (click)="navigate('/user-home')"><i class="fas fa-home"></i> Home</a>
+        <a (click)="navigate(isAdmin() ? '/admin-home' : '/user-home')"><i class="fas fa-home"></i> Home</a>
         <span> > </span>
         <span>INVOICE</span>
         <span> > </span>
@@ -44,7 +44,8 @@ import { ApiService } from '../services/api.service';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef style="width: 180px;">
+
+                    <!-- <div *ngIf="isAdmin()" class="custom-dropdown" #branchDropdownRef style="width: 180px;">
                         <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
                             {{ branchName || '--Select Branch--' }}
                             <i class="fas fa-caret-down"></i>
@@ -62,7 +63,10 @@ import { ApiService } from '../services/api.service';
                             </div>
                         </div>
                     </div>
-                    <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled>
+                    <input *ngIf="!isAdmin()" type="text" class="form-control readonly" [value]="branchName" disabled> -->
+                    
+
+                    <input type="text" class="form-control readonly" [value]="branchName" disabled>
                 </div>
                 <div class="form-col">
                     <label>Customer Name:</label>
@@ -84,7 +88,7 @@ import { ApiService } from '../services/api.service';
              <div class="form-grid-row">
                 <div class="form-col">
                     <label>Quotation No:</label>
-                    <input type="text" class="form-control" [value]="quotationNo" disabled>
+                    <input type="text" class="form-control readonly" [value]="quotationNo" disabled>
                 </div>
                 <div class="form-col">
                     <label>Contact No:</label>
@@ -155,6 +159,7 @@ import { ApiService } from '../services/api.service';
                 <input
                     type="text"
                     class="in-box"
+                    style="background-color: #fff;"
                     [(ngModel)]="item.productCode"
                     name="code{{i}}"
                     [attr.list]="'productCodeOptions'"
@@ -162,8 +167,8 @@ import { ApiService } from '../services/api.service';
                     (ngModelChange)="onCodeChange(i)">
             </td>
             <td><input type="text" class="in-box" [(ngModel)]="item.description" name="desc{{i}}" readonly></td>
-            <td><input type="number" class="in-box basic-price" [(ngModel)]="item.basicPrice" name="basicPrice{{i}}" (ngModelChange)="recalculateRow(item)"></td>
-            <td><input type="number" class="in-box qty" [(ngModel)]="item.qty" name="qty{{i}}" (ngModelChange)="recalculateRow(item)"></td>
+            <td><input type="number" class="in-box basic-price" [(ngModel)]="item.basicPrice" name="basicPrice{{i}}" (ngModelChange)="recalculateRow(item)" readonly disabled></td>
+            <td><input type="number" style="background-color: #fff;" class="in-box qty" [(ngModel)]="item.qty" name="qty{{i}}" (ngModelChange)="recalculateRow(item)"></td>
             <td><input type="text" class="in-box gray" [value]="item.taxable.toFixed(2)" name="taxable{{i}}" readonly></td>
             <td><input type="text" class="in-box gray" [value]="item.sgst.toFixed(2)" name="sgst{{i}}" readonly></td>
             <td><input type="text" class="in-box gray" [value]="item.cgst.toFixed(2)" name="cgst{{i}}" readonly></td>
@@ -186,19 +191,19 @@ import { ApiService } from '../services/api.service';
             <td></td>
             <tr class="summary-row">
                 <td colspan="5"></td>
-                <td colspan="3" class="label">Missell-1 &nbsp; <input type="text" class="form-input mini-box" [(ngModel)]="missell1" name="missell1"></td>
-                <td><input type="number" class="form-input gray-box" [(ngModel)]="missell1Amount" name="missell1Amount"></td>
+                <td colspan="3" class="label">Missell-1 &nbsp; <input type="text" class="form-input mini-box" style="background-color: #fff;" [(ngModel)]="missell1" name="missell1"></td>
+                <td><input type="number" class="form-input" style="background-color: #fff;" [(ngModel)]="missell1Amount" name="missell1Amount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
                 <td colspan="5"></td>
-                <td colspan="3" class="label">Missell-2 &nbsp; <input type="text" class="form-input mini-box" [(ngModel)]="missell2" name="missell2"></td>
-                <td><input type="number" class="form-input gray-box" [(ngModel)]="missell2Amount" name="missell2Amount"></td>
+                <td colspan="3" class="label">Missell-2 &nbsp; <input type="text" class="form-input mini-box" style="background-color: #fff;" [(ngModel)]="missell2" name="missell2"></td>
+                <td><input type="number" class="form-input" style="background-color: #fff;" [(ngModel)]="missell2Amount" name="missell2Amount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
                 <td colspan="8" class="label">Less</td>
-                <td><input type="number" class="form-input gray-box" [(ngModel)]="lessAmount" name="lessAmount"></td>
+                <td><input type="number" class="form-input" style="background-color: #fff;" [(ngModel)]="lessAmount" name="lessAmount"></td>
                 <td></td>
             </tr>
             <tr class="summary-row">
@@ -533,10 +538,10 @@ th {
 }
 
 input {
-    width: 80px;
-    padding: 4px;
+    width: 150px;
+    padding: 2px 4px;        
     border: 1px solid #ccc;
-    background-color: #f0f0f0; /* Matches the gray inbox look */
+    background-color: #f0f0f0;
     text-align: left;
 }
 

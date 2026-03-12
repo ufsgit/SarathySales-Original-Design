@@ -6,7 +6,7 @@
     <!-- Breadcrumb Strip -->
     <div class="breadcrumb-strip">
         <span class="home-icon"><i class="fas fa-home"></i></span>
-        <a routerLink="/user-home" class="breadcrumb-link">Home</a>
+        <a [routerLink]="isAdmin() ? '/admin-home' : '/user-home'" class="breadcrumb-link">Home</a>
         <span class="breadcrumb-separator">></span>
         <span class="breadcrumb-current">Proforma Invoice Report</span>
     </div>

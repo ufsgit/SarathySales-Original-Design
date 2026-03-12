@@ -2,13 +2,14 @@ import { Component, OnInit, signal, computed } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-reports-proforma-invoice',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, RouterLink],
     templateUrl: './reports-proforma-invoice.html',
     styleUrl: './reports-proforma-invoice.css',
 })

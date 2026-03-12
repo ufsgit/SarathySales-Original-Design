@@ -19,7 +19,7 @@ import { ApiService } from '../services/api.service';
       
       <!-- Breadcrumb -->
       <div class="breadcrumb-bar">
-        <a (click)="navigate('/user-home')"><i class="fas fa-home"></i> Home</a>
+        <a (click)="navigate(isAdmin() ? '/admin-home' : '/user-home')"><i class="fas fa-home"></i> Home</a>
         <span> > </span>
         <span>Transaction</span>
         <span> > </span>
