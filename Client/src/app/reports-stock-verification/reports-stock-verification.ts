@@ -218,4 +218,32 @@ export class ReportsStockVerification {
 
         return [year, month, day].join('-');
     }
+
+    exportExcel(whole: boolean = false) {
+        let url = '';
+        if (whole) {
+            url = this.api.getStockVerificationExcelUrl(this.branchId(), this.fromDate(), this.toDate());
+        } else {
+            url = this.api.getStockVerificationPagedExcelUrl(
+                this.branchId(),
+                this.fromDate(),
+                this.toDate(),
+                this.page(),
+                this.limit()
+            );
+        }
+        window.open(url, '_blank');
+    }
+
+    exportCsv() {
+        const url = this.api.getStockVerificationPagedCsvUrl(
+            this.branchId(),
+            this.fromDate(),
+            this.toDate(),
+            this.page(),
+            this.limit()
+        );
+        window.open(url, '_blank');
+    }
 }
+

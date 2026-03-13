@@ -794,6 +794,25 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getStockVerificationExcelUrl(branchId?: string, from?: string, to?: string): string {
+        let q = `?from=${from}&to=${to}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/excel${q}`);
+    }
+
+    getStockVerificationPagedExcelUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
+        let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/paged-excel${q}`);
+    }
+
+    getStockVerificationPagedCsvUrl(branchId?: string, from?: string, to?: string, page = 1, limit = 25): string {
+        let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/paged-csv${q}`);
+    }
+
+
     getStockSplitup(branchId?: string, from?: string, to?: string, page = 1, limit = 25): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
         if (branchId) params = params.set('branchId', branchId);

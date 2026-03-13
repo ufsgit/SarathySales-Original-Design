@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getStockList, getAvailableVehicles, getStockVerification, getStockSplitup, updateStock } = require('../controllers/stockController');
+const { 
+    getStockList, 
+    getAvailableVehicles, 
+    getStockVerification, 
+    getStockSplitup, 
+    updateStock, 
+    exportStockVerificationExcel,
+    exportStockVerificationPagedExcel,
+    exportStockVerificationPagedCsv
+} = require('../controllers/stockController');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -24,8 +33,12 @@ const upload = multer({ storage });
 router.get('/list', getStockList);
 router.get('/available', getAvailableVehicles);
 router.get('/report/verification', getStockVerification);
+router.get('/report/verification/excel', exportStockVerificationExcel);
+router.get('/report/verification/paged-excel', exportStockVerificationPagedExcel);
+router.get('/report/verification/paged-csv', exportStockVerificationPagedCsv);
 router.get('/report/splitup', getStockSplitup);
 router.post('/update', upload.single('image'), updateStock);
 router.delete('/delete/:id', require('../controllers/stockController').deleteStock);
+
 
 module.exports = router;

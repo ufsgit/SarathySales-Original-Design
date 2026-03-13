@@ -20,7 +20,8 @@
                 <i class="fas fa-bars grid-icon" style="margin-right: 10px;"></i>
                 <h2>Stock Report</h2>
             </div>
-            <button class="header-excel-btn">EXCEL</button>
+            <button class="header-excel-btn" (click)="exportExcel(true)">EXCEL</button>
+
         </div>
 
         <!-- Filters Section -->
@@ -86,8 +87,9 @@
         <!-- Table Controls (CSV/Excel + Show entries) -->
         <div class="table-controls">
             <div class="btn-group">
-                <button class="control-btn">CSV</button>
-                <button class="control-btn">Excel</button>
+                <button class="control-btn" (click)="exportCsv()">CSV</button>
+                <button class="control-btn" (click)="exportExcel(false)">Excel</button>
+
             </div>
             <div class="entries-control">
                 <span>Show</span>
