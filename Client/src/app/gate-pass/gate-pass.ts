@@ -70,7 +70,7 @@ import { ApiService } from '../services/api.service';
                     </ng-template>
                 </div>
                 <div class="form-col">
-                    <label>Invoice No:</label>
+                    <label>Invoice No <span style="color:red">*</span>:</label>
                     <div class="custom-dropdown" #invoiceDropdownRef>
                         <div class="dropdown-toggle" [class.placeholder]="!branchId() || invoiceNo() === ''" (click)="toggleInvoiceDropdown()">
                             {{ !branchId() ? 'Select Branch' : (invoiceNo() || '--Select--') }}
@@ -626,6 +626,12 @@ export class GatePassComponent implements OnInit {
     this.successMessage.set('');
     if (!this.gatePassNo()) {
       this.errorMessage.set('Gate pass number required');
+      return;
+    }
+
+    if (!this.invoiceNo() || this.invoiceNo() === '--Select--') {
+      alert('Invoice No. is a required field');
+      this.errorMessage.set('Invoice No. is required');
       return;
     }
 

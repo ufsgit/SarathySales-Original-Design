@@ -244,7 +244,7 @@ import { ApiService } from '../services/api.service';
                 <!-- Column 3 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Chassis No:</label>
+                        <label>Chassis No <span style="color:red">*</span>:</label>
                         <div class="custom-dropdown" #dropdownRef>
                             <div class="dropdown-toggle" (click)="toggleDropdown()">
                                 {{ chassisNo() || '--Select--' }}
@@ -1176,7 +1176,7 @@ export class SalesInvoiceComponent implements OnInit {
         const branchIdForSave = selectedChassis?.inv_branch || this.defaultBranchId();
 
         if (!this.invoiceNo()) { alert('Invoice number missing'); return; }
-        if (!this.chassisNo()) { alert('Please select Chassis'); return; }
+        if (!this.chassisNo()) { alert('Chassis No. is a required field'); return; }
 
         this.isSaving.set(true);
 
