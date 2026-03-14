@@ -379,13 +379,15 @@ const createBranchTransferPdf = async (req, res) => {
                 doc.font('Times-Bold').text('Transfer TO', fieldX1, detailY);
                 doc.text(':', fieldX2 - 10, detailY);
                 let destName = data.lnstitute_name || '';
+                let destNameH = doc.heightOfString(destName, { width: 250, size: 7.5 });
                 doc.font('Times-Bold').text(destName, fieldX2, detailY, { width: 250 });
 
                 doc.font('Times-Bold').text('Color', fieldX3, detailY);
                 doc.text(':', fieldX4 - 10, detailY);
                 doc.font('Times-Roman').text(data.vehicle_color || '', fieldX4, detailY);
-                detailY += 12;
+                detailY += Math.max(12, destNameH);
 
+                let destAddrY = detailY;
                 const destAddr = `${data.institute_addrss || ''}\n\nKerala[State Code :32] INDIA`;
                 const destAddrH = doc.heightOfString(destAddr, { width: 250, size: 7.5 });
                 doc.font('Times-Roman').text(destAddr, fieldX2, detailY, { width: 250 });
@@ -400,7 +402,7 @@ const createBranchTransferPdf = async (req, res) => {
                 doc.font('Times-Bold').text(data.engine_no || '', fieldX4, detailY);
                 detailY += 12;
 
-                let finalDetailY = Math.max(detailY, 185 + destAddrH + 30);
+                let finalDetailY = Math.max(detailY, destAddrY + destAddrH + 10);
                 drawFieldRow('Issue Type', data.issue_type || '', '', '', finalDetailY);
 
                 doc.moveTo(40, finalDetailY + 15).lineTo(575, finalDetailY + 15).lineWidth(1).stroke();
