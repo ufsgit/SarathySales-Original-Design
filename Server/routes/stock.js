@@ -37,8 +37,10 @@ router.get('/report/verification/excel', exportStockVerificationExcel);
 router.get('/report/verification/paged-excel', exportStockVerificationPagedExcel);
 router.get('/report/verification/paged-csv', exportStockVerificationPagedCsv);
 router.get('/report/splitup', getStockSplitup);
+router.get('/report/splitup/excel', require('../controllers/stockController').exportStockSplitupExcel);
+router.get('/report/splitup/paged-excel', require('../controllers/stockController').exportStockSplitupPagedExcel);
+router.get('/report/splitup/paged-csv', require('../controllers/stockController').exportStockSplitupPagedCsv);
+
 router.post('/update', upload.single('image'), updateStock);
 router.delete('/delete/:id', require('../controllers/stockController').deleteStock);
-
-
 module.exports = router;

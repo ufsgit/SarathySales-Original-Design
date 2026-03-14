@@ -220,26 +220,84 @@ const getStockSplitup = async (req, res) => {
     if (req.user && req.user.role == 2) {
         branchId = req.user.branch_id;
     }
-    const fromDate = req.query.from, toDate = req.query.to;
+    const fromDate = req.query.from || '2000-01-01';
+    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const chassisNo = (req.query.chassisNo || '').trim();
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
 
     try {
-        let conditions = [];
-        let params = [];
-        if (branchId) { conditions.push('tbl_stock.stock_item_branch = ?'); params.push(branchId); }
+        let conditions = [
+            'si.inv_chassis IS NULL',
+            "pi.retn_status = 'Available'",
+            "pi.item_status = 'Available'",
+            'pb.invoiceDate BETWEEN ? AND ?'
+        ];
+        let params = [fromDate, toDate];
 
-        const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        if (branchId && branchId !== 'ALL') { 
+            conditions.push('pb.purch_branchId = ?'); 
+            params.push(branchId); 
+        }
 
-        const [rows] = await db.execute(
-            `SELECT stock_item_name as stock_model, '' as stock_colour,
-             stock_qty as available
-             FROM tbl_stock ${where} ORDER BY stock_item_name LIMIT ${limit} OFFSET ${offset}`, params);
+        if (chassisNo) {
+            conditions.push('pi.chassis_no LIKE ?');
+            params.push(`%${chassisNo}%`);
+        }
 
-        const [countRows] = await db.execute(`SELECT COUNT(*) as total FROM tbl_stock ${where}`, params);
+        const vehicleCodeStr = req.query.vehicleCode;
+        if (vehicleCodeStr) {
+            const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+            if (codes.length > 0) {
+                const placeholders = codes.map(() => '?').join(',');
+                conditions.push(`pi.materialsId IN (${placeholders})`);
+                params.push(...codes);
+            }
+        }
+
+        const where = 'WHERE ' + conditions.join(' AND ');
+
+        const mainSql = `
+            SELECT 
+                pb.invoiceNo AS invoice_no,
+                pb.rac_date AS rc_date,
+                b.branch_name AS branch_name,
+                pi.materialName AS vehicle_code,
+                pb.pucha_vendorName AS vendor_name,
+                pi.materialsId AS product_code,
+                pb.invoiceDate AS invoice_date,
+                pi.chassis_no AS chassis_no,
+                pi.engine_no AS engine_no,
+                pi.color_name AS color,
+                pb.rc_no AS rc_no,
+                pi.p_date AS mfg_date,
+                pb.total_bill_amount AS total_amount
+            FROM purchaseitem pi
+            JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+            LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
+            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+            ${where} 
+            ORDER BY pb.invoiceDate DESC 
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+
+        const countSql = `
+            SELECT COUNT(*) as total 
+            FROM purchaseitem pi
+            JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+            ${where}
+        `;
+
+        const [rows] = await db.execute(mainSql, params);
+        const [countRows] = await db.execute(countSql, params);
+        
         res.json({ success: true, data: rows, total: countRows[0].total, page, limit });
-    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch stock splitup' }); }
+    } catch (err) { 
+        console.error('getStockSplitup Error:', err); 
+        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message }); 
+    }
 };
 
 const fs = require('fs');
@@ -477,6 +535,175 @@ const exportStockVerificationPagedCsv = async (req, res) => {
     }
 };
 
+const getStockSplitupQuery = (req) => {
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+
+    const fromDate = req.query.from || '2000-01-01';
+    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const vehicleCodeStr = req.query.vehicleCode;
+
+    let conditions = [
+        'si.inv_chassis IS NULL',
+        "pi.retn_status = 'Available'",
+        "pi.item_status = 'Available'",
+        'pb.invoiceDate BETWEEN ? AND ?'
+    ];
+    let params = [fromDate, toDate];
+
+    if (branchId && branchId !== 'ALL') { 
+        conditions.push('pb.purch_branchId = ?'); 
+        params.push(branchId); 
+    }
+
+    if (chassisNo) {
+        conditions.push('pi.chassis_no LIKE ?');
+        params.push(`%${chassisNo}%`);
+    }
+
+    if (vehicleCodeStr) {
+        const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+        if (codes.length > 0) {
+            const placeholders = codes.map(() => '?').join(',');
+            conditions.push(`pi.materialsId IN (${placeholders})`);
+            params.push(...codes);
+        }
+    }
+
+    const where = 'WHERE ' + conditions.join(' AND ');
+
+    const sql = `
+        SELECT 
+            pb.invoiceNo AS invoice_no,
+            pb.rac_date AS rc_date,
+            b.branch_name AS branch_name,
+            pi.materialName AS vehicle_code,
+            pb.pucha_vendorName AS vendor_name,
+            pi.materialsId AS product_code,
+            pb.invoiceDate AS invoice_date,
+            pi.chassis_no AS chassis_no,
+            pi.engine_no AS engine_no,
+            pi.color_name AS color,
+            pb.rc_no AS rc_no,
+            pi.p_date AS mfg_date,
+            pb.total_bill_amount AS total_amount
+        FROM purchaseitem pi
+        JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+        LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+        ${where} 
+        ORDER BY pb.invoiceDate DESC 
+    `;
+    return { sql, params, fromDate, toDate, page: Math.max(1, parseInt(req.query.page) || 1), limit: Math.max(1, parseInt(req.query.limit) || 25) };
+};
+
+const exportStockSplitupExcel = async (req, res) => {
+    try {
+        const { sql, params, fromDate, toDate } = getStockSplitupQuery(req);
+        const [rows] = await db.execute(sql, params);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup Report');
+
+        worksheet.columns = [
+            { header: 'SI:NO', key: 'sino', width: 8 },
+            { header: 'INVOICE NO', key: 'invoice_no', width: 25 },
+            { header: 'RC DATE', key: 'rc_date', width: 15 },
+            { header: 'BRANCH', key: 'branch_name', width: 20 },
+            { header: 'VEHICLE CODE', key: 'vehicle_code', width: 25 },
+            { header: 'VENDOR DETAILS', key: 'vendor_name', width: 20 },
+            { header: 'PRODUCT CODE', key: 'product_code', width: 15 },
+            { header: 'INVOICE DATE', key: 'invoice_date', width: 15 },
+            { header: 'CHASSIS NO', key: 'chassis_no', width: 25 },
+            { header: 'ENGINE NO', key: 'engine_no', width: 20 },
+            { header: 'COLOR', key: 'color', width: 15 },
+            { header: 'RC NO', key: 'rc_no', width: 15 },
+            { header: 'MFG DATE', key: 'mfg_date', width: 15 },
+            { header: 'TOTAL AMOUNT', key: 'total_amount', width: 15 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true };
+        
+        rows.forEach((r, i) => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow({ 
+                sino: i + 1, ...r, 
+                rc_date: fmtDate(r.rc_date),
+                invoice_date: fmtDate(r.invoice_date),
+                mfg_date: fmtDate(r.mfg_date)
+            });
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitup_${fromDate}_to_${toDate}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Export failed' });
+    }
+};
+
+const exportStockSplitupPagedExcel = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockSplitupQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup Page');
+
+        worksheet.mergeCells('A1:O1');
+        worksheet.getRow(1).getCell(1).value = 'Stock Splitup Statement';
+        worksheet.getRow(1).getCell(1).alignment = { horizontal: 'center' };
+        worksheet.getRow(1).getCell(1).font = { bold: true };
+
+        worksheet.getRow(2).values = ['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'TOTAL AMOUNT'];
+        worksheet.getRow(2).font = { bold: true };
+
+        rows.forEach(r => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
+        });
+
+        worksheet.columns.forEach(col => { col.width = 18; });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitupPaged_${page}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Export failed' });
+    }
+};
+
+const exportStockSplitupPagedCsv = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockSplitupQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup CSV');
+        worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'TOTAL AMOUNT']);
+        
+        rows.forEach(r => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitupPaged_${page}.csv`);
+        await workbook.csv.write(res);
+        res.end();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Export failed' });
+    }
+};
+
 module.exports = { 
     getStockList, 
     getAvailableVehicles, 
@@ -486,6 +713,9 @@ module.exports = {
     deleteStock,
     exportStockVerificationExcel,
     exportStockVerificationPagedExcel,
-    exportStockVerificationPagedCsv
+    exportStockVerificationPagedCsv,
+    exportStockSplitupExcel,
+    exportStockSplitupPagedExcel,
+    exportStockSplitupPagedCsv
 };
 

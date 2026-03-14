@@ -205,3 +205,78 @@
     opacity: 0.6;
     pointer-events: none;
 }
+
+/* Prevent dropdown getting cut off by table-container's overflow scroll when there are few rows */
+.table-container {
+    min-height: 380px;
+}
+
+/* Custom Multi-select styles */
+.custom-multiselect {
+    position: relative;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.multiselect-header {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #444;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+.multiselect-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.multiselect-option,
+.multiselect-option-all {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    color: #333;
+    font-size: 11px;
+}
+
+/* Hover style like image 2 */
+.multiselect-option:hover,
+.multiselect-option-all:hover {
+    background: #0081c2;
+    color: #fff;
+}
+
+.multiselect-option input[type="checkbox"],
+.multiselect-option-all input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+.multiselect-option span,
+.multiselect-option-all span {
+    flex: 1;
+}
+
+/* Ensure table header handles the dropdown */
+.report-table thead th.relative {
+    overflow: visible !important;
+}

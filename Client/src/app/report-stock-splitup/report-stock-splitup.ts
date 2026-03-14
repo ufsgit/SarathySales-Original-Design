@@ -24,6 +24,10 @@ export class ReportStockSplitup {
 
     // Filter signals
     chassisNo = signal<string>('');
+    selectedVehicleCodes = signal<string[]>([]);
+    isVehicleDropdownOpen = signal<boolean>(false);
+    labourCodes = signal<any[]>([]);
+
     searchOption = signal<string>('Custom Date');
     fromDate = signal<string>(new Date().toISOString().split('T')[0]);
     toDate = signal<string>(new Date().toISOString().split('T')[0]);
@@ -65,6 +69,10 @@ export class ReportStockSplitup {
             }
         });
 
+        this.api.getAllLabourCodes().subscribe({
+            next: (res) => { if (res.success) this.labourCodes.set(res.data || []); }
+        });
+
         effect(() => {
             // Load data whenever branch, date or other filters change
             this.loadData();
@@ -78,6 +86,8 @@ export class ReportStockSplitup {
             this.branchId(),
             this.fromDate(),
             this.toDate(),
+            this.chassisNo(),
+            this.selectedVehicleCodes(),
             this.page(),
             this.limit()
         ).subscribe({
@@ -114,6 +124,24 @@ export class ReportStockSplitup {
     onFilterChange() {
         this.page.set(1);
         this.loadData();
+    }
+
+    toggleVehicleDropdown() {
+        this.isVehicleDropdownOpen.set(!this.isVehicleDropdownOpen());
+    }
+
+    isVehicleSelected(code: string): boolean {
+        return this.selectedVehicleCodes().includes(code);
+    }
+
+    toggleVehicleCode(code: string) {
+        const current = this.selectedVehicleCodes();
+        if (current.includes(code)) {
+            this.selectedVehicleCodes.set(current.filter(c => c !== code));
+        } else {
+            this.selectedVehicleCodes.set([...current, code]);
+        }
+        this.onFilterChange();
     }
 
     changePage(p: number | string) {
@@ -206,4 +234,46 @@ export class ReportStockSplitup {
     totalInvoiceAmount = computed(() => {
         return this.records().reduce((acc, r) => acc + (parseFloat(r.total_amount) || 0), 0);
     });
+
+    viewPdf(id: string) {
+        const url = this.api.getPurchasePdfUrl(id);
+        window.open(url, '_blank');
+    }
+
+    exportToExcel() {
+        const branchId = this.branchId() || undefined;
+        const from = this.fromDate();
+        const to = this.toDate();
+        const chassisNo = this.chassisNo() || undefined;
+        const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
+
+        const url = this.api.getStockSplitupExcelUrl(branchId, from, to, chassisNo, vehicleCode);
+        window.open(url, '_blank');
+    }
+
+    exportPagedExcel() {
+        const branchId = this.branchId() || undefined;
+        const from = this.fromDate();
+        const to = this.toDate();
+        const chassisNo = this.chassisNo() || undefined;
+        const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
+        const page = this.page();
+        const limit = this.limit();
+
+        const url = this.api.getStockSplitupPagedExcelUrl(branchId, from, to, chassisNo, vehicleCode, page, limit);
+        window.open(url, '_blank');
+    }
+
+    exportPagedCsv() {
+        const branchId = this.branchId() || undefined;
+        const from = this.fromDate();
+        const to = this.toDate();
+        const chassisNo = this.chassisNo() || undefined;
+        const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
+        const page = this.page();
+        const limit = this.limit();
+
+        const url = this.api.getStockSplitupPagedCsvUrl(branchId, from, to, chassisNo, vehicleCode, page, limit);
+        window.open(url, '_blank');
+    }
 }

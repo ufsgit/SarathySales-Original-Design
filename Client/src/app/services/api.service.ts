@@ -813,13 +813,51 @@ export class ApiService {
     }
 
 
-    getStockSplitup(branchId?: string, from?: string, to?: string, page = 1, limit = 25): Observable<ApiResponse> {
+    getStockSplitup(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
         if (branchId) params = params.set('branchId', branchId);
         if (from) params = params.set('from', from);
         if (to) params = params.set('to', to);
+        if (chassisNo) params = params.set('chassisNo', chassisNo);
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) params = params.set('vehicleCode', codeStr);
+        }
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup`, { params })
             .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockSplitupExcelUrl(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[]): string {
+        let q = `?from=${from}&to=${to}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/excel${q}`);
+    }
+
+    getStockSplitupPagedExcelUrl(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
+        let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/paged-excel${q}`);
+    }
+
+    getStockSplitupPagedCsvUrl(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25): string {
+        let q = `?from=${from}&to=${to}&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/paged-csv${q}`);
     }
 
     // ─── Vehicle Enquiry ──────────────────────────────────────────────────────────
