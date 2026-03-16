@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
@@ -41,6 +41,9 @@ import { ApiService } from '../services/api.service';
         <div class="page-card-content">
           <div *ngIf="successMessage()" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ successMessage() }}</div>
           <div *ngIf="errorMessage()" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ errorMessage() }}</div>
+          <div *ngIf="isLoadingChassis()" style="margin-bottom:10px;color:#1565c0;font-size:12px;font-weight:600;">
+            ⏳ Loading chassis details, please wait...
+          </div>
           <form class="ledger-form">
             
             <!-- Row 1 -->
@@ -699,6 +702,7 @@ export class PurchaseInvoiceComponent implements OnInit {
   isSaving = signal(false);
   successMessage = signal('');
   errorMessage = signal('');
+  isLoadingChassis = signal(false);
 
   items = signal<Array<{
     prodCode: string;
@@ -722,7 +726,7 @@ export class PurchaseInvoiceComponent implements OnInit {
   taxTotal = signal(0.00);
   grandTotal = signal(0.00);
 
-  constructor(private router: Router, private api: ApiService) { }
+  constructor(private router: Router, private api: ApiService, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
     const user = this.api.getCurrentUser();
@@ -750,6 +754,51 @@ export class PurchaseInvoiceComponent implements OnInit {
     this.invoiceDate.set(today);
     this.loadInstitutionOptions();
     this.loadProductOptions();
+
+    // Pre-load chassis data if redirected from purchase-upload
+    this.route.queryParams.subscribe(params => {
+      const chassisNo = (params['chassisNo'] || '').trim();
+      if (chassisNo) {
+        this.isLoadingChassis.set(true);
+        this.api.getPurchaseInvoiceByChassis(chassisNo).subscribe({
+          next: (res: any) => {
+            this.isLoadingChassis.set(false);
+            if (res?.success && res.data) {
+              const d = res.data;
+              this.invNo.set(d.invoiceNo || '');
+              this.branchName.set(d.branchName || this.branchName());
+              if (d.branchId) this.branchId.set(d.branchId.toString());
+              if (d.invoiceDate) this.invoiceDate.set(d.invoiceDate);
+              if (d.rcDate) this.rcDate.set(d.rcDate);
+              this.rcNo.set(d.rcNo || '');
+              this.hsnCode.set(d.hsnCode || '');
+              this.gstin.set(d.gstin || '');
+              this.address.set(d.address || '');
+              this.institution.set(d.supplierName || '');
+              this.basicTotal.set(d.basicTotal || 0);
+              this.taxTotal.set(d.taxTotal || 0);
+              this.grandTotal.set(d.grandTotal || 0);
+              if (d.item) {
+                this.items.set([{
+                  prodCode:       d.item.prodCode || '',
+                  description:    d.item.description || '',
+                  chassisNo:      d.item.chassisNo || '',
+                  engineNo:       d.item.engineNo || '',
+                  colorCode:      d.item.colorCode || '',
+                  colorName:      d.item.colorName || '',
+                  availableColors:[{ colorCode: d.item.colorCode, colorName: d.item.colorName }],
+                  mfgDate:        d.item.mfgDate || '',
+                  saleType:       d.item.saleType || '',
+                  productId:      0,
+                  amount:         d.item.amount || 0
+                }]);
+              }
+            }
+          },
+          error: () => this.isLoadingChassis.set(false)
+        });
+      }
+    });
   }
 
   loadBranches() {

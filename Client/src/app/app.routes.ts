@@ -73,7 +73,7 @@ export const routes: Routes = [
     { path: 'previous-money-receipt', component: PreviousMoneyReceipt, canActivate: [authGuard] },
     { path: 'previous-pay-slip', component: PreviousPaySlip, canActivate: [authGuard] },
     { path: 'previous-gate-pass', component: PreviousGatePass, canActivate: [authGuard] },
-    { path: 'previous-proforma-invoice', component: PreviousProformaInvoice, canActivate: [authGuard] },
+    { path: 'previous-proforma-invoice', component: PreviousProformaInvoice, canActivate    : [authGuard] },
     { path: 'edit-proforma-invoice/:id', component: EditProformaInvoiceComponent, canActivate: [authGuard] },
     { path: 'invoice-from-proforma/:id', component: InvoiceFromProformaComponent, canActivate: [authGuard] },
     { path: 'previous-purchase-invoice', component: PreviousPurchaseInvoice, canActivate: [authGuard] },

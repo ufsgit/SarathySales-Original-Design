@@ -481,6 +481,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getPurchaseInvoiceByChassis(chassisNo: string): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/purchase-invoice/by-chassis/${encodeURIComponent(chassisNo)}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     savePurchaseInvoice(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/purchase-invoice/save`, data)
             .pipe(catchError(err => this.handleError(err)));
