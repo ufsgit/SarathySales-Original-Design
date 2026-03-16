@@ -63,41 +63,48 @@ const getAvailableStock = async (req, res) => {
         branchId = String(req.user.branch_id || '').trim();
     }
     try {
-        let sql = `SELECT
-                bt.lc_id AS stock_id,
-                bt.ic_branch AS stock_branch,
-                bt.chassis_no AS stock_chassis_no,
-                bt.chassis_no AS chassis_no,
-                bt.engine_no AS stock_engine_no,
-                bt.engine_no AS engine_no,
-                bt.vehicle AS stock_model,
-                bt.vehicle AS vehicle,
-                bt.vehicle_color AS stock_colour,
-                bt.vehicle_color AS color,
-                bt.vehicle_code AS stock_type,
-                bt.vehicle_code AS p_code,
-                bt.debit_note_date AS stock_date,
-                bt.trans_total AS total_bill_amount
-             FROM tbl_branch_transfer bt
-             INNER JOIN (
-                SELECT MAX(lc_id) AS lc_id
-                FROM tbl_branch_transfer
-                WHERE TRIM(COALESCE(chassis_no, '')) <> ''`;
-        const params = [];
-
-        if (branchId) {
-            sql += ' AND ic_branch = ?';
-            params.push(branchId);
+        if (!branchId || branchId === 'null') {
+            return res.json({ success: true, data: [] });
         }
 
-        sql += ` GROUP BY TRIM(chassis_no)
-             ) latest ON latest.lc_id = bt.lc_id
-             ORDER BY bt.lc_id DESC`;
+        let sql = `
+            SELECT 
+                pi.purchaseItemId AS stock_id,
+                COALESCE(latest_bt.lnstitute_branch_id, pb.purch_branchId) AS stock_branch,
+                pi.chassis_no AS stock_chassis_no,
+                pi.chassis_no AS chassis_no,
+                pi.engine_no AS stock_engine_no,
+                pi.engine_no AS engine_no,
+                pi.materialName AS stock_model,
+                pi.materialName AS vehicle,
+                pi.color_name AS stock_colour,
+                pi.color_name AS color,
+                pi.materialsId AS stock_type,
+                pi.materialsId AS p_code,
+                pb.invoiceDate AS stock_date,
+                pb.total_bill_amount AS total_bill_amount
+            FROM purchaseitem pi
+            JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+            LEFT JOIN (
+                SELECT bt1.*
+                FROM tbl_branch_transfer bt1
+                INNER JOIN (
+                    SELECT chassis_no, MAX(lc_id) AS max_id
+                    FROM tbl_branch_transfer
+                    GROUP BY chassis_no
+                ) bt2 ON bt1.lc_id = bt2.max_id
+            ) latest_bt ON latest_bt.chassis_no = pi.chassis_no
+            WHERE pi.item_status = 'Available'
+              AND COALESCE(latest_bt.lnstitute_branch_id, pb.purch_branchId) = ?
+            ORDER BY pi.purchaseItemId DESC
+        `;
 
-        const [rows] = params.length ? await db.execute(sql, params) : await db.execute(sql);
-
+        const [rows] = await db.execute(sql, [branchId]);
         res.json({ success: true, data: rows });
-    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch stock' }); }
+    } catch (err) { 
+        console.error('getAvailableStock Error:', err); 
+        res.status(500).json({ success: false, message: 'Failed to fetch stock' }); 
+    }
 };
 
 const getInstitutionCustomerName = async (req, res) => {
@@ -289,7 +296,7 @@ const saveBranchTransfer = async (req, res) => {
                 firstItem.chassisNo || '',
                 firstItem.engineNo || '',
                 firstItem.model || '',
-                firstItem.colour || '',
+                firstItem.color || firstItem.colour || '',
                 firstItem.pCode || '',
                 vehicleColorId,
                 productId,
@@ -298,6 +305,74 @@ const saveBranchTransfer = async (req, res) => {
             ]
         );
         const lcId = result.insertId;
+
+        // --- NEW: Update item status and create destination records ---
+        const chassisNo = (firstItem.chassisNo || '').toString().trim();
+        if (chassisNo) {
+            // 1. Fetch source purchaseitem record
+            const [sourceItems] = await conn.execute(
+                `SELECT * FROM purchaseitem 
+                 WHERE chassis_no = ? AND item_status = 'Available'
+                 LIMIT 1`,
+                [chassisNo]
+            );
+
+            if (sourceItems.length > 0) {
+                const sourceItem = sourceItems[0];
+
+                // 2. Update source status to 'Transfered'
+                await conn.execute(
+                    `UPDATE purchaseitem SET item_status = 'Transfered' WHERE purchaseItemId = ?`,
+                    [sourceItem.purchaseItemId]
+                );
+
+                // 3. Get from_branch_name for vendor name
+                const [branchRows] = await conn.execute(
+                    `SELECT branch_name FROM tbl_branch WHERE b_id = ?`,
+                    [effectiveFromBranchId]
+                );
+                const fromBranchName = branchRows?.[0]?.branch_name || 'Source Branch';
+
+                // 4. Create new purchaseitembill for destination
+                const [billResult] = await conn.execute(
+                    `INSERT INTO purchaseitembill (
+                        invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount
+                    ) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [
+                        finalTransferNo,
+                        toBranchId,
+                        transferDate || new Date(),
+                        `Branch Transfer - ${fromBranchName}`,
+                        0, // Open
+                        amount || 0
+                    ]
+                );
+                const newBillId = billResult.insertId;
+
+                // 5. Create new purchaseitem for destination
+                await conn.execute(
+                    `INSERT INTO purchaseitem (
+                        purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
+                        engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                    [
+                        newBillId,
+                        sourceItem.product_id,
+                        sourceItem.materialsId,
+                        sourceItem.materialName,
+                        sourceItem.chassis_no,
+                        sourceItem.engine_no,
+                        sourceItem.color_name,
+                        sourceItem.color_id,
+                        sourceItem.p_date || transferDate || new Date(),
+                        sourceItem.sale_type,
+                        amount || sourceItem.lc_rate || 0,
+                        toBranchId
+                    ]
+                );
+            }
+        }
+
         await conn.commit();
         res.json({ success: true, message: 'Branch transfer saved', lc_id: lcId, transferNo: finalTransferNo });
     } catch (err) {

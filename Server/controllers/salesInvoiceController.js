@@ -1064,7 +1064,7 @@ const saveInvoice = async (req, res) => {
         regNo, adviserId, totalAmount, mobileNo, guardian, address,
         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
         financeDues, vehicle, pCode, color, gstin, basicAmount,
-        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode
+        discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode, proformaId
     } = req.body;
 
     // Enforce branch scoping for non-admins
@@ -1183,6 +1183,20 @@ const saveInvoice = async (req, res) => {
         ];
 
         const [result] = await conn.execute(insertSql, params);
+
+        if (proformaId) {
+            await conn.execute(
+                `UPDATE tbl_proforma SET pro_status = 2 WHERE pro_id = ?`,
+                [proformaId]
+            );
+        }
+
+        if (chassisNo) {
+            await conn.execute(
+                `UPDATE purchaseitem SET item_status = 'Delivered' WHERE chassis_no = ?`,
+                [chassisNo]
+            );
+        }
 
         await conn.commit();
 

@@ -34,7 +34,7 @@ import { ApiService } from '../services/api.service';
           </div>
           <div class="header-actions">
              <button class="btn-view" (click)="navigate('/previous-sales-invoice')">View</button>
-             <button class="btn-save" (click)="saveInvoice($event)" [disabled]="isSaving">{{ isSaving ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="saveInvoice($event)" [disabled]="isSaving || isSaved">{{ isSaving ? 'Saving...' : (isSaved ? 'Saved' : 'Save & Print') }}</button>
           </div>
         </header>
 
@@ -242,7 +242,7 @@ import { ApiService } from '../services/api.service';
 
              <!-- Save & Print Button Row (Right Aligned) -->
              <div class="action-row-right">
-                <button class="btn-save" (click)="saveInvoice($event)" [disabled]="isSaving">{{ isSaving ? 'Saving...' : 'Save & Print' }}</button>
+                <button class="btn-save" (click)="saveInvoice($event)" [disabled]="isSaving || isSaved">{{ isSaving ? 'Saving...' : (isSaved ? 'Saved' : 'Save & Print') }}</button>
              </div>
 
           </form>
@@ -673,6 +673,7 @@ export class InvoiceFromProformaComponent implements OnInit {
     chassisOptions: any[] = [];
     filteredChassisOptions: any[] = [];
     isSaving = false;
+    isSaved = false;
     defaultBranchId = '';
     selectedBranchId = '';
     private chassisIndex = new Map<string, any>();
@@ -1083,6 +1084,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                 cgst: this.toAmount(this.cgst),
                 cess: this.toAmount(this.cess),
                 pincode: (this.pincode || '').toString().trim(),
+                proformaId: this.proformaId || null,
                 items: []
             };
 
@@ -1091,6 +1093,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                 next: (res: any) => {
                     this.isSaving = false;
                     if (res?.success) {
+                        this.isSaved = true;
                         alert('Sales invoice saved successfully');
                         // this.navigate('/previous-sales-invoice');
                     } else {
