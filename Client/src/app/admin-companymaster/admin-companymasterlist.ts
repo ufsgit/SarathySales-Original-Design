@@ -164,11 +164,23 @@ import { FormsModule } from '@angular/forms';
     .action-cell { position: relative; }
     .action-wrapper { position: relative; display: inline-block; }
     .btn-action { background: #c92127; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-    .action-dropdown { position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 4px; min-width: 130px; z-index: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .dropdown-item { padding: 10px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-align: left; }
+    .action-dropdown { 
+      position: absolute; 
+      top: 50%; 
+      right: 102%; 
+      transform: translateY(-50%);
+      background: #fff; 
+      border: 1px solid #ddd; 
+      border-radius: 4px; 
+      display: flex; 
+      flex-direction: row;
+      z-index: 1000; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+    }
+    .dropdown-item { padding: 8px 15px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
     .dropdown-item:hover { background: #f5f5f5; }
     .dropdown-item.edit { color: #0b5ed7; }
-    .dropdown-item.delete { color: #c92127; border-top: 1px solid #f0f0f0; }
+    .dropdown-item.delete { color: #c92127; border-left: 1px solid #f0f0f0; }
 
     /* Pagination Footer */
     .table-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 15px; border-top: 1px solid #eee; }

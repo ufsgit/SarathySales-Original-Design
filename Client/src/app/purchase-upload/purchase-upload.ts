@@ -172,6 +172,7 @@ import { ApiService } from '../services/api.service';
                             <li>1. Please remove all blank rows in the excel sheet that has to be uploaded.</li>
                             <li>2. Make sure the first row of the excel sheet is the title of each columns.</li>
                             <li>3. No blank rows should be left above the Title row.</li>
+                            <li>4. Please ensure all columns for each row are filled with correct data (No fields should be left blank).</li>
                         </ol>
                     </div>
                 </div>
@@ -699,6 +700,19 @@ export class PurchaseUploadComponent implements OnInit {
                     const errorCount = Number(res?.errorCount || 0);
                     this.uploadMessage.set(`Import complete. Success: ${successCount}, Errors: ${errorCount}`);
                 } else {
+                    if (res?.action === 'alert') {
+                        alert(res.message);
+                    } else if (res?.action === 'redirect_chassis') {
+                        alert(res.message);
+                        // Extract chassis number from the message or use a dedicated field
+                        const chassisNo = res.chassisNo || '';
+                        this.router.navigate(['/purchase-invoice'], chassisNo ? { queryParams: { chassisNo } } : {});
+                        return;
+                    } else if (res?.action === 'redirect_color') {
+                        alert(res.message);
+                        this.router.navigate(['/admin-color']);
+                        return;
+                    }
                     this.uploadError.set(res?.message || 'Import failed');
                 }
             },
