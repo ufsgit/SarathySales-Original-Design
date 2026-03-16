@@ -1,0 +1,280 @@
+<div class="app-container">
+    <app-user-nav></app-user-nav>
+  
+    <main class="page-container">
+      <div class="page-content-wrapper">
+        
+        <!-- Breadcrumb -->
+        <div class="breadcrumb-bar">
+          <a (click)="navigate(isAdmin() ? '/admin-home' : '/user-home')"><i class="fas fa-home"></i> Home</a>
+          <span> > </span>
+          <span>Transaction</span>
+          <span> > </span>
+          <span class="active">Edit Sales Invoice</span>
+        </div>
+  
+        <!-- Main Card -->
+        <div class="theme-card">
+          <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
+             <div class="header-left">
+               <h2>Edit Sales Invoice</h2>
+            </div>
+            <div class="header-actions">
+               <button class="btn-view" (click)="navigate('/previous-sales-invoice')">View</button>
+               <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Updating...' : 'Save Changes' }}</button>
+            </div>
+          </header>
+  
+          <div class="page-card-content">
+            <div *ngIf="isLoading()" class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i> Loading invoice data...
+            </div>
+
+            <div *ngIf="errorMsg()" class="alert alert-danger">{{ errorMsg() }}</div>
+            <div *ngIf="successMsg()" class="alert alert-success">{{ successMsg() }}</div>
+
+            <form *ngIf="!isLoading()" class="ledger-form">
+              <div class="form-cols-wrapper">
+                  
+                  <!-- Column 1 -->
+                  <div class="form-column">
+                      <div class="form-group">
+                          <label>Branch Name:</label>
+                          <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Invoice No :</label>
+                          <input type="text" class="form-control readonly" [value]="invoiceNo()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Invoice Date :</label>
+                          <input type="date" class="form-control readonly" [value]="invoiceDate()" name="invoiceDate" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Issue Type :</label>
+                          <select class="form-control" [ngModel]="issueType()" (ngModelChange)="onIssueTypeChange($event)" name="issueType">
+                              <option value="">--Select--</option>
+                              <option value="01">01</option>
+                              <option value="02">02</option>
+                          </select>
+                      </div>
+                      <div class="form-group">
+                          <label>Customer Name:</label>
+                          <ng-container *ngIf="issueType() !== '02'; else branchDropdown">
+                              <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
+                          </ng-container>
+                          <ng-template #branchDropdown>
+                              <div class="custom-dropdown branch-dropdown">
+                                  <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
+                                      {{ getSelectedCustomerBranchName() }}
+                                      <i class="fas fa-caret-down"></i>
+                                  </div>
+                                  <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                      <div class="dropdown-search">
+                                          <input type="text" placeholder="Search branch..."
+                                              [ngModel]="branchSearchTerm()"
+                                              (ngModelChange)="branchSearchTerm.set($event)"
+                                              name="branchSearch"
+                                              (click)="$event.stopPropagation()">
+                                      </div>
+                                      <div class="dropdown-options-list">
+                                          <div class="dropdown-option"
+                                              *ngFor="let b of searchableBranchOptionsList()"
+                                              (click)="onBranchSelect(b)">
+                                              {{ b.branch_name }}
+                                          </div>
+                                          <div class="dropdown-option no-results"
+                                              *ngIf="searchableBranchOptionsList().length === 0">
+                                              No results found
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </ng-template>
+                      </div>
+                      <div class="form-group">
+                          <label>Father/Husband:</label>
+                          <input type="text" class="form-control" [ngModel]="guardian()" (ngModelChange)="guardian.set($event)" name="guardian">
+                      </div>
+                      <div class="form-group" style="align-items: flex-start;">
+                          <label style="margin-top: 5px;">Address:</label>
+                          <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="3"></textarea>
+                      </div>
+                      <div class="form-group">
+                          <label>Pin Code:</label>
+                          <input type="text" class="form-control" [ngModel]="pincode()" (ngModelChange)="pincode.set($event)" name="pincode">
+                      </div>
+                       <div class="form-group">
+                          <label>GSTIN:</label>
+                          <input type="text" class="form-control" [ngModel]="gstin()" (ngModelChange)="gstin.set($event)" name="gstin">
+                      </div>
+                  </div>
+  
+                  <!-- Column 2 -->
+                  <div class="form-column">
+                      <div class="form-group">
+                          <label>Mobile No :</label>
+                          <input type="text" class="form-control" [ngModel]="mobileNo()" (ngModelChange)="mobileNo.set($event)" name="mobileNo">
+                      </div>
+                      <div class="form-group">
+                          <label>Age :</label>
+                          <input type="text" class="form-control" [ngModel]="age()" (ngModelChange)="age.set($event)" name="age">
+                      </div>
+                      <div class="form-group">
+                          <label>CDMS No:</label>
+                          <input type="text" class="form-control" [ngModel]="cdmsNo()" (ngModelChange)="cdmsNo.set($event)" name="cdmsNo">
+                      </div>
+                      <div class="form-group">
+                          <label>Area:</label>
+                          <input type="text" class="form-control" [ngModel]="area()" (ngModelChange)="area.set($event)" name="area">
+                      </div>
+                      <div class="form-group">
+                          <label>Hypothication:</label>
+                          <div class="custom-dropdown hypo-dropdown">
+                              <div class="dropdown-toggle" (click)="toggleHypothecationDropdown()">
+                                  {{ hypothication() || 'Select Hypothication' }}
+                                  <i class="fas fa-caret-down"></i>
+                              </div>
+                              <div class="dropdown-menu" *ngIf="isHypothecationDropdownOpen()">
+                                  <div class="dropdown-search">
+                                      <input type="text" placeholder="Search finance..."
+                                          [ngModel]="hypothecationSearchTerm()"
+                                          (ngModelChange)="hypothecationSearchTerm.set($event)"
+                                          name="hypoSearch"
+                                          (click)="$event.stopPropagation()">
+                                  </div>
+                                  <div class="dropdown-options-list">
+                                      <div class="dropdown-option"
+                                          *ngFor="let opt of searchableHypothecationList()"
+                                          (click)="onHypothecationSelect(opt)">
+                                          {{ opt.icompany_name }}
+                                      </div>
+                                      <div class="dropdown-option no-results"
+                                          *ngIf="searchableHypothecationList().length === 0">
+                                          No results found
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="form-group">
+                          <label>Place:</label>
+                          <input type="text" class="form-control" [ngModel]="place()" (ngModelChange)="place.set($event)" name="place">
+                      </div>
+                      <div class="form-group">
+                          <label>Receipt No:</label>
+                          <input type="text" class="form-control" [ngModel]="receiptNo()" (ngModelChange)="receiptNo.set($event)" name="receiptNo">
+                      </div>
+                      <div class="form-group">
+                          <label>Registration:</label>
+                          <input type="text" class="form-control" [ngModel]="registration()" (ngModelChange)="registration.set($event)" name="registration">
+                      </div>
+                       <div class="form-group">
+                          <label>Finance Dues:</label>
+                          <input type="text" class="form-control" [ngModel]="financeDues()" (ngModelChange)="financeDues.set($event)" name="financeDues">
+                      </div>
+                       <div class="form-group">
+                          <label>Executive Name:</label>
+                          <div class="custom-dropdown exec-dropdown">
+                              <div class="dropdown-toggle" (click)="toggleExecutiveDropdown()">
+                                  <span [class.placeholder]="!executiveName()">{{ getExecutiveLabel() || 'Select Executive' }}</span>
+                                  <i class="fas fa-caret-down"></i>
+                              </div>
+                              <div class="dropdown-menu" *ngIf="isExecutiveDropdownOpen()">
+                                  <div class="dropdown-search">
+                                      <input type="text" placeholder="Search executive..."
+                                          [ngModel]="executiveSearchTerm()"
+                                          (ngModelChange)="executiveSearchTerm.set($event)"
+                                          name="execSearch"
+                                          (click)="$event.stopPropagation()">
+                                  </div>
+                                  <div class="dropdown-options-list">
+                                      <div class="dropdown-option"
+                                          *ngFor="let ex of searchableExecutiveList()"
+                                          (click)="onExecutiveSelect(ex)">
+                                          {{ ex.label }}
+                                      </div>
+                                      <div class="dropdown-option no-results"
+                                          *ngIf="searchableExecutiveList().length === 0">
+                                          No results found
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+  
+                  <!-- Column 3 -->
+                  <div class="form-column">
+                      <div class="form-group">
+                          <label>Chassis No :</label>
+                          <input type="text" class="form-control readonly" [value]="chassisNo()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Engine No:</label>
+                          <input type="text" class="form-control readonly" [value]="engineNo()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Vehicle:</label>
+                          <input type="text" class="form-control readonly" [value]="vehicle()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Color:</label>
+                          <input type="text" class="form-control readonly" [value]="color()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>P.Code:</label>
+                          <input type="text" class="form-control readonly" [value]="pCode()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>HSN.Code:</label>
+                          <input type="text" class="form-control readonly" [value]="hsnCode()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Basic Amount:</label>
+                          <input type="number" class="form-control readonly" [value]="basicAmount()" name="basicAmount" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>Discount Amount:</label>
+                          <input type="number" class="form-control" [ngModel]="discountAmount()" (ngModelChange)="discountAmount.set($event); recalculateTotalAmount()" name="discountAmount">
+                      </div>
+                      <div class="form-group">
+                          <label>Taxable Amount:</label>
+                          <input type="number" class="form-control readonly" [value]="taxableAmount()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>SGST(9%):</label>
+                          <input type="number" class="form-control readonly" [value]="sgst()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>CGST(9%):</label>
+                          <input type="number" class="form-control readonly" [value]="cgst()" readonly>
+                      </div>
+                      <div class="form-group">
+                          <label>CESS:</label>
+                          <input type="number" class="form-control readonly" [value]="cess()" name="cess" readonly>
+                      </div>
+                  </div>
+  
+              </div>
+  
+               <!-- Total Payable Section -->
+               <div class="total-payable-section">
+                  <span>Total Amount : Rs <span class="amount-val">{{ totalAmount() }}</span></span>
+               </div>
+  
+               <!-- Action Button Row -->
+               <div class="action-row-right">
+                  <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Updating...' : 'Save Changes' }}</button>
+               </div>
+  
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+    
+    <div style="height: 50px;"></div>
+    
+    <app-user-footer></app-user-footer>
+  </div>

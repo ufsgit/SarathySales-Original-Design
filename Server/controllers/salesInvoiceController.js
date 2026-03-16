@@ -1255,13 +1255,16 @@ const updateInvoice = async (req, res) => {
 
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
+        const safeProductId = invProductId !== undefined && invProductId !== null && invProductId !== '' ? parseInt(invProductId, 10) || 0 : 0;
+        const safeColorCode = invColorCode !== undefined && invColorCode !== null && invColorCode !== '' ? parseInt(invColorCode, 10) || 0 : 0;
+
         const params = [
             invoiceNo, branchId, parsedDate, customerName, chassisNo || '', engineNo || '',
             regNo || '', adviserId || '', totalAmount, mobileNo || '', guardian || '',
             address || '', issueType || '', age || '', cdmsNo || '', area || '', hypothication || '', place || '',
             receiptNo || '', financeDues || '', vehicle || '', pCode || '', color || '', gstin || '',
             basicAmount || 0, discountAmount || 0, hsnCode || '', taxableAmount || 0, sgst || 0, cgst || 0, cess || 0,
-            pincode || '', invColorCode || color || '', invProductId || pCode || '', id
+            pincode || '', safeColorCode, safeProductId, id
         ];
 
         await conn.execute(updateSql, params);
@@ -1357,6 +1360,21 @@ const createRtoBillPdfByNo = async (req, res) => {
     }
 };
 
+const getInvoice = async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT inv.*, b.branch_name FROM tbl_invoice_labour inv
+             LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch 
+             WHERE inv.inv_id = ?`, [req.params.id]
+        );
+        if (!rows.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        res.json({ success: true, data: rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to fetch invoice details' });
+    }
+};
+
 module.exports = {
     getNextInvoiceNo,
     getAllLabourCodes,
@@ -1364,6 +1382,7 @@ module.exports = {
     getHypothecationOptions,
     getChassisRecords,
     listInvoices,
+    getInvoice,
     createSalesPdf,
     createSalesLetterPdf,
     createStickerPdf,

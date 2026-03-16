@@ -101,6 +101,7 @@ export const routes: Routes = [
     { path: 'vsi-list', component: VsiListComponent, canActivate: [authGuard] },
     { path: 'vsi-report', component: VsiReportComponent, canActivate: [authGuard] },
     { path: 'admin-sales-returns', loadComponent: () => import('./admin-sales-returns/admin-sales-returns').then(m => m.AdminSalesReturnsComponent), canActivate: [authGuard] },
+    { path: 'admin-edit-sale-invoice/:id', loadComponent: () => import('./admin-edit-sale-invoice/admin-edit-sale-invoice').then(m => m.AdminEditSaleInvoiceComponent), canActivate: [authGuard] },
     { path: 'user-home', component: UserHome, canActivate: [authGuard] },
 
     { path: 'admin-findvehicle', component: VehicleEnquiryComponent, canActivate: [authGuard] },

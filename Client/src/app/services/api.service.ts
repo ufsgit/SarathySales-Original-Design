@@ -394,13 +394,13 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    updateSalesInvoice(id: string | number, data: any): Observable<ApiResponse> {
-        return this.http.put<ApiResponse>(`${this.BASE_URL}/sales-invoice/${id}`, data)
+    getSalesInvoice(id: string | number): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-invoice/${id}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getSalesInvoice(id: number): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-invoice/${id}`)
+    updateSalesInvoice(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/sales-invoice/${id}`, data)
             .pipe(catchError(err => this.handleError(err)));
     }
 

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { Subject } from 'rxjs';
@@ -55,7 +55,7 @@ export class PreviousSalesInvoice implements OnInit, OnDestroy {
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
     this.searchInput$.pipe(
@@ -143,5 +143,9 @@ export class PreviousSalesInvoice implements OnInit, OnDestroy {
     if (!inv_no) return;
     const url = this.api.getSalesRtoBillPdfUrl(inv_no);
     window.open(url, '_blank');
+  }
+
+  navigate(path: string): void {
+    this.router.navigateByUrl(path);
   }
 }

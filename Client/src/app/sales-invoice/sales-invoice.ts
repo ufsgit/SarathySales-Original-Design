@@ -1223,12 +1223,7 @@ export class SalesInvoiceComponent implements OnInit {
                     this.isSaving.set(false);
                     if (res?.success) {
                         alert('Invoice Saved Successfully');
-                        // if (res.data?.id || res.id) {
-                        //     const id = res.data?.id || res.id;
-                        //     const url = this.api.getSalesPdfUrl(id);
-                        //     window.open(url, '_blank');
-                        // }
-                        // this.router.navigate(['/previous-sales-invoice']);
+                        this.clearForm();
                     } else {
                         alert(res?.message || 'Failed to save invoice');
                     }
@@ -1259,6 +1254,52 @@ export class SalesInvoiceComponent implements OnInit {
     }
 
 
+
+    clearForm(): void {
+        // Clear everything
+        this.branchName.set('');
+        this.defaultBranchId.set('');
+        this.invoiceNo.set('');
+        this.invoiceDate.set(this.formatTodayDate());
+        this.issueType.set('');
+        this.customerNameManual.set('');
+        this.customerBranchId.set('');
+        this.guardian.set('');
+        this.address.set('');
+        this.pincode.set('');
+        this.gstin.set('');
+        this.mobileNo.set('');
+        this.age.set('');
+        this.cdmsNo.set('');
+        this.area.set('');
+        this.hypothication.set('');
+        this.place.set('');
+        this.receiptNo.set('');
+        this.registration.set('');
+        this.financeDues.set('');
+        this.executive.set('');
+        this.chassisNo.set('');
+        this.engineNo.set('');
+        this.vehicle.set('');
+        this.color.set('');
+        this.pCode.set('');
+        this.hsnCode.set('');
+        this.invProductId.set('');
+        this.invColorCode.set('');
+        this.basicAmount.set(0);
+        this.discountAmount.set(0);
+        this.taxableAmount.set(0);
+        this.sgst.set(0);
+        this.cgst.set(0);
+        this.cess.set(0);
+        this.selectedInvTotal.set(0);
+        this.executiveOptions.set([]);
+        this.chassisOptions.set([]);
+        this.chassisIndex.clear();
+        this.filteredChassisOptions.set([]);
+        this.issueType02ExecutiveOptions.set([]);
+        this.issueType02HypothecationOptions.set([]);
+    }
 
     navigate(path: string) { this.router.navigate([path]); }
 
