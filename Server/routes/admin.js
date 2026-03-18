@@ -104,16 +104,7 @@ const priceUpload = multer({ storage: priceUploadStorage, fileFilter: (req, file
     else cb(new Error('Only Excel and CSV files are allowed'));
 }});
 
-router.post('/products/upload-price', priceUpload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
-    // File saved — further processing (parsing, updating DB) can be added here
-    res.json({ 
-        success: true, 
-        message: `File "${req.file.originalname}" uploaded successfully. Price update queued.`,
-        filename: req.file.filename
-    });
-});
+const { uploadProductPrice } = require('../controllers/adminController');
+router.post('/products/upload-price', priceUpload.single('file'), uploadProductPrice);
 
 module.exports = router;

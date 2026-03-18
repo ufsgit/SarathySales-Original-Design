@@ -1,4 +1,8 @@
 const db = require('../config/db');
+const xlsx = require('xlsx');
+const fs = require('fs');
+const path = require('path');
+
 
 // --- Employee Master ---
 const listEmployees = async (req, res) => {
@@ -478,6 +482,97 @@ const deleteProduct = async (req, res) => {
     }
 };
 
+const uploadProductPrice = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    let conn;
+    try {
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        if (rows.length === 0) {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            return res.status(400).json({ success: false, message: 'Excel file is empty' });
+        }
+
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        let updatedCount = 0;
+        let skippedCount = 0;
+
+        for (const row of rows) {
+            // Find PCODE (case-insensitive for column header)
+            const rowKeys = Object.keys(row);
+            const pcodeKey = rowKeys.find(k => k.toLowerCase() === 'pcode' || k.toLowerCase() === 'product code' || k.toLowerCase() === 'code');
+            const pcode = pcodeKey ? String(row[pcodeKey]).trim() : '';
+
+            if (!pcode) {
+                skippedCount++;
+                continue;
+            }
+
+            // Extract values (looking for matching names/substrings)
+            // We'll use a mapping or direct check
+            const basicPrice = row['Basic Price'] ?? row['Price'] ?? row['sale_price'] ?? row['BasicPrice'] ?? row['Basic_Price'];
+            const cgst = row['CGST'] ?? row['cgst'];
+            const sgst = row['SGST'] ?? row['sgst'];
+            const cess = row['CESS'] ?? row['cess'] ?? row['Cess'];
+            const purchaseCost = row['Purchase Cost'] ?? row['cost'] ?? row['purchase_cost'] ?? row['PurchaseCost'];
+            const totalPrice = row['Total Price'] ?? row['total_price'] ?? row['Total'] ?? row['TotalPrice'];
+
+            const updates = [];
+            const values = [];
+
+            if (basicPrice !== undefined) { updates.push('sale_price = ?'); values.push(basicPrice); }
+            if (cgst !== undefined) { updates.push('cgst = ?'); values.push(cgst); }
+            if (sgst !== undefined) { updates.push('sgst = ?'); values.push(sgst); }
+            if (cess !== undefined) { updates.push('cess = ?'); values.push(cess); }
+            if (purchaseCost !== undefined) { updates.push('purchase_cost = ?'); values.push(purchaseCost); }
+            if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(totalPrice); }
+
+            if (updates.length === 0) {
+                skippedCount++;
+                continue;
+            }
+
+            const query = `UPDATE tbl_labour_code SET ${updates.join(', ')} WHERE labour_code = ?`;
+            values.push(pcode);
+
+            const [result] = await conn.execute(query, values);
+            if (result.affectedRows > 0) {
+                updatedCount++;
+            } else {
+                skippedCount++;
+            }
+        }
+
+        await conn.commit();
+        
+        // Delete the file after processing
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+        res.json({
+            success: true,
+            message: `File processed. ${updatedCount} products updated, ${skippedCount} skipped.`,
+            updatedCount,
+            skippedCount
+        });
+
+    } catch (err) {
+        console.error('Upload Product Price Error:', err);
+        if (conn) await conn.rollback();
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        res.status(500).json({ success: false, message: 'Failed to process file: ' + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+};
+
 module.exports = {
     listEmployees,
     addEmployee,
@@ -503,6 +598,7 @@ module.exports = {
     addColor,
     updateColor,
     deleteColor,
-    listDesignations
+    listDesignations,
+    uploadProductPrice
 };
 
