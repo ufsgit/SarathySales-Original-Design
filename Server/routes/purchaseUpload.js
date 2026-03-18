@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
 
-// Apply adminMiddleware to all routes in this router
-router.use(adminMiddleware);
+// router.use(adminMiddleware); // Temporarily commented out to allow staff users
 
 const db = require('../config/db');
 const multer = require('multer');
@@ -38,8 +37,8 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    const { branchId } = req.body;
     const isAdmin = req.user && (req.user.role == 1 || req.user.role_des === 'admin');
+    const effectiveBranchId = isAdmin ? req.body.branchId : req.user.branch_id;
 
     try {
         // Parse Excel
@@ -90,10 +89,14 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
 
                 const branchNameExcel = String(row['Branch'] || '').trim();
                 // 1. Branch check (Collect for atomic addition)
-                const [bResult] = await conn.execute('SELECT branch_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
+                const [bResult] = await conn.execute('SELECT b_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
                 if (bResult.length === 0) {
+                    if (!isAdmin) {
+                        conn.release();
+                        return res.json({ success: false, action: 'alert', message: `Branch '${branchNameExcel}' not found. Staff cannot add new branches. (Row ${rowNum}).` });
+                    }
                     missingBranches.add(branchNameExcel);
-                } else if (!isAdmin && bResult[0].branch_id != branchId) {
+                } else if (!isAdmin && bResult[0].b_id != effectiveBranchId) {
                     conn.release();
                     return res.json({ success: false, action: 'alert', message: `You can only enter the list for your current branch. Row ${rowNum} has branch '${branchNameExcel}'.` });
                 }
@@ -140,9 +143,9 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 const row = rows[i];
 
                 const branchNameExcel = String(row['Branch'] || '').trim();
-                let rowBranchId = branchId;
-                const [bResult] = await conn.execute('SELECT branch_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
-                rowBranchId = bResult[0].branch_id;
+                let rowBranchId = effectiveBranchId;
+                const [bResult] = await conn.execute('SELECT b_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
+                rowBranchId = bResult[0].b_id;
 
                 const invoiceNo = String(row['Document Name'] || row['Invoice No'] || row['Supplier Invoice No'] || '').trim();
                 let invoiceDate = new Date();
