@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
 
 function numberToWords(num) {
@@ -325,6 +326,12 @@ const saveBranchTransfer = async (req, res) => {
                     `UPDATE purchaseitem SET item_status = 'Transfered' WHERE purchaseItemId = ?`,
                     [sourceItem.purchaseItemId]
                 );
+
+                // 🔹 Decrement stock at source branch
+                await updateStockQuantity(conn, sourceItem.product_id, effectiveFromBranchId, -1);
+
+                // 🔹 Increment stock at destination branch
+                await updateStockQuantity(conn, sourceItem.product_id, toBranchId, 1);
 
                 // 3. Get from_branch_name for vendor name
                 const [branchRows] = await conn.execute(

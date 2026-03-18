@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
 
 function numberToWords(num) {
@@ -1196,6 +1197,9 @@ const saveInvoice = async (req, res) => {
                 `UPDATE purchaseitem SET item_status = 'Delivered' WHERE chassis_no = ?`,
                 [chassisNo]
             );
+
+            // 🔹 Decrement stock in tbl_stock
+            await updateStockQuantity(conn, productId, branchId, -1);
         }
 
         await conn.commit();

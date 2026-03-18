@@ -85,6 +85,17 @@
     font-weight: 600;
 }
 
+.btn-return {
+    background-color: #f36f21; /* KTM Orange */
+    color: white;
+    border: none;
+    padding: 6px 15px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
 /* Form Grid */
 .page-card-content {
     padding: 30px 20px;

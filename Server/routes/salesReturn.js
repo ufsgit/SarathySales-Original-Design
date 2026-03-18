@@ -4,5 +4,6 @@ const salesReturnController = require('../controllers/salesReturnController');
 
 router.get('/list', salesReturnController.getSalesReturnReport);
 router.get('/pdf/:id', salesReturnController.createSalesReturnPdf);
+router.post('/save', salesReturnController.saveSalesReturn);
 
 module.exports = router;

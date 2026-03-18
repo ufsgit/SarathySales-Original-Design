@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
 
 function numberToWords(num) {
@@ -161,6 +162,10 @@ const savePurchaseInvoice = async (req, res) => {
                     item.amount || item.rate || 0, req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId)
                 ]
             );
+
+            // 🔹 Increment stock in tbl_stock
+            const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId);
+            await updateStockQuantity(conn, item.productId, effectiveBranchId, 1);
         }
         await conn.commit();
         res.json({ success: true, message: 'Purchase invoice saved', inv_id: invId });

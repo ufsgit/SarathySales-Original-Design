@@ -148,4 +148,28 @@ export class PreviousSalesInvoice implements OnInit, OnDestroy {
   navigate(path: string): void {
     this.router.navigateByUrl(path);
   }
+
+  initiateReturn(record: any): void {
+    if (window.confirm(`Are you sure you want to return Invoice ${record.inv_no}? This will restore stock.`)) {
+      this.isLoading.set(true);
+      this.api.saveSalesReturn({
+        invNo: record.inv_no,
+        returnDate: new Date().toISOString().split('T')[0]
+      }).subscribe({
+        next: (res) => {
+          this.isLoading.set(false);
+          if (res.success) {
+            alert('Sales return processed successfully.');
+            this.loadData();
+          } else {
+            this.errorMsg.set(res.message || 'Failed to process return.');
+          }
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          this.errorMsg.set(err?.error?.message || 'Server error.');
+        }
+      });
+    }
+  }
 }

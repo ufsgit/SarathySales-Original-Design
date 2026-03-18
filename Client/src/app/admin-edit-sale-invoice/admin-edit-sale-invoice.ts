@@ -426,4 +426,31 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
     const selected = this.branchOptions().find(b => b.b_id === id);
     return selected ? selected.branch_name : (this.customerName() || 'Select Branch');
   }
+
+  initiateReturn(): void {
+    const invNo = this.invoiceNo();
+    if (!invNo) return;
+
+    if (window.confirm(`Are you sure you want to return Invoice ${invNo}? This will restore stock.`)) {
+      this.isLoading.set(true);
+      this.api.saveSalesReturn({
+        invNo: invNo,
+        returnDate: new Date().toISOString().split('T')[0]
+      }).subscribe({
+        next: (res) => {
+          this.isLoading.set(false);
+          if (res.success) {
+            alert('Sales return processed successfully.');
+            this.router.navigate(['/previous-sales-invoice']);
+          } else {
+            this.errorMsg.set(res.message || 'Failed to process return.');
+          }
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          this.errorMsg.set(err?.error?.message || 'Server error.');
+        }
+      });
+    }
+  }
 }

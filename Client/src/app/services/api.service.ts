@@ -1052,5 +1052,10 @@ export class ApiService {
     getSalesReturnPdfUrl(id: string | number): string {
         return `${this.BASE_URL}/sales-return/pdf/${id}`;
     }
+
+    saveSalesReturn(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/sales-return/save`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
 }
 

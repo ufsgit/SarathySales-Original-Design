@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
 
 function numberToWords(num) {
@@ -161,9 +162,7 @@ const createSalesReturnPdf = async (req, res) => {
                 doc.font('Times-Roman').text(data.return_date ? new Date(data.return_date).toLocaleDateString('en-GB') : '', fieldX4, detailY);
                 detailY += 12;
 
-                doc.font('Times-Bold').text('Return Reason', fieldX3, detailY);
-                doc.text(':', fieldX4 - 10, detailY);
-                doc.font('Times-Roman').text(data.return_reason || '', fieldX4, detailY);
+                detailY += 12;
 
                 detailY += 18;
                 doc.moveTo(40, detailY).lineTo(col.end, detailY).lineWidth(1).stroke();
@@ -380,7 +379,97 @@ const getSalesReturnReport = async (req, res) => {
     }
 };
 
+/**
+ * Save Sales Return
+ */
+const saveSalesReturn = async (req, res) => {
+    const { invNo, returnDate, returnReason } = req.body;
+
+    if (!invNo) {
+        return res.status(400).json({ success: false, message: 'Invoice number required' });
+    }
+
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        // 1. Fetch original invoice details
+        const [invoiceRows] = await conn.execute(
+            `SELECT * FROM tbl_invoice_labour WHERE inv_no = ?`,
+            [invNo]
+        );
+
+        if (invoiceRows.length === 0) {
+            throw new Error('Invoice not found');
+        }
+
+        const inv = invoiceRows[0];
+
+        // 2. Insert into tbl_sale_return
+        const insertReturnSql = `
+            INSERT INTO tbl_sale_return (
+                inv_no, inv_cus, inv_cus_addres, inv_pho, inv_cus_father_hus,
+                inv_inv_date, inv_type, inv_age, inv_cdms_no, inv_area,
+                inv_hypothication, inv_chassis, in_engine, inv_place, inv_receipt_no,
+                inv_regn, inv_advisername, inv_finance_dues, inv_branch, inv_vehicle,
+                inv_vehicle_code, inv_color, inv_color_code, inv_total, inv_product_id,
+                status, inv_gstin, inv_basic_amt, inv_discount_amt, inv_hsncode,
+                inv_taxable_amt, inv_sgst, inv_cgst, inv_cess, return_date,
+                inv_pincode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const returnParams = [
+            inv.inv_no, inv.inv_cus, inv.inv_cus_addres, inv.inv_pho, inv.inv_cus_father_hus,
+            inv.inv_inv_date, inv.inv_type, inv.inv_age, inv.inv_cdms_no, inv.inv_area,
+            inv.inv_hypothication, inv.inv_chassis, inv.in_engine, inv.inv_place, inv.inv_receipt_no,
+            inv.inv_regn, inv.inv_advisername, inv.inv_finance_dues, inv.inv_branch, inv.inv_vehicle,
+            inv.inv_vehicle_code, inv.inv_color, inv.inv_color_code, inv.inv_total, inv.inv_product_id,
+            inv.status, inv.inv_gstin, inv.inv_basic_amt, inv.inv_discount_amt, inv.inv_hsncode,
+            inv.inv_taxable_amt, inv.inv_sgst, inv.inv_cgst, inv.inv_cess, returnDate || new Date(),
+            inv.inv_pincode
+        ];
+
+        await conn.execute(insertReturnSql, returnParams);
+
+        // 3. Update purchaseitem status back to 'Available'
+        if (inv.inv_chassis) {
+            await conn.execute(
+                `UPDATE purchaseitem SET item_status = 'Available', retn_status = 'Available' WHERE chassis_no = ?`,
+                [inv.inv_chassis]
+            );
+
+            // 4. Increment stock in tbl_stock
+            // We need to fetch product info from the invoice
+            // Note: inv_product_id was added in previous tasks, ensuring it's used.
+            const productId = inv.inv_product_id;
+            const branchId = inv.inv_branch;
+
+            if (productId && branchId) {
+                await updateStockQuantity(conn, productId, branchId, 1);
+            }
+        }
+
+        // 5. Delete original invoice (as per PHP logic)
+        await conn.execute(
+            `DELETE FROM tbl_invoice_labour WHERE inv_id = ?`,
+            [inv.inv_id]
+        );
+
+        await conn.commit();
+        res.json({ success: true, message: 'Sales return processed successfully' });
+
+    } catch (err) {
+        await conn.rollback();
+        console.error('saveSalesReturn error:', err);
+        res.status(500).json({ success: false, message: 'Failed to process sales return: ' + err.message });
+    } finally {
+        conn.release();
+    }
+};
+
 module.exports = {
     getSalesReturnReport,
-    createSalesReturnPdf
+    createSalesReturnPdf,
+    saveSalesReturn
 };

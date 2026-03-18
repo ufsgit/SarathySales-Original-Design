@@ -22,6 +22,7 @@
             <div class="header-actions">
                <button class="btn-view" (click)="navigate('/previous-sales-invoice')">View</button>
                <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Updating...' : 'Save Changes' }}</button>
+               <button class="btn-return" (click)="initiateReturn()">Sales Return</button>
             </div>
           </header>
   
