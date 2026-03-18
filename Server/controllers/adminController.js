@@ -15,9 +15,9 @@ const listEmployees = async (req, res) => {
             `SELECT * FROM tbl_employee ORDER BY e_first_name LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_employee');
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -86,9 +86,9 @@ const listProducts = async (req, res) => {
             `SELECT * FROM tbl_labour_code ORDER BY labour_title LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_labour_code');
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -144,9 +144,9 @@ const listHypothecations = async (req, res) => {
             `SELECT com_id as id, icompany_name as name, icompany_address as address, icompany_gst as gstin FROM tbl_insurance_company ORDER BY icompany_name ASC LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_insurance_company');
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -208,9 +208,9 @@ const listCompanies = async (req, res) => {
             `SELECT * FROM customer_details ORDER BY c_name ASC LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM customer_details');
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -291,9 +291,9 @@ const listInstitutions = async (req, res) => {
             `SELECT * FROM tbl_branch ORDER BY branch_name ASC LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_branch');
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -375,8 +375,8 @@ const listColors = async (req, res) => {
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_model');
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0].total,
             page,
@@ -500,30 +500,48 @@ const uploadProductPrice = async (req, res) => {
         }
 
         conn = await db.getConnection();
-        await conn.beginTransaction();
+        
+        const notFoundPcodes = [];
+        const validatedRows = [];
 
-        let updatedCount = 0;
-        let skippedCount = 0;
-
+        // Step 1: Validate all PCODEs first
         for (const row of rows) {
-            // Find PCODE (case-insensitive for column header)
             const rowKeys = Object.keys(row);
             const pcodeKey = rowKeys.find(k => k.toLowerCase() === 'pcode' || k.toLowerCase() === 'product code' || k.toLowerCase() === 'code');
             const pcode = pcodeKey ? String(row[pcodeKey]).trim() : '';
 
-            if (!pcode) {
-                skippedCount++;
-                continue;
-            }
+            if (!pcode) continue;
 
-            // Extract values (looking for matching names/substrings)
-            // We'll use a mapping or direct check
-            const basicPrice = row['Basic Price'] ?? row['Price'] ?? row['sale_price'] ?? row['BasicPrice'] ?? row['Basic_Price'];
-            const cgst = row['CGST'] ?? row['cgst'];
-            const sgst = row['SGST'] ?? row['sgst'];
-            const cess = row['CESS'] ?? row['cess'] ?? row['Cess'];
-            const purchaseCost = row['Purchase Cost'] ?? row['cost'] ?? row['purchase_cost'] ?? row['PurchaseCost'];
-            const totalPrice = row['Total Price'] ?? row['total_price'] ?? row['Total'] ?? row['TotalPrice'];
+            const [existing] = await conn.execute('SELECT labour_id FROM tbl_labour_code WHERE labour_code = ?', [pcode]);
+            if (existing.length === 0) {
+                notFoundPcodes.push(pcode);
+            } else {
+                validatedRows.push({ ...row, pcode });
+            }
+        }
+
+        // If any PCODE is missing, abort the entire process
+        if (notFoundPcodes.length > 0) {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            return res.json({
+                success: false,
+                message: `Upload aborted. Some PCODEs were not found in the database.`,
+                notFoundPcodes
+            });
+        }
+
+        // Step 2: Proceed with updates since all PCODEs were found
+        await conn.beginTransaction();
+        let updatedCount = 0;
+
+        for (const rowData of validatedRows) {
+            const { pcode } = rowData;
+            const basicPrice = rowData['Basic Price'] ?? rowData['Price'] ?? rowData['sale_price'] ?? rowData['BasicPrice'] ?? rowData['Basic_Price'];
+            const cgst = rowData['CGST'] ?? rowData['cgst'];
+            const sgst = rowData['SGST'] ?? rowData['sgst'];
+            const cess = rowData['CESS'] ?? rowData['cess'] ?? rowData['Cess'];
+            const purchaseCost = rowData['Purchase Cost'] ?? rowData['cost'] ?? rowData['purchase_cost'] ?? rowData['PurchaseCost'];
+            const totalPrice = rowData['Total Price'] ?? rowData['total_price'] ?? rowData['Total'] ?? rowData['TotalPrice'];
 
             const updates = [];
             const values = [];
@@ -533,35 +551,25 @@ const uploadProductPrice = async (req, res) => {
             if (sgst !== undefined) { updates.push('sgst = ?'); values.push(sgst); }
             if (cess !== undefined) { updates.push('cess = ?'); values.push(cess); }
             if (purchaseCost !== undefined) { updates.push('purchase_cost = ?'); values.push(purchaseCost); }
-            if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(totalPrice); }
+            if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(String(totalPrice)); }
 
-            if (updates.length === 0) {
-                skippedCount++;
-                continue;
-            }
-
-            const query = `UPDATE tbl_labour_code SET ${updates.join(', ')} WHERE labour_code = ?`;
-            values.push(pcode);
-
-            const [result] = await conn.execute(query, values);
-            if (result.affectedRows > 0) {
-                updatedCount++;
-            } else {
-                skippedCount++;
+            if (updates.length > 0) {
+                const query = `UPDATE tbl_labour_code SET ${updates.join(', ')} WHERE labour_code = ?`;
+                values.push(pcode);
+                const [result] = await conn.execute(query, values);
+                if (result.affectedRows > 0) updatedCount++;
             }
         }
 
         await conn.commit();
-        
-        // Delete the file after processing
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
         res.json({
             success: true,
-            message: `File processed. ${updatedCount} products updated, ${skippedCount} skipped.`,
-            updatedCount,
-            skippedCount
+            message: `Successfully updated ${updatedCount} products.`,
+            updatedCount
         });
+
 
     } catch (err) {
         console.error('Upload Product Price Error:', err);

@@ -272,7 +272,7 @@ export class AdminProductmasterlist implements OnInit {
   page = signal(1);
   limit = signal(25);
   openDropdownIndex: number | null = null;
- 
+
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
   fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
   toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
@@ -303,22 +303,22 @@ export class AdminProductmasterlist implements OnInit {
   uploading = false;
   uploadStatus = '';
   uploadSuccess = false;
- 
+
   // Edit modal
   showEditModal = false;
   saving = false;
   editProductId: number | null = null;
   editData: any = {};
- 
+
   constructor(private apiService: ApiService, private http: HttpClient) { }
- 
+
   ngOnInit(): void {
     this.loadProducts();
   }
- 
+
   loadProducts() {
     this.apiService.listProducts(this.page(), this.limit()).subscribe({
-      next: (res: any) => { 
+      next: (res: any) => {
         if (res.success) {
           this.products.set(res.data || []);
           this.total.set(res.total || 0);
@@ -358,16 +358,16 @@ export class AdminProductmasterlist implements OnInit {
   rowIndex(i: number): number {
     return (this.page() - 1) * this.limit() + i + 1;
   }
- 
+
   // ---- Action Dropdown ----
   toggleDropdown(index: number) {
     this.openDropdownIndex = this.openDropdownIndex === index ? null : index;
   }
- 
+
   closeAllDropdowns() {
     this.openDropdownIndex = null;
   }
- 
+
   // ---- Upload Modal ----
   openUploadModal() {
     this.showUploadModal = true;
@@ -375,14 +375,14 @@ export class AdminProductmasterlist implements OnInit {
     this.uploadStatus = '';
     this.uploading = false;
   }
- 
+
   closeModalOverlay(event: MouseEvent, type: string) {
     if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
       if (type === 'upload') this.showUploadModal = false;
       if (type === 'edit') this.showEditModal = false;
     }
   }
- 
+
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -390,19 +390,30 @@ export class AdminProductmasterlist implements OnInit {
       this.uploadStatus = '';
     }
   }
- 
+
   uploadFile() {
     if (!this.selectedFile) return;
     this.uploading = true;
     const formData = new FormData();
     formData.append('file', this.selectedFile);
- 
+
     this.http.post<any>('http://localhost:5000/api/admin/products/upload-price', formData).subscribe({
       next: (res) => {
         this.uploading = false;
         this.uploadSuccess = res.success;
         this.uploadStatus = res.success ? `✅ ${res.message}` : `❌ ${res.message}`;
-        if (res.success) { this.loadProducts(); setTimeout(() => { this.showUploadModal = false; }, 1500); }
+        
+        if (res.notFoundPcodes && res.notFoundPcodes.length > 0) {
+          alert(`⚠️ Upload Aborted! The following PCODEs were not found in the database:\n\n${res.notFoundPcodes.join(', ')}`);
+        }
+
+        if (res.success) { 
+          this.loadProducts(); 
+          setTimeout(() => { 
+            this.showUploadModal = false;
+            this.uploadStatus = '';
+          }, 1500); 
+        }
       },
       error: (err) => {
         this.uploading = false;
@@ -411,7 +422,7 @@ export class AdminProductmasterlist implements OnInit {
       }
     });
   }
- 
+
   // ---- Edit Modal ----
   openEditModal(product: any) {
     this.openDropdownIndex = null;
@@ -445,7 +456,7 @@ export class AdminProductmasterlist implements OnInit {
     };
     this.showEditModal = true;
   }
- 
+
   calcEditTotal() {
     const b = Number(this.editData.basicPrice) || 0;
     const c = Number(this.editData.cgst) || 0;
@@ -453,11 +464,11 @@ export class AdminProductmasterlist implements OnInit {
     const ce = Number(this.editData.cess) || 0;
     this.editData.totalPrice = b + c + s + ce;
   }
- 
+
   saveEdit() {
     if (!this.editProductId) return;
     this.saving = true;
- 
+
     this.http.put<any>(`http://localhost:5000/api/admin/products/edit/${this.editProductId}`, this.editData).subscribe({
       next: (res) => {
         this.saving = false;
@@ -475,13 +486,13 @@ export class AdminProductmasterlist implements OnInit {
       }
     });
   }
- 
+
   // ---- Delete ----
   confirmDelete(product: any) {
     this.openDropdownIndex = null;
     const confirm = window.confirm(`Are you sure you want to delete:\n"${product.labour_title}" (${product.labour_code})?`);
     if (!confirm) return;
- 
+
     this.http.delete<any>(`http://localhost:5000/api/admin/products/delete/${product.labour_id}`).subscribe({
       next: (res) => {
         if (res.success) {
