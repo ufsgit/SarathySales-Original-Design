@@ -189,17 +189,17 @@ const saveProforma = async (req, res) => {
 };
 
 const updateProforma = async (req, res) => {
-    const { proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, lessAmount, totalAmount, totals, items, proStatus } = req.body;
+    const { proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, lessAmount, totalAmount, totals, items } = req.body;
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_less=?, pro_grand_total=?, pro_status=? WHERE pro_id=?`,
+            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_less=?, pro_grand_total=? WHERE pro_id=?`,
             [
                 proformaDate || new Date(), customerName || '', address || '', phone || '', reference || '', paymentMode || 'Cash', executive || '',
                 totals?.taxable || 0, totals?.sgst || 0, totals?.cgst || 0, totals?.cess || 0, totals?.amount || 0,
                 missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, lessAmount || 0,
-                totalAmount || totals?.grandTotal || 0, Number.isFinite(parseInt(proStatus, 10)) ? parseInt(proStatus, 10) : 1, req.params.id
+                totalAmount || totals?.grandTotal || 0, req.params.id
             ]
         );
         if (items && items.length) {
