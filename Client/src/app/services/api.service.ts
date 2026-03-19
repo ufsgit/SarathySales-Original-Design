@@ -14,6 +14,7 @@ export interface ApiResponse<T = any> {
     total?: number;
     page?: number;
     limit?: number;
+    notFoundPcodes?: string[];
 }
 
 @Injectable({
@@ -945,6 +946,22 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateProductMaster(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/products/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteProductMaster(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/products/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    uploadProductPrice(formData: FormData): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/products/upload-price`, formData)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+
     listHypothecations(page = 1, limit = 25): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/list`, { params })
@@ -955,6 +972,17 @@ export class ApiService {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/add`, data)
             .pipe(catchError(err => this.handleError(err)));
     }
+
+    updateHypothecationMaster(id: string | number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteHypothecationMaster(id: string | number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
 
     addColorMaster(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/colors/add`, data)

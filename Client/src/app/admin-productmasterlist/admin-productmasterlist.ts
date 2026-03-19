@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-admin-productmasterlist',
@@ -78,8 +77,8 @@ import { HttpClient } from '@angular/common/http';
                   <td>{{ product.fuel }}</td>
                   <td class="desc-cell">{{ product.discription }}</td>
                   <td>{{ product.sale_price | number:'1.2-2' }}</td>
-                  <td>{{ product.cgst }}%</td>
-                  <td>{{ product.sgst }}%</td>
+                  <td>{{ product.cgst | number:'1.2-2' }}</td>
+                  <td>{{ product.sgst | number:'1.2-2' }}</td>
                   <td>{{ product.total_price | number:'1.2-2' }}</td>
                   <td class="action-cell">
                     <div class="action-wrapper" (click)="$event.stopPropagation()">
@@ -310,7 +309,7 @@ export class AdminProductmasterlist implements OnInit {
   editProductId: number | null = null;
   editData: any = {};
 
-  constructor(private apiService: ApiService, private http: HttpClient) { }
+  constructor(private apiService: ApiService) { }
 
   ngOnInit(): void {
     this.loadProducts();
@@ -397,7 +396,7 @@ export class AdminProductmasterlist implements OnInit {
     const formData = new FormData();
     formData.append('file', this.selectedFile);
 
-    this.http.post<any>('http://localhost:5000/api/admin/products/upload-price', formData).subscribe({
+    this.apiService.uploadProductPrice(formData).subscribe({
       next: (res) => {
         this.uploading = false;
         this.uploadSuccess = res.success;
@@ -469,7 +468,7 @@ export class AdminProductmasterlist implements OnInit {
     if (!this.editProductId) return;
     this.saving = true;
 
-    this.http.put<any>(`http://localhost:5000/api/admin/products/edit/${this.editProductId}`, this.editData).subscribe({
+    this.apiService.updateProductMaster(this.editProductId, this.editData).subscribe({
       next: (res) => {
         this.saving = false;
         if (res.success) {
@@ -493,7 +492,7 @@ export class AdminProductmasterlist implements OnInit {
     const confirm = window.confirm(`Are you sure you want to delete:\n"${product.labour_title}" (${product.labour_code})?`);
     if (!confirm) return;
 
-    this.http.delete<any>(`http://localhost:5000/api/admin/products/delete/${product.labour_id}`).subscribe({
+    this.apiService.deleteProductMaster(product.labour_id).subscribe({
       next: (res) => {
         if (res.success) {
           alert('✅ Product deleted successfully!');

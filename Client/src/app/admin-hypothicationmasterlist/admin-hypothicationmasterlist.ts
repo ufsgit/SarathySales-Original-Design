@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { AdminFooter } from '../admin-footer/admin-footer';
 import { ApiService } from '../services/api.service';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-admin-hypothicationmasterlist',
@@ -249,7 +248,7 @@ export class AdminHypothicationmasterlist implements OnInit {
   editId: number | null = null;
   editData: any = {};
 
-  constructor(private apiService: ApiService, private http: HttpClient) {}
+  constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
     this.loadData();
@@ -329,7 +328,7 @@ export class AdminHypothicationmasterlist implements OnInit {
     if (!this.editId || !this.editData.name) return;
     this.saving = true;
 
-    this.http.put<any>(`http://localhost:5000/api/admin/hypothecations/edit/${this.editId}`, this.editData).subscribe({
+    this.apiService.updateHypothecationMaster(this.editId, this.editData).subscribe({
       next: (res) => {
         this.saving = false;
         if (res.success) {
@@ -353,7 +352,7 @@ export class AdminHypothicationmasterlist implements OnInit {
     const confirm = window.confirm(`Are you sure you want to delete:\n"${item.name}"?`);
     if (!confirm) return;
 
-    this.http.delete<any>(`http://localhost:5000/api/admin/hypothecations/delete/${item.id}`).subscribe({
+    this.apiService.deleteHypothecationMaster(item.id).subscribe({
       next: (res) => {
         if (res.success) {
           alert('✅ Hypothecation Master deleted successfully!');

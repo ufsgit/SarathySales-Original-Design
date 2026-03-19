@@ -108,9 +108,9 @@ const addProduct = async (req, res) => {
         seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
     } = req.body;
 
-    // Compute total server-side as fallback
-    const computedTotal = totalPrice ??
-        ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0));
+    const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
+    const computedTotal = round(totalPrice ??
+        ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0)));
 
     try {
         const [result] = await db.execute(
@@ -124,7 +124,7 @@ const addProduct = async (req, res) => {
                 code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
                 taWeight, ulWeight, rWeight, hp, description,
                 cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-                seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, String(computedTotal)
+                seatCapacity, round(basicPrice), round(cgst), round(sgst), round(cess), round(purchaseCost), String(computedTotal)
             ]
         );
         res.json({ success: true, message: 'Product added successfully', id: result.insertId });
@@ -450,7 +450,8 @@ const editProduct = async (req, res) => {
         cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
         seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
     } = req.body;
-    const computedTotal = totalPrice ?? ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0));
+    const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
+    const computedTotal = round(totalPrice ?? ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0)));
     try {
         await db.execute(
             `UPDATE tbl_labour_code SET 
@@ -462,7 +463,7 @@ const editProduct = async (req, res) => {
             [code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
                 taWeight, ulWeight, rWeight, hp, description,
                 cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-                seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, String(computedTotal), id]
+                seatCapacity, round(basicPrice), round(cgst), round(sgst), round(cess), round(purchaseCost), String(computedTotal), id]
         );
         res.json({ success: true, message: 'Product updated successfully' });
     } catch (err) {
@@ -546,12 +547,14 @@ const uploadProductPrice = async (req, res) => {
             const updates = [];
             const values = [];
 
-            if (basicPrice !== undefined) { updates.push('sale_price = ?'); values.push(basicPrice); }
-            if (cgst !== undefined) { updates.push('cgst = ?'); values.push(cgst); }
-            if (sgst !== undefined) { updates.push('sgst = ?'); values.push(sgst); }
-            if (cess !== undefined) { updates.push('cess = ?'); values.push(cess); }
-            if (purchaseCost !== undefined) { updates.push('purchase_cost = ?'); values.push(purchaseCost); }
-            if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(String(totalPrice)); }
+            const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
+
+            if (basicPrice !== undefined) { updates.push('sale_price = ?'); values.push(round(basicPrice)); }
+            if (cgst !== undefined) { updates.push('cgst = ?'); values.push(round(cgst)); }
+            if (sgst !== undefined) { updates.push('sgst = ?'); values.push(round(sgst)); }
+            if (cess !== undefined) { updates.push('cess = ?'); values.push(round(cess)); }
+            if (purchaseCost !== undefined) { updates.push('purchase_cost = ?'); values.push(round(purchaseCost)); }
+            if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(String(round(totalPrice))); }
 
             if (updates.length > 0) {
                 const query = `UPDATE tbl_labour_code SET ${updates.join(', ')} WHERE labour_code = ?`;
