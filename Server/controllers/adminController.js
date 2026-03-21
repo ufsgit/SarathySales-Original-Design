@@ -12,7 +12,11 @@ const listEmployees = async (req, res) => {
 
     try {
         const [rows] = await db.execute(
-            `SELECT * FROM tbl_employee ORDER BY e_first_name LIMIT ${limit} OFFSET ${offset}`
+            `SELECT e.*, l.uname, l.pwd 
+             FROM tbl_employee e 
+             LEFT JOIN tbl_login l ON e.emp_login_id = l.login_id
+             ORDER BY e.e_first_name 
+             LIMIT ${limit} OFFSET ${offset}`
         );
         const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_employee');
 
@@ -85,16 +89,52 @@ const addEmployee = async (req, res) => {
 
 const updateEmployee = async (req, res) => {
     const { id } = req.params;
-    const { prefix, name, institute, address, mobile, code, designation, email } = req.body;
+    const { prefix, name, institute, address, mobile, code, designation, email, status, isUser, username, password } = req.body;
+    let conn;
     try {
-        await db.execute(
-            'UPDATE tbl_employee SET emp_intial=?, e_first_name=?, e_branch=?, e_address=?, e_mobile=?, e_code=?, e_designation=?, e_email=? WHERE emp_id=?',
-            [prefix, name, institute, address, mobile, code, designation, email, id]
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        // Get current emp details to find login_id
+        const [currEmp] = await conn.execute('SELECT emp_login_id FROM tbl_employee WHERE emp_id = ?', [id]);
+        if (currEmp.length === 0) {
+            await conn.rollback();
+            return res.status(404).json({ success: false, message: 'Employee not found' });
+        }
+
+        let loginId = currEmp[0].emp_login_id;
+
+        // If isUser is true, manage tbl_login
+        if (isUser) {
+            if (loginId > 0) {
+                // Update existing login
+                await conn.execute(
+                    'UPDATE tbl_login SET uname = ?, pwd = ? WHERE login_id = ?',
+                    [username.trim(), password.trim(), loginId]
+                );
+            } else {
+                // Create new login if didn't exist
+                const [loginResult] = await conn.execute(
+                    'INSERT INTO tbl_login (uname, pwd, role, role_des) VALUES (?, ?, ?, ?)',
+                    [username.trim(), password.trim(), 2, 'staff']
+                );
+                loginId = loginResult.insertId;
+            }
+        }
+
+        await conn.execute(
+            'UPDATE tbl_employee SET emp_intial=?, e_first_name=?, e_branch=?, e_address=?, e_mobile=?, e_code=?, e_designation=?, e_email=?, status=?, emp_login_id=? WHERE emp_id=?',
+            [prefix, name, institute, address, mobile, code, designation, email, status || 'active', loginId, id]
         );
+
+        await conn.commit();
         res.json({ success: true, message: 'Employee updated successfully' });
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error('Update Employee Error:', err);
         res.status(500).json({ success: false, message: 'Failed to update employee' });
+    } finally {
+        if (conn) conn.release();
     }
 };
 
