@@ -43,7 +43,14 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isLoading.set(false);
-        this.errorMessage.set(err?.error?.message || 'Login failed. Please check your credentials.');
+        const msg = err?.error?.message || 'Login failed. Please check your credentials.';
+        
+        // If the error message mentions 'not active', alert the user
+        if (msg.toLowerCase().includes('not active')) {
+          alert(msg);
+        }
+        
+        this.errorMessage.set(msg);
       }
     });
   }

@@ -142,7 +142,7 @@ const getProforma = async (req, res) => {
 };
 
 const saveProforma = async (req, res) => {
-    const { proformaNo, branchId, proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, lessAmount, totalAmount, totals, items, proStatus } = req.body;
+    const { proformaNo, branchId, proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, missell3, missell3Amount, lessAmount, totalAmount, totals, items, proStatus } = req.body;
     if (!customerName) return res.status(400).json({ success: false, message: 'Required fields missing' });
     const conn = await db.getConnection();
     try {
@@ -163,12 +163,12 @@ const saveProforma = async (req, res) => {
         const finalProformaNo = nextNoFromLast(lastNo, year, effectiveBranchId);
 
         const [result] = await conn.execute(
-            `INSERT INTO tbl_proforma (pro_quot_no, pro_branch, pro_date, pro_cus_name, pro_cus_address, pro_contact, pro_ref, pro_type_loan, pro_executive, pro_vehi_tax_total, pro_vehi_sgst_total, pro_vehi_cgst_total, pro_vehi_cess_total, pro_vehicle_total, pro_missal1, pro_missal1_amt, pro_missal2, pro_missal2_amt, pro_less, pro_grand_total, pro_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO tbl_proforma (pro_quot_no, pro_branch, pro_date, pro_cus_name, pro_cus_address, pro_contact, pro_ref, pro_type_loan, pro_executive, pro_vehi_tax_total, pro_vehi_sgst_total, pro_vehi_cgst_total, pro_vehi_cess_total, pro_vehicle_total, pro_missal1, pro_missal1_amt, pro_missal2, pro_missal2_amt, pro_missal3, pro_missal3_amt, pro_less, pro_grand_total, pro_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 finalProformaNo, effectiveBranchId, proformaDate || new Date(), customerName, address || '', phone || '', reference || '', paymentMode || 'Cash', executive || '',
                 totals?.taxable || 0, totals?.sgst || 0, totals?.cgst || 0, totals?.cess || 0, totals?.amount || 0,
-                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, lessAmount || 0, totalAmount || totals?.grandTotal || 0,
+                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, missell3 || '', missell3Amount || 0, lessAmount || 0, totalAmount || totals?.grandTotal || 0,
                 Number.isFinite(parseInt(proStatus, 10)) ? parseInt(proStatus, 10) : 1
             ]
         );
@@ -189,16 +189,16 @@ const saveProforma = async (req, res) => {
 };
 
 const updateProforma = async (req, res) => {
-    const { proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, lessAmount, totalAmount, totals, items } = req.body;
+    const { proformaDate, customerName, address, phone, reference, paymentMode, executive, missell1, missell1Amount, missell2, missell2Amount, missell3, missell3Amount, lessAmount, totalAmount, totals, items } = req.body;
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_less=?, pro_grand_total=? WHERE pro_id=?`,
+            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_missal3=?, pro_missal3_amt=?, pro_less=?, pro_grand_total=? WHERE pro_id=?`,
             [
                 proformaDate || new Date(), customerName || '', address || '', phone || '', reference || '', paymentMode || 'Cash', executive || '',
                 totals?.taxable || 0, totals?.sgst || 0, totals?.cgst || 0, totals?.cess || 0, totals?.amount || 0,
-                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, lessAmount || 0,
+                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, missell3 || '', missell3Amount || 0, lessAmount || 0,
                 totalAmount || totals?.grandTotal || 0, req.params.id
             ]
         );
@@ -369,15 +369,17 @@ const createProformaPdf = async (req, res) => {
             doc.font('Times-Roman').text(parseFloat(value || 0).toFixed(2), col.total, y + 2.5, { width: col.end - col.total - 2, align: 'right' });
         };
 
-        const subtotal = parseFloat(data.pro_vehicle_total || 0) + parseFloat(data.pro_missal1_amt || 0) + parseFloat(data.pro_missal2_amt || 0) - parseFloat(data.pro_less || 0);
+        const subtotal = parseFloat(data.pro_vehicle_total || 0) + parseFloat(data.pro_missal1_amt || 0) + parseFloat(data.pro_missal2_amt || 0) + parseFloat(data.pro_missal3_amt || 0) - parseFloat(data.pro_less || 0);
         const roundedGrandTotal = Math.round(subtotal);
         const roundOff = (subtotal - roundedGrandTotal).toFixed(2);
 
         drawSummaryRow('Round Off', roundOff, tableY);
         tableY += 12;
-        drawSummaryRow(data.pro_missal1 || 'Misselaneous1-', data.pro_missal1_amt, tableY);
+        drawSummaryRow(`Misselaneous1-`, data.pro_missal1_amt, tableY);
         tableY += 12;
-        drawSummaryRow(data.pro_missal2 || 'Misselaneous2-', data.pro_missal2_amt, tableY);
+        drawSummaryRow(`Misselaneous2-`, data.pro_missal2_amt, tableY);
+        tableY += 12;
+        drawSummaryRow(`Misselaneous3-`, data.pro_missal3_amt, tableY);
         tableY += 12;
         drawSummaryRow('Less', data.pro_less, tableY);
         tableY += 12;

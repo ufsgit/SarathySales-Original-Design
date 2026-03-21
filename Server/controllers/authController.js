@@ -48,6 +48,15 @@ const login = async (req, res) => {
         );
 
         const detail = details[0] || {};
+        
+        // Added Check: If not admin, check if status is active
+        const isAdmin = user.role == 1 || user.role_des === 'admin';
+        if (!isAdmin && detail.status !== 'active') {
+             return res.status(403).json({
+                 success: false,
+                 message: 'User is not active. Please contact admin.'
+             });
+        }
 
         const userData = {
             login_id: user.login_id,

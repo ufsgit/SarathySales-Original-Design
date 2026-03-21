@@ -202,6 +202,12 @@ import { ApiService } from '../services/api.service';
                 <td></td>
             </tr>
             <tr class="summary-row">
+                <td colspan="5"></td>
+                <td colspan="3" class="label">Missell-3 &nbsp; <input type="text" class="form-input mini-box" style="background-color: #fff;" [(ngModel)]="missell3" name="missell3"></td>
+                <td><input type="number" class="form-input" style="background-color: #fff;" [(ngModel)]="missell3Amount" name="missell3Amount"></td>
+                <td></td>
+            </tr>
+            <tr class="summary-row">
                 <td colspan="8" class="label">Less</td>
                 <td><input type="number" class="form-input" style="background-color: #fff;" [(ngModel)]="lessAmount" name="lessAmount"></td>
                 <td></td>
@@ -656,6 +662,8 @@ export class EditProformaInvoiceComponent implements OnInit {
     missell1Amount = 0;
     missell2 = '';
     missell2Amount = 0;
+    missell3 = '';
+    missell3Amount = 0;
     lessAmount = 0;
 
     productOptions: Array<{
@@ -763,7 +771,7 @@ export class EditProformaInvoiceComponent implements OnInit {
     }
 
     get grandTotal(): number {
-        return this.toNumber(this.totals.amount) + this.toNumber(this.missell1Amount) + this.toNumber(this.missell2Amount) - this.toNumber(this.lessAmount);
+        return this.toNumber(this.totals.amount) + this.toNumber(this.missell1Amount) + this.toNumber(this.missell2Amount) + this.toNumber(this.missell3Amount) - this.toNumber(this.lessAmount);
     }
 
     private toNumber(v: any): number {
@@ -819,8 +827,12 @@ export class EditProformaInvoiceComponent implements OnInit {
                         this.loadExecutiveOptions();
                     }
 
+                    this.missell1 = p.pro_missal1 || '';
                     this.missell1Amount = this.toNumber(p.pro_missal1_amt);
+                    this.missell2 = p.pro_missal2 || '';
                     this.missell2Amount = this.toNumber(p.pro_missal2_amt);
+                    this.missell3 = p.pro_missal3 || '';
+                    this.missell3Amount = this.toNumber(p.pro_missal3_amt);
                     this.lessAmount = this.toNumber(p.pro_less);
 
                     if (res.items && res.items.length > 0) {
@@ -961,6 +973,8 @@ export class EditProformaInvoiceComponent implements OnInit {
             missell1Amount: this.toNumber(this.missell1Amount),
             missell2: this.missell2,
             missell2Amount: this.toNumber(this.missell2Amount),
+            missell3: this.missell3,
+            missell3Amount: this.toNumber(this.missell3Amount),
             lessAmount: this.toNumber(this.lessAmount),
             totalAmount: this.grandTotal,
             totals: {

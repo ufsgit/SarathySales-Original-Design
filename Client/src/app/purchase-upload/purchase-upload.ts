@@ -44,7 +44,7 @@ import { ApiService } from '../services/api.service';
             
             <!-- Row 1 -->
             <div class="form-grid-row">
-                <div class="form-col">
+                <div class="form-col vertical">
                     <label>Branch Name:</label>
                     <ng-container *ngIf="isAdmin(); else staffBranch">
                         <div class="custom-dropdown" #branchDropdownRef>
@@ -481,6 +481,19 @@ import { ApiService } from '../services/api.service';
         max-width: 180px;
     }
 
+    .form-col.vertical {
+    }
+
+    .form-col.vertical label {
+        text-align: left;
+        min-width: unset;
+    }
+
+    .form-col.vertical .form-control,
+    .form-col.vertical .custom-dropdown {
+        max-width: 250px;
+    }
+
     .dropdown-toggle {
         display: flex;
         justify-content: space-between;
@@ -491,7 +504,7 @@ import { ApiService } from '../services/api.service';
         border-radius: 3px;
         background-color: #fff;
         cursor: pointer;
-        min-height: 28px;
+        min-height: 32px;
         width: 100%;
     }
 

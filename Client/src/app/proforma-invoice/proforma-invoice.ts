@@ -224,6 +224,12 @@ import { ApiService } from '../services/api.service';
                 <td></td>
             </tr>
             <tr class="summary-row">
+                <td colspan="5"></td>
+                <td colspan="3" class="label">Missell-3 &nbsp; <input type="text" class="form-input mini-box bg-white" [ngModel]="missell3()" (ngModelChange)="missell3.set($event)" name="missell3"></td>
+                <td><input type="number" class="form-input bg-white" [ngModel]="missell3Amount()" (ngModelChange)="missell3Amount.set($event)" name="missell3Amount"></td>
+                <td></td>
+            </tr>
+            <tr class="summary-row">
                 <td colspan="8" class="label">Less</td>
                 <td><input type="number" class="form-input bg-white" [ngModel]="lessAmount()" (ngModelChange)="lessAmount.set($event)" name="lessAmount"></td>
                 <td></td>
@@ -746,6 +752,8 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   missell1Amount = signal(0);
   missell2 = signal('');
   missell2Amount = signal(0);
+  missell3 = signal('');
+  missell3Amount = signal(0);
   lessAmount = signal(0);
 
   productOptions = signal<Array<{
@@ -950,7 +958,7 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   });
 
   grandTotal = computed(() => {
-    return this.toNumber(this.totals().amount) + this.toNumber(this.missell1Amount()) + this.toNumber(this.missell2Amount()) - this.toNumber(this.lessAmount());
+    return this.toNumber(this.totals().amount) + this.toNumber(this.missell1Amount()) + this.toNumber(this.missell2Amount()) + this.toNumber(this.missell3Amount()) - this.toNumber(this.lessAmount());
   });
 
   private toNumber(v: any): number {
@@ -1150,6 +1158,8 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
       missell1Amount: this.toNumber(this.missell1Amount()),
       missell2: this.missell2(),
       missell2Amount: this.toNumber(this.missell2Amount()),
+      missell3: this.missell3(),
+      missell3Amount: this.toNumber(this.missell3Amount()),
       lessAmount: this.toNumber(this.lessAmount()),
       totals: {
         taxable: this.totals().taxable,
@@ -1239,8 +1249,15 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
     this.missell1Amount.set(0);
     this.missell2.set('');
     this.missell2Amount.set(0);
+    this.missell3.set('');
+    this.missell3Amount.set(0);
     this.lessAmount.set(0);
     this.items.set([this.createEmptyItem()]);
+
+    if (this.isAdmin()) {
+      this.branchName.set('Select Branch');
+      this.branchId.set('');
+    }
   }
 
   trackByFn(index: number, item: any): any {
