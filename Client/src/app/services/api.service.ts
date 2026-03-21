@@ -487,6 +487,16 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getPurchaseInvoiceByNo(invoiceNo: string): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/purchase-invoice/by-no/${encodeURIComponent(invoiceNo)}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    updatePurchaseInvoice(invoiceNo: string, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/purchase-invoice/update/${encodeURIComponent(invoiceNo)}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     savePurchaseInvoice(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/purchase-invoice/save`, data)
             .pipe(catchError(err => this.handleError(err)));

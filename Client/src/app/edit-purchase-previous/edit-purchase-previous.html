@@ -1,0 +1,237 @@
+<div class="app-container">
+    <app-user-nav></app-user-nav>
+  
+    <main class="page-container">
+      <div class="page-content-wrapper">
+        
+        <!-- Breadcrumb -->
+        <div class="breadcrumb-bar">
+          <a (click)="navigate(isAdmin() ? '/admin-home' : '/user-home')"><i class="fas fa-home"></i> Home</a>
+          <span> > </span>
+          <span>INVOICE</span>
+          <span> > </span>
+          <span class="active">Purchase Invoice</span>
+        </div>
+  
+        <!-- Main Card -->
+        <div class="theme-card">
+          <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
+             <div class="header-left">
+               <h2>INVOICE (Purchase)</h2>
+            </div>
+            <div class="header-actions">
+               <button class="btn-save" type="button" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save Bill' }}</button>
+               <button class="btn-list" (click)="navigate('/previous-purchase-invoice')">List Purchase Invoice</button>
+            </div>
+          </header>
+  
+          <div class="page-card-content">
+            <div *ngIf="successMessage()" style="margin-bottom:10px;color:#2e7d32;font-size:12px;">{{ successMessage() }}</div>
+            <div *ngIf="errorMessage()" style="margin-bottom:10px;color:#d32f2f;font-size:12px;">{{ errorMessage() }}</div>
+            <div *ngIf="isLoading()" style="margin-bottom:10px;color:#1565c0;font-size:12px;font-weight:600;">
+              ⏳ Loading invoice details, please wait...
+            </div>
+            <form class="ledger-form">
+              
+              <!-- Row 1 -->
+              <div class="form-grid-row">
+                  <div class="form-col vertical">
+                      <label>Branch Name:</label>
+                      <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                  </div>
+                  <div class="form-col">
+                      <label>Inv No:</label>
+                      <input type="text" class="form-control readonly" [ngModel]="invNo()" name="invNo" readonly>
+                  </div>
+                  <div class="form-col">
+                      <label>Institution:</label>
+                      <div class="custom-dropdown" #institutionDropdownRef>
+                          <div class="dropdown-toggle" [class.placeholder]="!institution()" (click)="toggleInstitutionDropdown()">
+                              {{ institution() || '--Select--' }}
+                              <i class="fas fa-caret-down"></i>
+                          </div>
+                          <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen()">
+                              <div class="dropdown-search">
+                                  <input type="text" placeholder="Search institution..."
+                                      [ngModel]="institutionSearchTerm()"
+                                      (ngModelChange)="institutionSearchTerm.set($event)"
+                                      name="institutionSearch" #institutionSearchInput
+                                      (click)="$event.stopPropagation()">
+                              </div>
+                              <div class="dropdown-options-list">
+                                  <div class="dropdown-option"
+                                      *ngFor="let b of searchableInstitutionList()"
+                                      (click)="onInstitutionSelect(b)">
+                                      {{ b.branch_name }}
+                                  </div>
+                                  <div class="dropdown-option no-results"
+                                      *ngIf="searchableInstitutionList().length === 0">
+                                      No institutions found
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="form-col">
+                      <label>RC No:</label>
+                      <input type="text" class="form-control" [ngModel]="rcNo()" (ngModelChange)="rcNo.set($event)" name="rcNo">
+                  </div>
+              </div>
+  
+              <!-- Row 2 -->
+               <div class="form-grid-row">
+                  <div class="form-col">
+                      <label>HSN Code:</label>
+                      <input type="text" class="form-control" [ngModel]="hsnCode()" (ngModelChange)="hsnCode.set($event)" name="hsnCode">
+                  </div>
+                  <div class="form-col">
+                      <label>RC Date:</label>
+                      <div class="date-input-wrapper">
+                           <input type="date" class="form-control" [ngModel]="rcDate()" (ngModelChange)="rcDate.set($event)" name="rcDate">
+                      </div>
+                  </div>
+                  <div class="form-col">
+                      <label>Customer Address:</label>
+                       <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1"></textarea>
+                  </div>
+                  
+                  <div class="form-col">
+                      <label>Invoice Date:</label>
+                      <div class="date-input-wrapper">
+                           <input type="date" class="form-control" [ngModel]="invoiceDate()" (ngModelChange)="invoiceDate.set($event)" name="invoiceDate">
+                      </div>
+                  </div>
+               </div>
+  
+              <!-- Row 3 -->
+               <div class="form-grid-row">
+                   <div class="form-col"></div>
+                   <div class="form-col"></div>
+                  <div class="form-col">
+                     <label>GSTIN:</label>
+                     <input type="text" class="form-control" [ngModel]="gstin()" (ngModelChange)="gstin.set($event)" name="gstin">
+                  </div>
+                  <div class="form-col">
+                      <label>Basic Total:</label>
+                      <input type="number" class="form-control" [ngModel]="basicTotal()" (ngModelChange)="basicTotal.set($event)" name="basicTotal">
+                  </div>
+               </div>
+  
+               <!-- Row 4 -->
+                <div class="form-grid-row">
+                  <div class="form-col"></div>
+                  <div class="form-col"></div>
+                  <div class="form-col"></div>
+                  <div class="form-col">
+                      <label>Tax Total:</label>
+                      <input type="number" class="form-control" [ngModel]="taxTotal()" (ngModelChange)="taxTotal.set($event)" name="taxTotal">
+                  </div>
+               </div>
+  
+               <!-- Row 5 -->
+                <div class="form-grid-row">
+                  <div class="form-col"></div>
+                  <div class="form-col"></div>
+                  <div class="form-col"></div>
+                  <div class="form-col">
+                      <label>Grand Total:</label>
+                      <input type="number" class="form-control" [ngModel]="grandTotal()" (ngModelChange)="grandTotal.set($event)" name="grandTotal">
+                  </div>
+               </div>
+  
+               <!-- Total Payable Section -->
+               <div class="total-payable-section">
+                  <span>Total Payable Amount : Rs <span class="amount-val">{{ totalPayableAmount().toFixed(2) }}</span></span>
+               </div>
+  
+               <!-- Save Button Row (Right Aligned) -->
+               <div class="action-row-right">
+                  <button class="btn-save" type="button" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save Bill' }}</button>
+               </div>
+  
+               <!-- Line Items Table Header -->
+               <div class="items-table-header">
+                  <div class="th" style="flex: 1;">Product Code</div>
+                  <div class="th" style="flex: 1.5;">Product Description</div>
+                  <div class="th" style="flex: 1;">Chassis No</div>
+                  <div class="th" style="flex: 1;">Engine No</div>
+                  <div class="th" style="flex: 0.8;">Color Code</div>
+                  <div class="th" style="flex: 0.8;">Mfg Date</div>
+                  <div class="th" style="flex: 0.8;">Sale Type/Age</div>
+                  <div class="th" style="flex: 0.8;">Amount</div>
+                  <div class="th action-th" style="width: 30px;"><button type="button" (click)="addRow()" class="btn-add">+</button></div>
+               </div>
+  
+               <!-- Datalists for Product Search -->
+               <datalist id="purchaseProductCodeOptionsSet">
+                  <option *ngFor="let p of productOptions()" [value]="p.prodCode">{{ p.prodCode }} | {{ p.description }}</option>
+               </datalist>
+               <datalist id="purchaseProductNameOptionsSet">
+                  <option *ngFor="let p of productOptions()" [value]="p.description">{{ p.description }}</option>
+               </datalist>
+  
+               <!-- Line Item Rows -->
+               <div class="items-table-row" *ngFor="let item of items(); let i = index; trackBy: trackByFn">
+                  <div class="td" style="flex: 1;">
+                      <input
+                          type="text"
+                          class="form-control table-input"
+                          [ngModel]="item.prodCode"
+                          (ngModelChange)="onItemFieldChange(i, 'prodCode', $event)"
+                          name="prodCode{{i}}"
+                          list="purchaseProductCodeOptionsSet"
+                          placeholder="Search code">
+                  </div>
+                  <div class="td" style="flex: 1.5;">
+                      <input
+                          type="text"
+                          class="form-control table-input readonly"
+                          [ngModel]="item.description"
+                          name="desc{{i}}"
+                          readonly>
+                  </div>
+                  <div class="td" style="flex: 1;">
+                       <input type="text" class="form-control table-input" [ngModel]="item.chassisNo" (ngModelChange)="onItemFieldChange(i, 'chassisNo', $event)" name="chassis{{i}}">
+                  </div>
+                  <div class="td" style="flex: 1;">
+                       <input type="text" class="form-control table-input" [ngModel]="item.engineNo" (ngModelChange)="onItemFieldChange(i, 'engineNo', $event)" name="engine{{i}}">
+                  </div>
+                  <div class="td" style="flex: 0.8;">
+                       <select class="form-control table-input" [ngModel]="item.colorCode" (ngModelChange)="onItemFieldChange(i, 'colorCode', $event)" name="color{{i}}">
+                          <option value="">--</option>
+                          <option *ngFor="let c of item.availableColors" [value]="c.colorCode">{{ formatColorOption(c.colorCode, c.colorName) }}</option>
+                       </select>
+                  </div>
+                   <div class="td" style="flex: 0.8;">
+                       <div class="date-input-wrapper table-date">
+                          <input type="date" class="form-control table-input" [ngModel]="item.mfgDate" (ngModelChange)="onItemFieldChange(i, 'mfgDate', $event)" name="mfg{{i}}">
+                          <i class="fas fa-calendar-alt calendar-icon"></i>
+                       </div>
+                  </div>
+                  <div class="td" style="flex: 0.8;">
+                       <input type="text" class="form-control table-input" [ngModel]="item.saleType" (ngModelChange)="onItemFieldChange(i, 'saleType', $event)" name="saleType{{i}}">
+                  </div>
+                  <div class="td" style="flex: 0.8;">
+                       <input type="number" class="form-control table-input readonly" [ngModel]="item.amount" (ngModelChange)="onItemFieldChange(i, 'amount', $event)" name="amount{{i}}" readonly>
+                  </div>
+                  <div class="td action-td" style="width: 30px;">
+                      <button class="btn-remove" type="button" (click)="removeRow(i)">-</button>
+                  </div>
+               </div> 
+  
+               <!-- Footer Totals -->
+                <div class="footer-totals">
+                   <div class="footer-label">Total Invoice Amount</div>
+                   <div class="footer-value"><input type="text" readonly class="val-box" [value]="totalPayableAmount().toFixed(2)"></div>
+                </div> 
+  
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+    
+    <div style="height: 50px;"></div>
+    
+    <app-user-footer></app-user-footer>
+  </div>

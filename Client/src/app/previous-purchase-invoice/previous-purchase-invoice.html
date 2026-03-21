@@ -55,12 +55,15 @@
                             <th>RC No</th>
                             <th>RC Date</th>
                             <th>Total Amount</th>
+                            @if (isAdmin()) {
+                            <th>Action</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @if (!isLoading() && records().length === 0) {
                         <tr class="no-data-row">
-                            <td colspan="8">No data available in table</td>
+                            <td colspan="9">No data available in table</td>
                         </tr>
                         }
                         @for (row of records(); track row.purchaseItemBillId; let i = $index) {
@@ -86,6 +89,12 @@
                                     <span>Total Amount:-{{ row.purc_grand_total || '0.00' }}</span>
                                 </div>
                             </td>
+                            @if (isAdmin()) {
+                            <td>
+                                <button class="edit-bill-btn"
+                                    [routerLink]="['/edit-purchase-previous', row.invoiceNo]">Edit Bill</button>
+                            </td>
+                            }
                         </tr>
                         }
                     </tbody>

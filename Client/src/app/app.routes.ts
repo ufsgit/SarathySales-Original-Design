@@ -12,6 +12,7 @@ import { InvoiceFromProformaComponent } from './invoice-from-proforma/invoice-fr
 import { PreviousPurchaseInvoice } from './previous-purchase-invoice/previous-purchase-invoice';
 import { PreviousSalesInvoice } from './previous-sales-invoice/previous-sales-invoice';
 import { PreviousBranchTransfer } from './previous-branch-transfer/previous-branch-transfer';
+import { EditPurchasePrevious } from './edit-purchase-previous/edit-purchase-previous';
 import { ReportsProformaInvoice } from './reports-proforma-invoice/reports-proforma-invoice';
 import { ReportsStockVerification } from './reports-stock-verification/reports-stock-verification';
 import { ReportStockSplitup } from './report-stock-splitup/report-stock-splitup';
@@ -77,6 +78,7 @@ export const routes: Routes = [
     { path: 'edit-proforma-invoice/:id', component: EditProformaInvoiceComponent, canActivate: [authGuard] },
     { path: 'invoice-from-proforma/:id', component: InvoiceFromProformaComponent, canActivate: [authGuard] },
     { path: 'previous-purchase-invoice', component: PreviousPurchaseInvoice, canActivate: [authGuard] },
+    { path: 'edit-purchase-previous/:id', component: EditPurchasePrevious, canActivate: [authGuard] },
     { path: 'previous-sales-invoice', component: PreviousSalesInvoice, canActivate: [authGuard] },
     { path: 'previous-branch-transfer', component: PreviousBranchTransfer, canActivate: [authGuard] },
     { path: 'reports-proforma-invoice', component: ReportsProformaInvoice, canActivate: [authGuard] },

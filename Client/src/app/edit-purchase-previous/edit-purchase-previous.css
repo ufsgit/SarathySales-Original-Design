@@ -1,0 +1,339 @@
+.app-container {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-container {
+    padding: 2px 0 0 0;
+}
+
+.page-content-wrapper {
+    width: 100%;
+    padding: 0 15px;
+}
+
+/* Breadcrumb */
+.breadcrumb-bar {
+    font-size: 12px;
+    color: #555;
+    padding: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.breadcrumb-bar a { color: #555; text-decoration: none; cursor: pointer; }
+.breadcrumb-bar .active { font-weight: bold; color: #333; }
+
+/* Card & Header */
+.theme-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px; /* Slight radius */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.orange-header-strip {
+    background: #f36f21; /* KTM Orange */
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.header-left {
+    display: flex;
+    align-items: center; gap: 15px;
+}
+
+.orange-header-strip h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.header-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-list {
+    background-color: #d32f2f; /* Red */
+    color: white;
+    border: none;
+    padding: 6px 15px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.btn-save {
+    background-color: #d32f2f; /* Using red as per screenshot 2 */
+    color: white;
+    border: none;
+    padding: 6px 15px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Form Grid */
+.page-card-content {
+    padding: 30px 20px;
+    background: #fff;
+}
+
+.ledger-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between rows */
+}
+
+.form-grid-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    align-items: center;
+}
+
+.form-col {
+    display: flex;
+    align-items: center; /* Label and Input side-by-side */
+    gap: 10px;
+    justify-content: flex-end; /* Align right to push content */
+}
+
+.form-col label {
+    font-size: 12px;
+    color: #333;
+    white-space: nowrap;
+    text-align: right;
+    min-width: 80px; 
+    font-weight: 500;
+}
+
+.form-control {
+    flex: 1; /* Input takes remaining space */
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    width: 100%;
+    max-width: 180px; /* Limit input width to look like screenshot */
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    height: 28px;
+}
+
+textarea.form-control {
+    resize: none;
+    height: 30px; 
+}
+
+.form-control.readonly {
+    background-color: #f7f7f7;
+    color: #555;
+    cursor: not-allowed;
+}
+
+.form-control:focus {
+    border-color: #f36f21;
+    outline: none;
+}
+
+.date-input-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 180px;
+}
+.date-input-wrapper .form-control {
+    max-width: 100%;
+}
+
+/* Total Payable Display */
+.total-payable-section {
+    background: #fcfcfc;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-top: 10px;
+}
+.amount-val {
+    color: #666; 
+}
+
+.action-row-right {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+    margin-top: 10px;
+}
+
+/* Table Styles */
+.items-table-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+    background: #f5f5f5;
+    padding: 8px;
+    border-radius: 3px;
+}
+.items-table-header .th {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+}
+.action-th {
+    text-align: center;
+    font-weight: bold;
+}
+
+.items-table-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 5px;
+    padding: 0 8px;
+}
+.table-input {
+    width: 100%;
+    min-width: 0; /* allow flex item to shrink */
+    box-sizing: border-box;
+    height: 26px;
+}
+
+.btn-add {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.btn-remove {
+    background: white;
+    border: 1px solid #ccc;
+    color: black;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+.footer-totals {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f0f0f0;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin: 20px 0 0 0;
+}
+.footer-label {
+    text-align: center;
+    flex: 1;
+}
+.footer-value {
+    position: absolute;
+    right: 20px;
+}
+.val-box {
+    background: #eee;
+    border: 1px solid #dcdcdc;
+    padding: 6px 10px;
+    width: 100px;
+    text-align: right;
+    border-radius: 3px;
+}
+
+/* Custom Dropdown Styles */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+    max-width: 180px;
+}
+
+.dropdown-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: #fff;
+    cursor: pointer;
+    min-height: 28px;
+    width: 100%;
+}
+
+.dropdown-toggle.placeholder {
+    color: #999;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 250px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    margin-top: 1px;
+}
+
+.dropdown-search {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-search input {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #eee;
+    border-radius: 2px;
+    outline: none;
+}
+
+.dropdown-options-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.dropdown-option {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    text-align: left;
+}
+
+.dropdown-option:hover {
+    background-color: #f36f21;
+    color: white;
+}
+
+.no-results {
+    color: #999;
+    text-align: center;
+    font-style: italic;
+}
