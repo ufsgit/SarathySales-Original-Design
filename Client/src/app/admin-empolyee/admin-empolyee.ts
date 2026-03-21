@@ -132,6 +132,14 @@ import { ApiService } from '../services/api.service';
                                 Add as User
                             </label>
                         </div>
+                        <div class="form-group row" *ngIf="employee.isUser && !isEdit()">
+                            <label>Username :</label>
+                            <input type="text" class="form-control" name="username" [(ngModel)]="employee.username" placeholder="Username">
+                        </div>
+                        <div class="form-group row" *ngIf="employee.isUser && !isEdit()">
+                            <label>Password :</label>
+                            <input type="password" class="form-control" name="password" [(ngModel)]="employee.password" placeholder="Password">
+                        </div>
                     </div>
                 </div>
 
@@ -211,7 +219,9 @@ export class AdminEmpolyee implements OnInit {
     code: '',
     designation: '',
     email: '',
-    isUser: false
+    isUser: false,
+    username: '',
+    password: ''
   };
 
   // Static Data
@@ -349,6 +359,11 @@ export class AdminEmpolyee implements OnInit {
       return;
     }
 
+    if (this.employee.isUser && (!this.employee.username || !this.employee.password)) {
+      alert('Please enter username and password');
+      return;
+    }
+
     const payload = {
       prefix: this.employee.prefix,
       name: this.employee.name,
@@ -358,7 +373,9 @@ export class AdminEmpolyee implements OnInit {
       code: this.employee.code,
       designation: this.employee.designation,
       email: this.employee.email,
-      isUser: this.employee.isUser
+      isUser: this.employee.isUser,
+      username: this.employee.username,
+      password: this.employee.password
     };
 
     if (this.isEdit()) {
@@ -404,7 +421,9 @@ export class AdminEmpolyee implements OnInit {
       code: '',
       designation: '',
       email: '',
-      isUser: false
+      isUser: false,
+      username: '',
+      password: ''
     };
     this.instituteSearch.set('');
     this.designationSearch.set('');

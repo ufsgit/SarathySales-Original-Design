@@ -117,16 +117,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 }
                 chassisInFile.add(chassisNo);
 
-                // 3. Color validation
-                const [colorCheck] = await conn.execute('SELECT model_id FROM tbl_model WHERE mod_code = ?', [colorCode]);
-                if (colorCheck.length === 0) {
-                    conn.release();
-                    return res.json({
-                        success: false,
-                        action: 'redirect_color',
-                        message: `Color code ${colorCode} does not exist in system (Row ${rowNum}). Redirecting to color code adding page.`
-                    });
-                }
+                // No more blocking color validation - it will be auto-added in execution phase
             }
 
             // --- EXECUTION PHASE (Strictly Atomic) ---
@@ -161,6 +152,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 const colorName = String(row['Color'] || '').trim();
                 const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
                 const saleType = String(row['Sale Type'] || 'Stock').trim();
+                const vendorName = String(row['Vendor Name'] || row['Vendor'] || 'Bajaj Auto').trim();
 
                 // Get or create bill
                 let billId;
@@ -174,26 +166,42 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 } else {
                     const [billResult] = await conn.execute(
                         'INSERT INTO purchaseitembill (invoiceNo, purch_branchId, invoiceDate, pucha_vendorName) VALUES (?, ?, ?, ?)',
-                        [invoiceNo, rowBranchId, invoiceDate, 'Bajaj Auto']
+                        [invoiceNo, rowBranchId, invoiceDate, vendorName]
                     );
                     billId = billResult.insertId;
                 }
 
-                // Model validation & auto-add
+                // 1. Model validation & auto-add (Now using tbl_labour_code)
                 let productId = null;
                 if (modelCode || modelName) {
                     const [modelRows] = await conn.execute(
-                        'SELECT model_id FROM tbl_model WHERE mod_code = ? OR mod_name = ?',
+                        'SELECT labour_id FROM tbl_labour_code WHERE labour_code = ? OR labour_title = ?',
                         [modelCode, modelName]
                     );
                     if (modelRows.length > 0) {
-                        productId = modelRows[0].model_id;
+                        productId = modelRows[0].labour_id;
                     } else {
                         const [insModel] = await conn.execute(
-                            'INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)',
+                            'INSERT INTO tbl_labour_code (labour_code, labour_title) VALUES (?, ?)',
                             [modelCode, modelName]
                         );
                         productId = insModel.insertId;
+                        console.log(`Auto-added missing product: ${modelCode} - ${modelName}`);
+                    }
+                }
+
+                // 2. Color validation & auto-add (Using tbl_model)
+                if (colorCode || colorName) {
+                    const [colorRows] = await conn.execute(
+                        'SELECT model_id FROM tbl_model WHERE mod_code = ?',
+                        [colorCode]
+                    );
+                    if (colorRows.length === 0) {
+                        await conn.execute(
+                            'INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)',
+                            [colorCode, colorName]
+                        );
+                        console.log(`Auto-added missing color: ${colorCode} - ${colorName}`);
                     }
                 }
 
@@ -207,7 +215,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                         amount, engineNo, colorName, colorCode, invoiceDate, saleType, rowBranchId]
                 );
 
-                // Update stock
+                // Update stock in tbl_stock
                 if (productId) {
                     const [stockCheck] = await conn.execute(
                         'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
@@ -215,12 +223,12 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                     );
                     if (stockCheck.length > 0) {
                         await conn.execute(
-                            'UPDATE tbl_stock SET stock_qty = stock_qty + 1 WHERE stock_item_id = ? AND stock_item_branch = ?',
-                            [productId, rowBranchId]
+                            'UPDATE tbl_stock SET stock_qty = CAST(CAST(COALESCE(NULLIF(stock_qty, ""), "0") AS SIGNED) + 1 AS CHAR) WHERE stock_id = ?',
+                            [stockCheck[0].stock_id]
                         );
                     } else {
                         await conn.execute(
-                            'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, 1, 0)',
+                            'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, "1", "0")',
                             [productId, modelCode, modelName, rowBranchId]
                         );
                     }

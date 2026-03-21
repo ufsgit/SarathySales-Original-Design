@@ -30,22 +30,56 @@ const listEmployees = async (req, res) => {
 };
 
 const addEmployee = async (req, res) => {
-    const { prefix, name, institute, address, mobile, code, designation, email, isUser } = req.body;
+    const { prefix, name, institute, address, mobile, code, designation, email, isUser, username, password } = req.body;
+    let conn;
     try {
-        // Check if code already exists
-        const [existing] = await db.execute('SELECT emp_id FROM tbl_employee WHERE e_code = ?', [code]);
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        // Check if employee code already exists
+        const [existing] = await conn.execute('SELECT emp_id FROM tbl_employee WHERE e_code = ?', [code]);
         if (existing.length > 0) {
+            await conn.rollback();
             return res.status(400).json({ success: false, message: 'Employee Code already exists' });
         }
 
-        const [result] = await db.execute(
-            'INSERT INTO tbl_employee (emp_intial, e_first_name, e_branch, e_address, e_mobile, e_code, e_designation, e_email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [prefix, name, institute, address, mobile, code, designation, email, 'Active']
+        let loginId = 0;
+        if (isUser) {
+            if (!username || !password) {
+                await conn.rollback();
+                return res.status(400).json({ success: false, message: 'Username and password are required when adding as a user' });
+            }
+
+            // Check if username already exists
+            const [existingUser] = await conn.execute('SELECT login_id FROM tbl_login WHERE uname = ?', [username.trim()]);
+            if (existingUser.length > 0) {
+                await conn.rollback();
+                return res.status(400).json({ success: false, message: 'Username already exists' });
+            }
+
+            // Insert into tbl_login
+            const [loginResult] = await conn.execute(
+                'INSERT INTO tbl_login (uname, pwd, role, role_des) VALUES (?, ?, ?, ?)',
+                [username.trim(), password.trim(), 2, 'staff']
+            );
+            loginId = loginResult.insertId;
+        }
+
+        // Insert into tbl_employee
+        const [result] = await conn.execute(
+            'INSERT INTO tbl_employee (emp_intial, e_first_name, e_branch, e_address, e_mobile, e_code, e_designation, e_email, emp_login_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [prefix, name, institute, address, mobile, code, designation, email, loginId, 'active']
         );
+
+        await conn.commit();
         res.json({ success: true, message: 'Employee added successfully', id: result.insertId });
+
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error('Add Employee Error:', err);
         res.status(500).json({ success: false, message: 'Failed to add employee: ' + err.message });
+    } finally {
+        if (conn) conn.release();
     }
 };
 

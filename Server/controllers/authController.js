@@ -51,7 +51,8 @@ const login = async (req, res) => {
         
         // Added Check: If not admin, check if status is active
         const isAdmin = user.role == 1 || user.role_des === 'admin';
-        if (!isAdmin && detail.status !== 'active') {
+        const userStatus = String(detail.status || '').toLowerCase();
+        if (!isAdmin && userStatus !== 'active') {
              return res.status(403).json({
                  success: false,
                  message: 'User is not active. Please contact admin.'
