@@ -125,18 +125,18 @@ import { ApiService } from '../services/api.service';
                             <label>Email Id :</label>
                             <input type="email" class="form-control" name="email" [(ngModel)]="employee.email" placeholder="Email Address">
                         </div>
-                        <div class="form-group row checkbox-group" *ngIf="!isEdit()">
+                        <div class="form-group row checkbox-group">
                             <label class="checkbox-container">
                                 <input type="checkbox" name="isUser" [(ngModel)]="employee.isUser">
                                 <span class="checkmark"></span>
                                 Add as User
                             </label>
                         </div>
-                        <div class="form-group row" *ngIf="employee.isUser && !isEdit()">
+                        <div class="form-group row" *ngIf="employee.isUser">
                             <label>Username :</label>
                             <input type="text" class="form-control" name="username" [(ngModel)]="employee.username" placeholder="Username">
                         </div>
-                        <div class="form-group row" *ngIf="employee.isUser && !isEdit()">
+                        <div class="form-group row" *ngIf="employee.isUser">
                             <label>Password :</label>
                             <input type="password" class="form-control" name="password" [(ngModel)]="employee.password" placeholder="Password">
                         </div>
@@ -281,8 +281,13 @@ export class AdminEmpolyee implements OnInit {
         this.employee.code = params['code'] || '';
         this.employee.designation = params['designation'] || '';
         this.employee.email = params['email'] || '';
+        this.employee.username = params['username'] || '';
+        this.employee.password = params['password'] || '';
+        this.employee.isUser = !!this.employee.username;
         this.instituteSearch.set(this.employee.institute);
         this.designationSearch.set(this.employee.designation);
+      } else {
+        this.resetForm();
       }
     });
   }

@@ -282,7 +282,10 @@ export class AdminEmpolyeelist implements OnInit {
             mobile: emp.e_mobile,
             code: emp.e_code,
             designation: emp.e_designation,
-            email: emp.e_email
+            email: emp.e_email,
+            status: emp.status,
+            username: emp.uname,
+            password: emp.pwd
         }
     });
   }
