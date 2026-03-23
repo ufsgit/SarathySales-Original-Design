@@ -40,6 +40,11 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
     const isAdmin = req.user && (req.user.role == 1 || req.user.role_des === 'admin');
     const effectiveBranchId = isAdmin ? req.body.branchId : req.user.branch_id;
 
+    if (!effectiveBranchId) {
+        return res.status(400).json({ success: false, message: 'Branch selection is required' });
+    }
+
+    let conn;
     try {
         // Parse Excel
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -53,207 +58,194 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Excel file is empty or has no data rows' });
         }
 
-        // --- PRE-VALIDATION PHASE ---
+        conn = await db.getConnection();
+
+        // --- PHASE 1: PRE-VALIDATION ---
+        // Validate ALL rows before doing any database modifications
+
+        // 1. Get Selected Branch Name
+        const [branchResults] = await conn.execute('SELECT branch_name FROM tbl_branch WHERE b_id = ?', [effectiveBranchId]);
+        if (branchResults.length === 0) {
+            return res.status(400).json({ success: false, message: 'Selected branch not found in database.' });
+        }
+        const selectedBranchName = String(branchResults[0].branch_name || '').trim().toLowerCase();
+
         const chassisInFile = new Set();
-        const missingBranches = new Set();
-        const conn = await db.getConnection();
-        try {
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowNum = i + 2; // Excel row number (accounting for header)
+        let calculatedTotal = 0;
 
-                // --- FIELD CHECK ---
-                const fieldsToCheck = [
-                    { name: 'Document Name/Invoice No', val: row['Document Name'] || row['Invoice No'] || row['Supplier Invoice No'] },
-                    { name: 'Branch', val: row['Branch'] },
-                    { name: 'Document Date', val: row['Document Date'] || row['Date'] || row['Supplier Invoice Date'] },
-                    { name: 'Model Code', val: row['Model Code'] },
-                    { name: 'Model', val: row['Model'] || row['Model Name'] },
-                    { name: 'Chassis No', val: row['Chassis No'] },
-                    { name: 'Engine No', val: row['Engine No'] },
-                    { name: 'CCODE', val: row['CCODE'] },
-                    { name: 'Color', val: row['Color'] || row['Color Name'] },
-                    { name: 'Cost', val: row['Cost'] || row['Amount'] }
-                ];
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowNum = i + 2; // Excel row number (accounting for header)
 
-                for (const field of fieldsToCheck) {
-                    if (field.val === undefined || field.val === null || String(field.val).trim() === '') {
-                        conn.release();
-                        return res.json({
-                            success: false,
-                            action: 'alert',
-                            message: `In this XL missed data is missing for field: '${field.name}' at row ${rowNum}. Please check your Excel file.`
-                        });
-                    }
-                }
+            // Required fields check
+            const invoiceNo = String(row['Document Name'] || row['Invoice No'] || row['Supplier Invoice No'] || '').trim();
+            const branchNameExcel = String(row['Branch'] || '').trim();
+            const chassisNo = String(row['Chassis No'] || '').trim();
+            const engineNo = String(row['Engine No'] || '').trim();
+            const modelCode = String(row['Model Code'] || '').trim();
+            const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
 
-                const branchNameExcel = String(row['Branch'] || '').trim();
-                // 1. Branch check (Collect for atomic addition)
-                const [bResult] = await conn.execute('SELECT b_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
-                if (bResult.length === 0) {
-                    if (!isAdmin) {
-                        conn.release();
-                        return res.json({ success: false, action: 'alert', message: `Branch '${branchNameExcel}' not found. Staff cannot add new branches. (Row ${rowNum}).` });
-                    }
-                    missingBranches.add(branchNameExcel);
-                } else if (!isAdmin && bResult[0].b_id != effectiveBranchId) {
-                    conn.release();
-                    return res.json({ success: false, action: 'alert', message: `You can only enter the list for your current branch. Row ${rowNum} has branch '${branchNameExcel}'.` });
-                }
-
-                const chassisNo = String(row['Chassis No'] || '').trim();
-                const colorCode = String(row['CCODE'] || '').trim();
-
-                // 2. Chassis validation
-                const [dupChas] = await conn.execute('SELECT chassis_no FROM purchaseitem WHERE chassis_no = ?', [chassisNo]);
-                if (dupChas.length > 0) {
-                    conn.release();
-                    return res.json({ success: false, action: 'redirect_chassis', chassisNo, message: `Chassis number '${chassisNo}' is already existing in the system (Row ${rowNum}). Redirecting to Purchase Invoice page.` });
-                }
-
-                if (chassisInFile.has(chassisNo)) {
-                    conn.release();
-                    return res.json({ success: false, action: 'redirect_chassis', chassisNo, message: `Chassis number '${chassisNo}' appears multiple times in your Excel file (Row ${rowNum}). Redirecting to Purchase Invoice page.` });
-                }
-                chassisInFile.add(chassisNo);
-
-                // No more blocking color validation - it will be auto-added in execution phase
+            if (!invoiceNo || !branchNameExcel || !chassisNo || !engineNo || !modelCode) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Required data (Invoice No, Branch, Chassis, Engine, OR Model Code) missing at row ${rowNum}.`
+                });
             }
 
-            // --- EXECUTION PHASE (Strictly Atomic) ---
-            await conn.beginTransaction();
-
-            // Auto-add missing branches first
-            for (const bName of missingBranches) {
-                await conn.execute('INSERT INTO tbl_branch (branch_name) VALUES (?)', [bName]);
-                console.log(`Auto-added missing branch inside transaction: ${bName}`);
+            // 2. Strict Branch Check
+            if (branchNameExcel.toLowerCase() !== selectedBranchName) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Row ${rowNum} has branch '${branchNameExcel}', but you selected '${branchResults[0].branch_name}'.`
+                });
             }
 
-            let successCount = 0;
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
+            // 3. Intra-Excel Duplicate Chassis Check
+            if (chassisInFile.has(chassisNo)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Chassis number '${chassisNo}' appears multiple times in the Excel file (found again at row ${rowNum}).`
+                });
+            }
+            chassisInFile.add(chassisNo);
 
-                const branchNameExcel = String(row['Branch'] || '').trim();
-                let rowBranchId = effectiveBranchId;
-                const [bResult] = await conn.execute('SELECT b_id FROM tbl_branch WHERE branch_name = ?', [branchNameExcel]);
-                rowBranchId = bResult[0].b_id;
-
-                const invoiceNo = String(row['Document Name'] || row['Invoice No'] || row['Supplier Invoice No'] || '').trim();
-                let invoiceDate = new Date();
-                if (row['Document Date']) invoiceDate = new Date(row['Document Date']);
-                else if (row['Date']) invoiceDate = new Date(row['Date']);
-                else if (row['Supplier Invoice Date']) invoiceDate = new Date(row['Supplier Invoice Date']);
-
-                const modelCode = String(row['Model Code'] || '').trim();
-                const modelName = String(row['Model'] || row['Model Name'] || '').trim();
-                const chassisNo = String(row['Chassis No'] || '').trim();
-                const engineNo = String(row['Engine No'] || '').trim();
-                const colorCode = String(row['CCODE'] || '').trim();
-                const colorName = String(row['Color'] || '').trim();
-                const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
-                const saleType = String(row['Sale Type'] || 'Stock').trim();
-                const vendorName = String(row['Vendor Name'] || row['Vendor'] || 'Bajaj Auto').trim();
-
-                // Get or create bill
-                let billId;
-                const [existBill] = await conn.execute(
-                    'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?',
-                    [invoiceNo, rowBranchId]
-                );
-
-                if (existBill.length > 0) {
-                    billId = existBill[0].purchaseItemBillId;
-                } else {
-                    const [billResult] = await conn.execute(
-                        'INSERT INTO purchaseitembill (invoiceNo, purch_branchId, invoiceDate, pucha_vendorName) VALUES (?, ?, ?, ?)',
-                        [invoiceNo, rowBranchId, invoiceDate, vendorName]
-                    );
-                    billId = billResult.insertId;
-                }
-
-                // 1. Model validation & auto-add (Now using tbl_labour_code)
-                let productId = null;
-                if (modelCode || modelName) {
-                    const [modelRows] = await conn.execute(
-                        'SELECT labour_id FROM tbl_labour_code WHERE labour_code = ? OR labour_title = ?',
-                        [modelCode, modelName]
-                    );
-                    if (modelRows.length > 0) {
-                        productId = modelRows[0].labour_id;
-                    } else {
-                        const [insModel] = await conn.execute(
-                            'INSERT INTO tbl_labour_code (labour_code, labour_title) VALUES (?, ?)',
-                            [modelCode, modelName]
-                        );
-                        productId = insModel.insertId;
-                        console.log(`Auto-added missing product: ${modelCode} - ${modelName}`);
-                    }
-                }
-
-                // 2. Color validation & auto-add (Using tbl_model)
-                if (colorCode || colorName) {
-                    const [colorRows] = await conn.execute(
-                        'SELECT model_id FROM tbl_model WHERE mod_code = ?',
-                        [colorCode]
-                    );
-                    if (colorRows.length === 0) {
-                        await conn.execute(
-                            'INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)',
-                            [colorCode, colorName]
-                        );
-                        console.log(`Auto-added missing color: ${colorCode} - ${colorName}`);
-                    }
-                }
-
-                // Insert purchaseitem
-                await conn.execute(
-                    `INSERT INTO purchaseitem
-           (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-            lc_rate, engine_no, color_name, color_id, p_date, sale_type, branch_transfer, item_status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
-                    [billId, productId, modelCode, modelName, chassisNo,
-                        amount, engineNo, colorName, colorCode, invoiceDate, saleType, rowBranchId]
-                );
-
-                // Update stock in tbl_stock
-                if (productId) {
-                    const [stockCheck] = await conn.execute(
-                        'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
-                        [productId, rowBranchId]
-                    );
-                    if (stockCheck.length > 0) {
-                        await conn.execute(
-                            'UPDATE tbl_stock SET stock_qty = CAST(CAST(COALESCE(NULLIF(stock_qty, ""), "0") AS SIGNED) + 1 AS CHAR) WHERE stock_id = ?',
-                            [stockCheck[0].stock_id]
-                        );
-                    } else {
-                        await conn.execute(
-                            'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, "1", "0")',
-                            [productId, modelCode, modelName, rowBranchId]
-                        );
-                    }
-                }
-
-                successCount++;
+            // 4. Database Duplicate Chassis Check
+            const [dupChasis] = await conn.execute('SELECT chassis_no FROM purchaseitem WHERE chassis_no = ?', [chassisNo]);
+            if (dupChasis.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Chassis number '${chassisNo}' (Row ${rowNum}) already exists in the system.`
+                });
             }
 
-            await conn.commit();
-            res.json({
-                success: true,
-                message: `Upload complete. ${successCount} records imported.`,
-                successCount
-            });
-
-        } catch (err) {
-            if (conn) await conn.rollback();
-            throw err;
-        } finally {
-            if (conn) conn.release();
+            // Accumulate total
+            calculatedTotal += amount;
         }
 
+        // --- PHASE 2: ATOMIC EXECUTION ---
+        await conn.beginTransaction();
+
+        let successCount = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const invoiceNo = String(row['Document Name'] || row['Invoice No'] || row['Supplier Invoice No'] || '').trim();
+            const modelCode = String(row['Model Code'] || '').trim();
+            const modelName = String(row['Model'] || row['Model Name'] || '').trim();
+            const chassisNo = String(row['Chassis No'] || '').trim();
+            const engineNo = String(row['Engine No'] || '').trim();
+            const colorCode = String(row['CCODE'] || '').trim();
+            const colorName = String(row['Color'] || '').trim();
+            const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
+            const saleType = String(row['Sale Type'] || 'Stock').trim();
+            const vendorName = String(row['Vendor Name'] || row['Vendor'] || 'Bajaj Auto').trim();
+
+            let invoiceDate = new Date();
+            if (row['Document Date']) invoiceDate = new Date(row['Document Date']);
+            else if (row['Date']) invoiceDate = new Date(row['Date']);
+            else if (row['Supplier Invoice Date']) invoiceDate = new Date(row['Supplier Invoice Date']);
+
+            // 1. Handle Purchase Bill
+            let billId;
+            const [existingBill] = await conn.execute(
+                'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?',
+                [invoiceNo, effectiveBranchId]
+            );
+
+            if (existingBill.length > 0) {
+                billId = existingBill[0].purchaseItemBillId;
+                // Update total for this bill IF it's shared across rows (common for bulk upload)
+                // Note: In bulk, we might be inserting many rows for the SAME bill.
+                // We should ensure the bill total reflects the sum of its items.
+                // Simple approach: Update the bill with the final calculated total if it exists.
+                await conn.execute(
+                    'UPDATE purchaseitembill SET total_bill_amount = ?, purc_grand_total = ? WHERE purchaseItemBillId = ?',
+                    [calculatedTotal, calculatedTotal, billId]
+                );
+            } else {
+                const [billResult] = await conn.execute(
+                    `INSERT INTO purchaseitembill (invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, total_bill_amount, purc_grand_total) 
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [invoiceNo, effectiveBranchId, invoiceDate, vendorName, calculatedTotal, calculatedTotal]
+                );
+                billId = billResult.insertId;
+            }
+
+            // 2. Get or Auto-add Product (Model)
+            let productId = null;
+            const [modelRows] = await conn.execute(
+                'SELECT labour_id FROM tbl_labour_code WHERE labour_code = ?',
+                [modelCode]
+            );
+
+            if (modelRows.length > 0) {
+                productId = modelRows[0].labour_id;
+            } else {
+                const [insModel] = await conn.execute(
+                    `INSERT INTO tbl_labour_code 
+                    (labour_code, labour_title, discription, repair_type, fa_weight, ra_weight, oa_weight, 
+                    ta_weight, ul_weight, r_weight, hp, cc, tbody, no_of_cylider, fuel, wheel_base, 
+                    booking_code, seat_capacity, cgst, sgst, cess) 
+                    VALUES (?, ?, ?, 'Major', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '0.00', '0.00', '0.00')`,
+                    [modelCode, modelName || modelCode, modelName || modelCode]
+                );
+                productId = insModel.insertId;
+            }
+
+            // 3. Get or Auto-add Color
+            if (colorCode) {
+                const [colorRows] = await conn.execute('SELECT model_id FROM tbl_model WHERE mod_code = ?', [colorCode]);
+                if (colorRows.length === 0) {
+                    await conn.execute('INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)', [colorCode, colorName || colorCode]);
+                }
+            }
+
+            // 4. Insert Purchase Item
+            await conn.execute(
+                `INSERT INTO purchaseitem
+                (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
+                lc_rate, engine_no, color_name, color_id, p_date, sale_type, branch_transfer, item_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                [billId, productId, modelCode, modelName, chassisNo,
+                amount, engineNo, colorName, colorCode, invoiceDate, saleType, effectiveBranchId]
+            );
+
+            // 5. Update Stock
+            if (productId) {
+                const [stockCheck] = await conn.execute(
+                    'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
+                    [productId, effectiveBranchId]
+                );
+                if (stockCheck.length > 0) {
+                    await conn.execute(
+                        'UPDATE tbl_stock SET stock_qty = CAST(CAST(COALESCE(NULLIF(stock_qty, ""), "0") AS SIGNED) + 1 AS CHAR) WHERE stock_id = ?',
+                        [stockCheck[0].stock_id]
+                    );
+                } else {
+                    await conn.execute(
+                        'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, "1", "0")',
+                        [productId, modelCode, modelName, effectiveBranchId]
+                    );
+                }
+            }
+
+            successCount++;
+        }
+
+        await conn.commit();
+        res.json({
+            success: true,
+            message: `Upload successful. ${successCount} records imported. Total Bill: ${calculatedTotal.toFixed(2)}`,
+            successCount,
+            total: calculatedTotal
+        });
+
     } catch (err) {
-        console.error('Upload error:', err);
-        res.status(500).json({ success: false, message: 'Upload failed: ' + err.message });
+        if (conn) await conn.rollback();
+        console.error('Upload Error:', err);
+        res.status(500).json({ success: false, message: 'Upload failed: ' + (err.message || 'Unknown error') });
+    } finally {
+        if (conn) conn.release();
     }
 });
 
