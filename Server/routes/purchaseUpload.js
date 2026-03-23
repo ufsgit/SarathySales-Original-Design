@@ -178,16 +178,25 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 [modelCode]
             );
 
+            const rowCgst = (amount * 9) / 100;
+            const rowSgst = (amount * 9) / 100;
+            const rowTotalPrice = amount + rowCgst + rowSgst;
+
             if (modelRows.length > 0) {
                 productId = modelRows[0].labour_id;
+                // Update existing product with latest cost as sale_price and calculated GST & Total
+                await conn.execute(
+                    `UPDATE tbl_labour_code SET sale_price = ?, cgst = ?, sgst = ?, total_price = ? WHERE labour_id = ?`,
+                    [amount, rowCgst.toFixed(2), rowSgst.toFixed(2), rowTotalPrice.toFixed(2), productId]
+                );
             } else {
                 const [insModel] = await conn.execute(
                     `INSERT INTO tbl_labour_code 
                     (labour_code, labour_title, discription, repair_type, fa_weight, ra_weight, oa_weight, 
                     ta_weight, ul_weight, r_weight, hp, cc, tbody, no_of_cylider, fuel, wheel_base, 
-                    booking_code, seat_capacity, cgst, sgst, cess) 
-                    VALUES (?, ?, ?, 'Major', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '0.00', '0.00', '0.00')`,
-                    [modelCode, modelName || modelCode, modelName || modelCode]
+                    booking_code, seat_capacity, sale_price, cgst, sgst, total_price, cess) 
+                    VALUES (?, ?, ?, 'Major', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ?, ?, ?, ?, '0.00')`,
+                    [modelCode, modelName || modelCode, modelName || modelCode, amount, rowCgst.toFixed(2), rowSgst.toFixed(2), rowTotalPrice.toFixed(2)]
                 );
                 productId = insModel.insertId;
             }
