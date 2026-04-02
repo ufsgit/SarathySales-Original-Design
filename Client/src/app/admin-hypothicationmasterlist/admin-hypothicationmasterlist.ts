@@ -127,7 +127,7 @@ import { ApiService } from '../services/api.service';
 
           <div class="form-group row">
               <label>GSTIN:</label>
-              <input type="text" class="form-control" name="gstin" [(ngModel)]="editData.gstin">
+              <input type="text" class="form-control" name="gstin" [(ngModel)]="editData.gstin" maxlength="15" (input)="editData.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
           </div>
       </div>
     </div>
@@ -326,6 +326,13 @@ export class AdminHypothicationmasterlist implements OnInit {
 
   saveEdit() {
     if (!this.editId || !this.editData.name) return;
+
+    const isGstinValid = (gstin: string) => /^[0-9A-Z]{15}$/.test((gstin || '').trim().toUpperCase());
+    if (this.editData.gstin && !isGstinValid(this.editData.gstin)) {
+      alert('GSTIN must contain exactly 15 alphanumeric characters');
+      return;
+    }
+
     this.saving = true;
 
     this.apiService.updateHypothecationMaster(this.editId, this.editData).subscribe({

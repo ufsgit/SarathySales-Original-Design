@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
     selector: 'app-vsi-invoice',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
     template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -73,7 +74,7 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Mobile Number:</label>
-                    <input type="text" class="form-control" [(ngModel)]="mobile" name="mobile">
+                    <input type="tel" class="form-control" numericOnly [(ngModel)]="mobile" name="mobile" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="mobile = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
                 </div>
                 <div class="form-col">
                     <!-- Empty 4th col in row 2 based on image -->

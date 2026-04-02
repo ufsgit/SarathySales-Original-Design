@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
   selector: 'app-proforma-invoice',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserNav, UserFooter],
+  imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
   template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -102,7 +103,7 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Contact No:</label>
-                    <input type="text" class="form-control bg-white" [ngModel]="contactNo()" (ngModelChange)="contactNo.set($event)" name="contactNo">
+                    <input type="tel" class="form-control bg-white" numericOnly [ngModel]="contactNo()" (ngModelChange)="contactNo.set(sanitizePhone($event))" name="contactNo" maxlength="10" pattern="[0-9]*" inputmode="numeric">
                 </div>
                 <div class="form-col"></div> 
                 <div class="form-col">
@@ -1127,6 +1128,14 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
     this.items.update(items => items.filter((_, i) => i !== index));
   }
 
+  sanitizePhone(value: string | null | undefined): string {
+    return (value || '').toString().replace(/[^0-9]/g, '').slice(0, 10);
+  }
+
+  private isPhoneValid(phone: string): boolean {
+    return /^\d{10}$/.test(this.sanitizePhone(phone));
+  }
+
   onSave(): void {
     this.successMessage.set('');
     this.errorMessage.set('');
@@ -1143,6 +1152,15 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    const sanitizedContactNo = this.sanitizePhone(this.contactNo());
+    this.contactNo.set(sanitizedContactNo);
+
+    if (sanitizedContactNo && !this.isPhoneValid(sanitizedContactNo)) {
+      this.errorMessage.set('Contact number must contain exactly 10 digits.');
+      alert(this.errorMessage());
+      return;
+    }
+
     const payload = {
       proformaNo: this.quotationNo(),
       branchId: this.branchId(),
@@ -1150,7 +1168,7 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
       proformaDate: this.date(),
       customerName: this.customerName(),
       address: this.customerAddress(),
-      phone: this.contactNo(),
+      phone: sanitizedContactNo,
       paymentMode: this.paymentMode(),
       reference: this.reference(),
       executive: this.executive(),

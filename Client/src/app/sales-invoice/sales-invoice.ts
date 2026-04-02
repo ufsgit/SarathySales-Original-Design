@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
     selector: 'app-sales-invoice',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
     template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -141,15 +142,15 @@ import { ApiService } from '../services/api.service';
                     </div>
                      <div class="form-group">
                         <label>GSTIN:</label>
-                        <input type="text" class="form-control" [ngModel]="gstin()" (ngModelChange)="gstin.set($event)" name="gstin">
+                        <input type="text" class="form-control" [ngModel]="gstin()" (ngModelChange)="gstin.set($event.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15))" name="gstin" maxlength="15">
                     </div>
                 </div>
 
                 <!-- Column 2 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Mobile No <span style="color:red">*</span>:</label>
-                        <input type="text" class="form-control" [ngModel]="mobileNo()" (ngModelChange)="mobileNo.set($event)" name="mobileNo" maxlength="10" (keypress)="onlyNumbers($event)">
+                        <label>Mobile No :</label>
+                        <input type="tel" class="form-control" numericOnly [ngModel]="mobileNo()" (ngModelChange)="mobileNo.set($event.replace(/[^0-9]/g, '').slice(0,10))" name="mobileNo" maxlength="10" pattern="[0-9]*" inputmode="numeric">
                     </div>
                     <div class="form-group">
                         <label>Age :</label>
@@ -1169,6 +1170,19 @@ export class SalesInvoiceComponent implements OnInit {
 
         if (!customerName) {
             alert('Customer Name is required');
+            return;
+        }
+
+        const isPhoneValid = (phone: string) => /^\d{10}$/.test((phone || '').toString().trim());
+        const isGstinValid = (gstin: string) => /^[0-9A-Z]{15}$/.test((gstin || '').toString().trim().toUpperCase());
+
+        if (this.mobileNo() && !isPhoneValid(this.mobileNo())) {
+            alert('Mobile number must contain exactly 10 digits');
+            return;
+        }
+
+        if (this.gstin() && !isGstinValid(this.gstin())) {
+            alert('GSTIN must contain exactly 15 alphanumeric characters');
             return;
         }
 
