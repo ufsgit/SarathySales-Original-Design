@@ -508,10 +508,15 @@ export class ApiService {
 
     // ─── Purchase Upload ──────────────────────────────────────────────────────────
 
-    uploadPurchaseExcel(file: File, branchId: string): Observable<ApiResponse> {
+    uploadPurchaseExcel(file: File, branchId: string, uiFields: any): Observable<ApiResponse> {
         const formData = new FormData();
         formData.append('excelFile', file);
         formData.append('branchId', branchId);
+        if (uiFields) {
+            Object.keys(uiFields).forEach(key => {
+                formData.append(key, uiFields[key] || '');
+            });
+        }
         return this.http.post<ApiResponse>(`${this.BASE_URL}/purchase-upload/upload`, formData)
             .pipe(catchError(err => this.handleError(err)));
     }

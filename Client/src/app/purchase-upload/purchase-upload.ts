@@ -104,8 +104,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col">
                     <label>RC Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="text" class="form-control" [value]="rcDate()" >
-                         <i class="fas fa-calendar-alt calendar-icon"></i>
+                         <input type="date" class="form-control" [ngModel]="rcDate()" (ngModelChange)="rcDate.set($event)" name="rcDate">
                     </div>
                 </div>
                 <div class="form-col">
@@ -115,8 +114,7 @@ import { ApiService } from '../services/api.service';
                 <div class="form-col">
                     <label>Invoice Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="text" class="form-control" [value]="invoiceDate()" >
-                         <i class="fas fa-calendar-alt calendar-icon"></i>
+                         <input type="date" class="form-control" [ngModel]="invoiceDate()" (ngModelChange)="invoiceDate.set($event)" name="invoiceDate">
                     </div>
                 </div>
              </div>
@@ -587,9 +585,9 @@ export class PurchaseUploadComponent implements OnInit {
     institutionId = signal('');
     rcNo = signal('');
     hsnCode = signal('');
-    rcDate = signal('19-02-2026');
+    rcDate = signal('');
     address = signal('');
-    invoiceDate = signal('19-02-2026');
+    invoiceDate = signal('');
     gstin = signal('');
     institutionOptions = signal<Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin?: string }>>([]);
 
@@ -696,7 +694,7 @@ export class PurchaseUploadComponent implements OnInit {
         this.uploadMessage.set('');
         this.uploadError.set('');
         if (!this.branchId()) {
-            this.uploadError.set('Branch missing. Please login again.');
+            this.uploadError.set(this.isAdmin() ? 'Please select a branch.' : 'Branch missing. Please login again.');
             return;
         }
         if (!this.selectedFile) {
@@ -705,7 +703,17 @@ export class PurchaseUploadComponent implements OnInit {
         }
 
         this.isUploading.set(true);
-        this.api.uploadPurchaseExcel(this.selectedFile, this.branchId()).subscribe({
+        const uiFields = {
+            invNo: this.invNo(),
+            invoiceDate: this.invoiceDate(),
+            vendorName: this.institution(),
+            address: this.address(),
+            hsnCode: this.hsnCode(),
+            gstin: this.gstin(),
+            rcDate: this.rcDate(),
+            rcNo: this.rcNo()
+        };
+        this.api.uploadPurchaseExcel(this.selectedFile, this.branchId(), uiFields).subscribe({
             next: (res: any) => {
                 this.isUploading.set(false);
                 if (res?.success) {

@@ -31,16 +31,16 @@ const getStockList = async (req, res) => {
         const [rows] = await db.execute(sql, params);
         const [totalRows] = await db.execute(countSql, countParams);
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: rows,
             total: totalRows[0] ? totalRows[0].total : 0,
             page,
             limit
         });
-    } catch (err) { 
-        console.error('getStockList Error:', err); 
-        res.status(500).json({ success: false, message: 'Failed to fetch stock: ' + err.message }); 
+    } catch (err) {
+        console.error('getStockList Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock: ' + err.message });
     }
 };
 
@@ -192,7 +192,7 @@ const getStockVerification = async (req, res) => {
         const [rows] = await db.execute(sql, params);
 
         /* Total vehicle count x branch count if no branch selected */
-        const countSql = branchId 
+        const countSql = branchId
             ? `SELECT COUNT(*) as total FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId) x`
             : `SELECT (SELECT COUNT(*) FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId) x) * (SELECT COUNT(*) FROM tbl_branch) as total`;
 
@@ -236,9 +236,9 @@ const getStockSplitup = async (req, res) => {
         ];
         let params = [fromDate, toDate];
 
-        if (branchId && branchId !== 'ALL') { 
-            conditions.push('pb.purch_branchId = ?'); 
-            params.push(branchId); 
+        if (branchId && branchId !== 'ALL') {
+            conditions.push('pb.purch_branchId = ?');
+            params.push(branchId);
         }
 
         if (chassisNo) {
@@ -292,11 +292,11 @@ const getStockSplitup = async (req, res) => {
 
         const [rows] = await db.execute(mainSql, params);
         const [countRows] = await db.execute(countSql, params);
-        
+
         res.json({ success: true, data: rows, total: countRows[0].total, page, limit });
-    } catch (err) { 
-        console.error('getStockSplitup Error:', err); 
-        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message }); 
+    } catch (err) {
+        console.error('getStockSplitup Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message });
     }
 };
 
@@ -316,7 +316,7 @@ const updateStock = async (req, res) => {
     try {
         log(`Fetching product details for ID: ${productId}`);
         const [productRows] = await db.execute('SELECT labour_code, labour_title FROM tbl_labour_code WHERE labour_id = ?', [productId]);
-        
+
         if (!productRows || productRows.length === 0) {
             log(`Product ${productId} not found in tbl_labour_code`);
             return res.status(404).json({ success: false, message: 'Product not found' });
@@ -520,7 +520,7 @@ const exportStockVerificationPagedCsv = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Verification CSV');
         worksheet.addRow(['VEHICLE NAME', 'VEHICLE CODE', 'BRANCH', 'OPENING STOCK', 'PURCHASE', 'SALES', 'BRANCH TRANSFER', 'STOCK']);
-        
+
         rows.forEach(r => {
             worksheet.addRow([r.vehicle_name, r.vehicle_code, r.branch_name, r.opening_stock, r.purchase, r.sales, r.branch_transfer, r.stock]);
         });
@@ -553,9 +553,9 @@ const getStockSplitupQuery = (req) => {
     ];
     let params = [fromDate, toDate];
 
-    if (branchId && branchId !== 'ALL') { 
-        conditions.push('pb.purch_branchId = ?'); 
-        params.push(branchId); 
+    if (branchId && branchId !== 'ALL') {
+        conditions.push('pb.purch_branchId = ?');
+        params.push(branchId);
     }
 
     if (chassisNo) {
@@ -625,11 +625,11 @@ const exportStockSplitupExcel = async (req, res) => {
         ];
 
         worksheet.getRow(1).font = { bold: true };
-        
+
         rows.forEach((r, i) => {
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
-            worksheet.addRow({ 
-                sino: i + 1, ...r, 
+            worksheet.addRow({
+                sino: i + 1, ...r,
                 rc_date: fmtDate(r.rc_date),
                 invoice_date: fmtDate(r.invoice_date),
                 mfg_date: fmtDate(r.mfg_date)
@@ -688,7 +688,7 @@ const exportStockSplitupPagedCsv = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Splitup CSV');
         worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'TOTAL AMOUNT']);
-        
+
         rows.forEach(r => {
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
             worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
@@ -704,12 +704,12 @@ const exportStockSplitupPagedCsv = async (req, res) => {
     }
 };
 
-module.exports = { 
-    getStockList, 
-    getAvailableVehicles, 
-    getStockVerification, 
-    getStockSplitup, 
-    updateStock, 
+module.exports = {
+    getStockList,
+    getAvailableVehicles,
+    getStockVerification,
+    getStockSplitup,
+    updateStock,
     deleteStock,
     exportStockVerificationExcel,
     exportStockVerificationPagedExcel,

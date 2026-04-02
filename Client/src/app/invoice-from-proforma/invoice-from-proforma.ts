@@ -101,7 +101,7 @@ import { ApiService } from '../services/api.service';
                         <input type="text" class="form-control" [(ngModel)]="guardian" name="guardian">
                     </div>
                     <div class="form-group" style="align-items: flex-start;">
-                        <label style="margin-top: 5px;">Address:</label>
+                        <label style="margin-top: 5px;">Address <span style="color:red">*</span>:</label>
                         <textarea class="form-control" [(ngModel)]="address" name="address" rows="3"></textarea>
                     </div>
                     <div class="form-group">
@@ -117,8 +117,8 @@ import { ApiService } from '../services/api.service';
                 <!-- Column 2 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Mobile No :</label>
-                        <input type="text" class="form-control" [(ngModel)]="mobileNo" name="mobileNo">
+                        <label>Mobile No <span style="color:red">*</span>:</label>
+                        <input type="text" class="form-control" [(ngModel)]="mobileNo" name="mobileNo" maxlength="10" (keypress)="onlyNumbers($event)">
                     </div>
                     <div class="form-group">
                         <label>Age :</label>
@@ -133,7 +133,7 @@ import { ApiService } from '../services/api.service';
                         <input type="text" class="form-control" [(ngModel)]="area" name="area">
                     </div>
                     <div class="form-group">
-                        <label>Hypothication:</label>
+                        <label>Hypothication <span style="color:red">*</span>:</label>
                         <select class="form-control" [(ngModel)]="hypothication" name="hypothication" (change)="onHypothecationChange()">
                             <option value="">--Select--</option>
                             <option *ngFor="let h of currentHypothecationOptions" [value]="h.value">{{ h.label }}</option>
@@ -156,7 +156,7 @@ import { ApiService } from '../services/api.service';
                         <input type="text" class="form-control" [(ngModel)]="financeDues" name="financeDues">
                     </div>
                      <div class="form-group">
-                        <label>Executive Name:</label>
+                        <label>Executive Name <span style="color:red">*</span>:</label>
                          <select class="form-control" [(ngModel)]="executive" name="executive" (change)="onExecutiveChange()">
                             <option value="">--select--</option>
                             <option *ngFor="let ex of currentExecutiveOptions" [value]="ex.value">{{ ex.label }}</option>
@@ -1040,6 +1040,25 @@ export class InvoiceFromProformaComponent implements OnInit {
             return;
         }
 
+        if (!this.address) {
+            alert('Address is required');
+            return;
+        }
+
+        const mobile = (this.mobileNo || '').toString().trim();
+        if (!mobile) { alert('Mobile No. is required'); return; }
+        if (!/^\d{10}$/.test(mobile)) { alert('Mobile Number must be 10 numeric digits'); return; }
+
+        if (!this.hypothication) {
+            alert('Hypothication is required');
+            return;
+        }
+
+        if (!this.executive) {
+            alert('Executive name is required');
+            return;
+        }
+
         if (!this.chassisNo) {
             alert('Chassis No. is a required field');
             return;
@@ -1126,6 +1145,13 @@ export class InvoiceFromProformaComponent implements OnInit {
         }
 
         doSave(currentInvoiceNo);
+    }
+
+    onlyNumbers(event: any) {
+        const charCode = (event.which) ? event.which : event.keyCode;
+        if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+            event.preventDefault();
+        }
     }
 
     private loadNextInvoiceNo(branchId?: string): void {

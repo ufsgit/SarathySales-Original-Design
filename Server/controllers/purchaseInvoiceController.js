@@ -429,7 +429,7 @@ const getPurchaseInvoiceByNo = async (req, res) => {
         );
 
         if (!billRows.length) return res.status(404).json({ success: false, message: 'Purchase invoice not found' });
-        
+
         const bill = billRows[0];
         const [itemRows] = await db.execute(
             `SELECT * FROM purchaseitem WHERE purchaseItemBillId = ?`, [bill.purchaseItemBillId]
