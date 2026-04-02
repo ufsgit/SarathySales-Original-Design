@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
   selector: 'app-admin-empolyee',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink, NumericOnlyDirective],
   template: `
 <div class="app-container" (click)="closeDropdowns()">
   <app-admin-nav></app-admin-nav>
@@ -96,7 +97,7 @@ import { ApiService } from '../services/api.service';
                     <div class="section-content">
                         <div class="form-group row">
                             <label>Mobile No :</label>
-                            <input type="text" class="form-control" name="mobile" [(ngModel)]="employee.mobile" placeholder="Mobile Number">
+                            <input type="tel" class="form-control" name="mobile" numericOnly [(ngModel)]="employee.mobile" placeholder="Mobile Number" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="employee.mobile = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
                         </div>
                         <div class="form-group row">
                             <label>Employee Code :</label>
@@ -354,11 +355,21 @@ export class AdminEmpolyee implements OnInit {
     this.showDesignationList = false;
   }
 
+  private isPhoneValid(phone: string): boolean {
+    return /^\d{10}$/.test((phone || '').toString().trim());
+  }
+
   onSubmit() {
     if (!this.employee.name) {
       alert('Please enter employee name');
       return;
     }
+
+    if (this.employee.mobile && !this.isPhoneValid(this.employee.mobile)) {
+      alert('Mobile number must contain exactly 10 digits');
+      return;
+    }
+
     if (!this.isEdit() && !this.employee.isUser) {
       alert('Please click on the Add as User checkbox to submit');
       return;

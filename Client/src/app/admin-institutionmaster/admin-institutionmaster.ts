@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
   selector: 'app-admin-institutionmaster',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink, NumericOnlyDirective],
   template: `
 <div class="app-container">
   <app-admin-nav></app-admin-nav>
@@ -63,11 +64,11 @@ import { ApiService } from '../services/api.service';
 
                 <div class="form-group row">
                     <label>GSTIN Number</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="gstin" placeholder="GSTIN">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="gstin" placeholder="GSTIN" maxlength="15" (input)="gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
                 </div>
                 <div class="form-group row">
                     <label>Phone Number :</label>
-                    <input type="text" class="form-control" name="phone" [(ngModel)]="phone" placeholder="Contact Number">
+                    <input type="tel" class="form-control" name="phone" numericOnly [(ngModel)]="phone" placeholder="Contact Number" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="phone = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
                 </div>
                 <div class="form-group row">
                     <label>Email Id :</label>
@@ -171,9 +172,27 @@ export class AdminInstitutionmaster implements OnInit {
     });
   }
 
+  private isPhoneValid(phone: string): boolean {
+    return /^\d{10}$/.test((phone || '').toString().trim());
+  }
+
+  private isGstinValid(gstin: string): boolean {
+    return /^[0-9A-Z]{15}$/.test((gstin || '').toString().trim().toUpperCase());
+  }
+
   onSubmit() {
     if (!this.name) {
       alert('Institution name is required');
+      return;
+    }
+
+    if (this.phone && !this.isPhoneValid(this.phone)) {
+      alert('Phone number must contain exactly 10 digits');
+      return;
+    }
+
+    if (this.gstin && !this.isGstinValid(this.gstin)) {
+      alert('GSTIN must contain exactly 15 alphanumeric characters');
       return;
     }
 

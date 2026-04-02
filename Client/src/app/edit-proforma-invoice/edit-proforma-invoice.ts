@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
     selector: 'app-edit-proforma-invoice',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
     template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -92,7 +93,7 @@ import { ApiService } from '../services/api.service';
                 </div>
                 <div class="form-col">
                     <label>Contact No:</label>
-                    <input type="text" class="form-control" [(ngModel)]="contactNo" name="contactNo">
+                    <input type="tel" class="form-control" numericOnly [ngModel]="contactNo" (ngModelChange)="contactNo = sanitizePhone($event)" name="contactNo" maxlength="10" pattern="[0-9]*" inputmode="numeric">
                 </div>
                 <div class="form-col"></div> 
                 <div class="form-col">
@@ -799,6 +800,14 @@ export class EditProformaInvoiceComponent implements OnInit {
         };
     }
 
+    sanitizePhone(value: string | null | undefined): string {
+        return (value || '').toString().replace(/[^0-9]/g, '').slice(0, 10);
+    }
+
+    private isPhoneValid(phone: string): boolean {
+        return /^\d{10}$/.test(this.sanitizePhone(phone));
+    }
+
     private loadProformaData(): void {
         this.api.getProforma(this.id).subscribe({
             next: (res: any) => {
@@ -813,7 +822,7 @@ export class EditProformaInvoiceComponent implements OnInit {
                     }
                     this.customerName = p.pro_cus_name || '';
                     this.customerAddress = p.pro_cus_address || '';
-                    this.contactNo = p.pro_contact || p.pro_cus_phone || '';
+                    this.contactNo = this.sanitizePhone(p.pro_contact || p.pro_cus_phone || '');
                     this.reference = p.pro_ref || '';
                     this.paymentMode = p.pro_type_loan || 'Cash';
                     this.executive = p.pro_executive || '';
@@ -956,6 +965,12 @@ export class EditProformaInvoiceComponent implements OnInit {
 
     onUpdate(): void {
         if (!this.quotationNo || !this.customerName) return;
+
+        this.contactNo = this.sanitizePhone(this.contactNo);
+        if (this.contactNo && !this.isPhoneValid(this.contactNo)) {
+            alert('Contact number must contain exactly 10 digits');
+            return;
+        }
 
         for (const item of this.items) this.recalculateRow(item);
 

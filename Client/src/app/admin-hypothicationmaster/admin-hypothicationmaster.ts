@@ -51,7 +51,7 @@ import { ApiService } from '../services/api.service';
 
                 <div class="form-group row">
                     <label>GSTIN:</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="" maxlength="15" (input)="financier.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
                 </div>
 
                 <div class="form-actions-centered">
@@ -122,11 +122,20 @@ export class AdminHypothicationmaster implements OnInit {
 
   constructor(private apiService: ApiService, private router: Router) {}
 
+  private isGstinValid(gstin: string): boolean {
+    return /^[0-9A-Z]{15}$/.test((gstin || '').trim().toUpperCase());
+  }
+
   ngOnInit(): void {}
 
   onSubmit() {
     if (!this.financier.name) {
       alert('Finance company name is required');
+      return;
+    }
+
+    if (this.financier.gstin && !this.isGstinValid(this.financier.gstin)) {
+      alert('GSTIN must contain exactly 15 alphanumeric characters');
       return;
     }
 

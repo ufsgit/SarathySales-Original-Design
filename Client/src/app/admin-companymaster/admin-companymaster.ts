@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
+import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
   selector: 'app-admin-companymaster',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink, NumericOnlyDirective],
   template: `
 <div class="app-container">
   <app-admin-nav></app-admin-nav>
@@ -55,7 +56,7 @@ import { ApiService } from '../services/api.service';
                     </div>
                     <div class="form-group row">
                         <label>Phone Number :</label>
-                        <input type="text" class="form-control" name="phone" [(ngModel)]="company.phone" placeholder="contact no">
+                        <input type="tel" class="form-control" name="phone" numericOnly [(ngModel)]="company.phone" placeholder="contact no" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="company.phone = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
                     </div>
                 </div>
 
@@ -155,6 +156,10 @@ export class AdminCompanymaster implements OnInit {
     email: ''
   };
 
+  private isPhoneValid(phone: string): boolean {
+    return /^\d{10}$/.test((phone || '').toString().trim());
+  }
+
   constructor(
     private apiService: ApiService, 
     private router: Router,
@@ -181,6 +186,11 @@ export class AdminCompanymaster implements OnInit {
   onSubmit() {
     if (!this.company.name) {
       alert('Company name is required');
+      return;
+    }
+
+    if (this.company.phone && !this.isPhoneValid(this.company.phone)) {
+      alert('Phone number must contain exactly 10 digits');
       return;
     }
 
