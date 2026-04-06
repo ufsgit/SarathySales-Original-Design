@@ -1,7 +1,7 @@
 import { Component, OnInit, signal, computed, OnDestroy } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { Subject } from 'rxjs';
@@ -64,7 +64,7 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
     // debounce search input — wait 400 ms before firing API call
@@ -175,5 +175,31 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
     if (!pay_slip_no) return;
     const url = this.api.getPaySlipPdfUrl(pay_slip_no);
     window.open(url, '_blank');
+  }
+
+  editSlip(row: any): void {
+    if (!row?.payslip_id) return;
+    this.router.navigate(['/pay-slip', row.payslip_id]);
+  }
+
+  deleteSlip(row: any): void {
+    if (!row?.payslip_id) return;
+    const confirmMsg = `Delete Pay Slip ${row.pay_slip_no || ''}?`;
+    if (!window.confirm(confirmMsg)) return;
+    this.isLoading.set(true);
+    this.api.deletePaySlip(row.payslip_id).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        if (res.success) {
+          this.loadData();
+        } else {
+          this.errorMsg.set(res.message || 'Failed to delete pay slip');
+        }
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.errorMsg.set(err?.error?.message || 'Server error deleting pay slip');
+      }
+    });
   }
 }

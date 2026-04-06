@@ -1024,31 +1024,32 @@ export class PurchaseInvoiceComponent implements OnInit {
 
     // FIX: Format time to HH:mm:ss to avoid length issues in DB
     const formattedTime = new Date().toTimeString().split(' ')[0];
+    const upper = (v: any) => (v ?? '').toString().trim().toUpperCase();
 
     const payload = {
       invoiceNo: this.invNo(),
       branchId: this.branchId(),
       invoiceDate: this.invoiceDate(),
       invoiceTime: formattedTime,
-      supplierName: this.institution(),
-      address: this.address(),
-      rcNo: this.rcNo(),
+      supplierName: upper(this.institution()),
+      address: upper(this.address()),
+      rcNo: upper(this.rcNo()),
       rcDate: this.rcDate() || this.invoiceDate(),
-      hsnCode: this.hsnCode(),
-      gstin: this.gstin(),
+      hsnCode: upper(this.hsnCode()),
+      gstin: upper(this.gstin()),
       basicTotal: this.toNumber(this.basicTotal()),
       taxTotal: this.toNumber(this.taxTotal()),
       grandTotal: this.toNumber(this.grandTotal()),
       items: this.items().map((i: any) => ({
         productId: this.toNumber(i.productId),
-        prodCode: i.prodCode || '',
-        description: i.description || '',
-        chassisNo: i.chassisNo || '',
-        engineNo: i.engineNo || '',
-        colorCode: i.colorCode || '',
-        colorName: i.colorName || '',
+        prodCode: upper(i.prodCode),
+        description: upper(i.description),
+        chassisNo: upper(i.chassisNo),
+        engineNo: upper(i.engineNo),
+        colorCode: upper(i.colorCode),
+        colorName: upper(i.colorName),
         mfgDate: i.mfgDate || '',
-        saleType: i.saleType || '',
+        saleType: upper(i.saleType),
         amount: this.toNumber(i.amount)
       })).filter((i: any) => i.prodCode || i.description || i.chassisNo || i.engineNo || i.amount > 0)
     };

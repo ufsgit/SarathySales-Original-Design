@@ -652,6 +652,7 @@ export class InvoiceFromProformaComponent implements OnInit {
     registration = '';
     financeDues = '';
     executive = '';
+    pendingExecutive: string | null = null;
     executiveOptions: Array<{ value: string; label: string }> = [];
     hypothecationOptions: Array<{ value: string; label: string }> = [];
     issueType02ExecutiveOptions: Array<{ value: string; label: string }> = [];
@@ -673,6 +674,7 @@ export class InvoiceFromProformaComponent implements OnInit {
     selectedInvTotal = 0;
     chassisOptions: any[] = [];
     filteredChassisOptions: any[] = [];
+    pendingPCode: string | null = null;
     isSaving = false;
     isSaved = false;
     defaultBranchId = '';
@@ -725,7 +727,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                         this.branchName = loginBranchName;
                         this.selectedBranchId = this.defaultBranchId;
                         this.loadNextInvoiceNo(this.selectedBranchId);
-                        this.loadExecutivesForBranch(this.branchName);
+                        this.loadExecutivesForBranch(this.selectedBranchId, this.branchName);
                         this.loadChassisRecordsForBranch(this.selectedBranchId);
                     }
                 }
@@ -733,8 +735,8 @@ export class InvoiceFromProformaComponent implements OnInit {
         });
     }
 
-    private loadExecutivesForBranch(branchName: string): void {
-        this.api.getInvoiceFromProformaExecutives(branchName).subscribe({
+    private loadExecutivesForBranch(branchId: string, branchName: string): void {
+        this.api.getInvoiceFromProformaExecutives(branchId, branchName).subscribe({
             next: (res: any) => {
                 if (res?.success && Array.isArray(res.data)) {
                     this.executiveOptions = res.data.map((ex: any) => {
@@ -749,11 +751,13 @@ export class InvoiceFromProformaComponent implements OnInit {
                     this.executiveOptions = [];
                 }
                 this.refreshIssueType02Filters();
+                this.applyPendingExecutive();
                 this.cdr.detectChanges();
             },
             error: () => {
                 this.executiveOptions = [];
                 this.refreshIssueType02Filters();
+                this.applyPendingExecutive();
             }
         });
     }
@@ -764,12 +768,25 @@ export class InvoiceFromProformaComponent implements OnInit {
                 this.chassisOptions = res?.success && Array.isArray(res.data) ? res.data : [];
                 this.buildChassisIndex();
                 this.refreshIssueType02Filters();
+                this.applyPendingChassisFromProforma();
+                this.ensureProformaExecutiveOption();
+                // If we already have a chassis from the proforma, try to honor it even if not in stock list
+                if (!this.chassisNo && this.pendingPCode) {
+                    const directMatch = this.chassisOptions.find(r =>
+                        (r.inv_vehicle_code || r.inv_product_id || '').toString().trim().toLowerCase() === this.pendingPCode?.toLowerCase()
+                    );
+                    if (directMatch) {
+                        this.chassisNo = directMatch.inv_chassis || '';
+                        this.onChassisChange();
+                    }
+                }
                 this.cdr.detectChanges();
             },
             error: () => {
                 this.chassisOptions = [];
                 this.chassisIndex.clear();
                 this.refreshIssueType02Filters();
+                this.applyPendingChassisFromProforma();
             }
         });
     }
@@ -797,7 +814,7 @@ export class InvoiceFromProformaComponent implements OnInit {
 
         if (bid) {
             this.loadNextInvoiceNo(bid);
-            this.loadExecutivesForBranch(this.branchName);
+            this.loadExecutivesForBranch(bid, this.branchName);
             this.loadChassisRecordsForBranch(bid);
         } else {
             this.invoiceNo = '';
@@ -823,34 +840,29 @@ export class InvoiceFromProformaComponent implements OnInit {
 
                     // Load branch dependent data
                     this.loadNextInvoiceNo(this.selectedBranchId);
-                    this.loadExecutivesForBranch(this.branchName);
+                    this.loadExecutivesForBranch(this.selectedBranchId, this.branchName);
                     this.loadChassisRecordsForBranch(this.selectedBranchId);
 
                     this.issueType = '01';
                     this.customerNameManual = p.pro_cus_name || '';
                     this.address = p.pro_cus_address || '';
                     this.mobileNo = p.pro_contact || p.pro_cus_phone || '';
-                    if (p.pro_executive) {
-                        const storedExec = p.pro_executive.toLowerCase();
-                        const match = this.executiveOptions.find(opt =>
-                            opt.label.toLowerCase().includes(storedExec) ||
-                            opt.value.toLowerCase() === storedExec
-                        );
-                        if (match) {
-                            this.executive = match.value;
-                        } else {
-                            this.executive = p.pro_executive;
-                        }
-                    } else {
-                        this.executive = '';
-                    }
+                    this.pendingExecutive = p.pro_executive || null;
+                    this.ensureProformaExecutiveOption();
 
-                    this.hypothication = p.pro_type_loan === 'Finance' ? 'HDFCBANK' : ''; // Just a crude mapping, you can refine this
+                    this.hypothication = p.pro_type_loan || '';
 
                     if (res.items && res.items.length > 0) {
                         const firstItem = res.items[0];
                         this.vehicle = firstItem.pro_product_descr || '';
                         this.pCode = firstItem.pro_product_code || '';
+                        this.pendingPCode = this.pCode;
+
+                        // Prefill vehicle fields directly from proforma
+                        this.chassisNo = firstItem.pro_chassis_no || '';
+                        this.engineNo = firstItem.pro_engine_no || '';
+                        this.color = firstItem.pro_color || '';
+                        this.hsnCode = firstItem.pro_hsn_code || '';
 
                         this.basicAmount = this.toAmount(firstItem.pro_prduct_bas_amt);
                         this.taxableAmount = this.toAmount(firstItem.product_taxable_amt);
@@ -858,9 +870,9 @@ export class InvoiceFromProformaComponent implements OnInit {
                         this.cgst = this.toAmount(firstItem.pro_product_cgst);
                         this.cess = this.toAmount(firstItem.product_cess_amt);
                         this.selectedInvTotal = this.toAmount(firstItem.pro_total);
-
                         this.totalAmountDisplay = this.selectedInvTotal.toFixed(2);
                     }
+
                     this.cdr.detectChanges();
                 }
             }
@@ -927,6 +939,46 @@ export class InvoiceFromProformaComponent implements OnInit {
         return this.executiveOptions;
     }
 
+    private applyPendingExecutive(): void {
+        if (!this.pendingExecutive) return;
+        const pending = this.pendingExecutive.toString();
+        if (!pending) return;
+        const lower = pending.toLowerCase();
+        const match = this.executiveOptions.find(opt =>
+            opt.label.toLowerCase().includes(lower) || opt.value.toLowerCase() === lower
+        );
+        if (match) {
+            this.executive = match.value;
+        } else {
+            // ensure selectable even if not returned from API
+            this.executiveOptions = [{ value: pending, label: pending }, ...this.executiveOptions];
+            this.executive = pending;
+        }
+        this.pendingExecutive = null;
+    }
+
+    private ensureProformaExecutiveOption(): void {
+        if (!this.pendingExecutive) return;
+        const pending = this.pendingExecutive.toString();
+        if (!pending) return;
+        const lower = pending.toLowerCase();
+        // inject into options immediately so UI shows even before API options load
+        const exists = this.executiveOptions.some(opt =>
+            opt.label.toLowerCase().includes(lower) || opt.value.toLowerCase() === lower
+        );
+        if (!exists) {
+            this.executiveOptions = [{ value: pending, label: pending }, ...this.executiveOptions];
+        }
+        this.executive = pending;
+        // also add to issueType02 list
+        const ex2Exists = this.issueType02ExecutiveOptions.some(opt =>
+            opt.label.toLowerCase().includes(lower) || opt.value.toLowerCase() === lower
+        );
+        if (!ex2Exists) {
+            this.issueType02ExecutiveOptions = [{ value: pending, label: pending }, ...this.issueType02ExecutiveOptions];
+        }
+    }
+
     private refreshIssueType02Filters(): void {
         if (this.issueType !== '02') {
             this.filteredChassisOptions = [...this.chassisOptions];
@@ -958,7 +1010,13 @@ export class InvoiceFromProformaComponent implements OnInit {
         this.issueType02ExecutiveOptions = [...this.executiveOptions];
         const execValues = this.issueType02ExecutiveOptions.map(x => text(x.value));
         if (this.executive && !execValues.includes(text(this.executive))) {
-            this.executive = '';
+            // keep current executive by injecting it when it came from proforma
+            if (this.pendingExecutive) {
+                const injected = this.pendingExecutive.toString();
+                this.issueType02ExecutiveOptions = [{ value: injected, label: injected }, ...this.issueType02ExecutiveOptions];
+            } else {
+                this.executive = '';
+            }
         }
 
         if (this.executive) {
@@ -1026,6 +1084,19 @@ export class InvoiceFromProformaComponent implements OnInit {
             const rowBetter = (rwTotal > 0 && exTotal <= 0) || (rwTotal === exTotal && rwId > exId) || (rwTotal > exTotal);
             if (rowBetter) this.chassisIndex.set(key, row);
         }
+    }
+
+    private applyPendingChassisFromProforma(): void {
+        if (!this.pendingPCode || !this.chassisOptions.length) return;
+        const code = this.pendingPCode.toString().trim().toLowerCase();
+        const match = this.chassisOptions.find(r =>
+            (r.inv_vehicle_code || r.inv_product_id || '').toString().trim().toLowerCase() === code
+        );
+        if (match) {
+            this.chassisNo = match.inv_chassis || '';
+            this.onChassisChange();
+        }
+        this.pendingPCode = null;
     }
 
     saveInvoice(event?: Event): void {
