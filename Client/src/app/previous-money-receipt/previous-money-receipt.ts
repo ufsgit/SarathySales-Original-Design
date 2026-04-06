@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { Subject } from 'rxjs';
@@ -55,7 +55,7 @@ export class PreviousMoneyReceipt implements OnInit, OnDestroy {
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
     this.searchInput$.pipe(
@@ -131,5 +131,31 @@ export class PreviousMoneyReceipt implements OnInit, OnDestroy {
   formatAmount(v: any): string {
     const n = parseFloat(v);
     return isNaN(n) ? (v || '—') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  editReceipt(row: any): void {
+    if (!row?.receipt_id) return;
+    this.router.navigate(['/money-receipt', row.receipt_id]);
+  }
+
+  deleteReceipt(row: any): void {
+    if (!row?.receipt_id) return;
+    const confirmMsg = `Delete Money Receipt ${row.receipt_no || ''}?`;
+    if (!window.confirm(confirmMsg)) return;
+    this.isLoading.set(true);
+    this.api.deleteMoneyReceipt(row.receipt_id).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        if (res.success) {
+          this.loadData();
+        } else {
+          this.errorMsg.set(res.message || 'Failed to delete receipt.');
+        }
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.errorMsg.set(err?.error?.message || 'Server error deleting receipt.');
+      }
+    });
   }
 }

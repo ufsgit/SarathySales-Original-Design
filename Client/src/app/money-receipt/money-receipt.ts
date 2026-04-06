@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
@@ -511,7 +511,9 @@ export class MoneyReceiptComponent {
     successMessage = signal('');
     errorMessage = signal('');
 
-    constructor(private router: Router, private api: ApiService) { }
+    private currentId: number | null = null;
+
+    constructor(private router: Router, private api: ApiService, private route: ActivatedRoute) { }
 
     ngOnInit(): void {
         const user = this.api.getCurrentUser();
@@ -540,6 +542,15 @@ export class MoneyReceiptComponent {
         this.loadReceiptNo();
         // Set today's date
         this.receiptDate.set(new Date().toLocaleDateString('en-GB'));
+
+        const idParam = this.route.snapshot.paramMap.get('id');
+        if (idParam) {
+            const id = Number(idParam);
+            if (!isNaN(id)) {
+                this.currentId = id;
+                this.loadReceipt(id);
+            }
+        }
     }
 
     loadBranches(): void {
@@ -558,6 +569,40 @@ export class MoneyReceiptComponent {
             next: (res: any) => { if (res.success) this.receiptNo.set(res.receiptNo); },
             error: () => { this.receiptNo.set('ERROR'); }
         });
+    }
+
+    private loadReceipt(id: number): void {
+        this.isLoading.set(true);
+        this.api.getMoneyReceipt(id).subscribe({
+            next: (res: any) => {
+                this.isLoading.set(false);
+                if (res.success && res.data) {
+                    this.populateForm(res.data);
+                }
+            },
+            error: (err) => {
+                this.isLoading.set(false);
+                this.errorMessage.set(err?.error?.message || 'Failed to load receipt.');
+            }
+        });
+    }
+
+    private populateForm(d: any): void {
+        this.receiptNo.set(d.receipt_no || '');
+        this.branchId.set((d.branch_id || d.receipt_branch_id || '').toString());
+        this.branchName.set(d.branch_name || this.branchName());
+        this.customerName.set(d.receipt_cus || '');
+        this.address.set(d.receipt_cus_address || '');
+        this.payType.set(d.pay_type || '');
+        this.chequeNo.set(d.cheque_dd_no || '');
+        this.chequeDate.set(d.cheque_dd_date ? d.cheque_dd_date.substring(0, 10) : '');
+        this.refundYN.set(d.refund_status || 'No');
+        this.reason.set(d.reason || '');
+        this.bank.set(d.bank || '');
+        this.amount.set(d.receipt_amount ?? null);
+        this.reference.set(d.reference || '');
+        this.place.set(d.place || '');
+        this.receiptDate.set(d.receipt_date ? new Date(d.receipt_date).toLocaleDateString('en-GB') : this.receiptDate());
     }
 
     onSave(): void {
@@ -589,18 +634,26 @@ export class MoneyReceiptComponent {
             refundStatus: this.refundYN()
         };
 
-        this.api.saveMoneyReceipt(payload).subscribe({
+        const request$ = this.currentId
+            ? this.api.updateMoneyReceipt(this.currentId, payload)
+            : this.api.saveMoneyReceipt(payload);
+
+        request$.subscribe({
             next: (res) => {
                 this.isSaving.set(false);
                 if (res.success) {
-                    this.successMessage.set('Money receipt saved successfully!');
+                    this.successMessage.set(this.currentId ? 'Money receipt updated successfully!' : 'Money receipt saved successfully!');
+                    if (!this.currentId && (res as any).receipt_id) {
+                        this.currentId = (res as any).receipt_id;
+                    }
                     this.resetForm();
+                    this.currentId = null;
                     this.loadReceiptNo(); // Load next number
                 }
             },
             error: (err) => {
                 this.isSaving.set(false);
-                this.errorMessage = err?.error?.message || 'Failed to save receipt.';
+                this.errorMessage.set(err?.error?.message || 'Failed to save receipt.');
             }
         });
     }

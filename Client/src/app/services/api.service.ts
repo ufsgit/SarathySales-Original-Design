@@ -163,6 +163,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    deleteMoneyReceipt(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/money-receipt/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     // ─── Pay Slip ─────────────────────────────────────────────────────────────────
 
     getPaySlipNextNo(branchId?: string, branchName?: string): Observable<ApiResponse> {
@@ -205,6 +210,11 @@ export class ApiService {
 
     getPaySlip(id: number): Observable<ApiResponse> {
         return this.http.get<ApiResponse>(`${this.BASE_URL}/pay-slip/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deletePaySlip(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/pay-slip/${id}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -924,8 +934,11 @@ export class ApiService {
 
     // ─── Invoice From Proforma ──────────────────────────────────────────────────────────
 
-    getInvoiceFromProformaExecutives(branchName?: string): Observable<ApiResponse> {
-        const q = branchName ? `?branchName=${encodeURIComponent(branchName)}` : '';
+    getInvoiceFromProformaExecutives(branchId?: string, branchName?: string): Observable<ApiResponse> {
+        const params: string[] = [];
+        if (branchId) params.push(`branchId=${encodeURIComponent(branchId)}`);
+        if (branchName) params.push(`branchName=${encodeURIComponent(branchName)}`);
+        const q = params.length ? `?${params.join('&')}` : '';
         return this.http.get<ApiResponse>(`${this.BASE_URL}/invoice-from-proforma/executives${q}`)
             .pipe(catchError(err => this.handleError(err)));
     }

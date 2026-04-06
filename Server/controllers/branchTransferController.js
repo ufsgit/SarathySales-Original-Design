@@ -349,7 +349,7 @@ const saveBranchTransfer = async (req, res) => {
                         finalTransferNo,
                         toBranchId,
                         transferDate || new Date(),
-                        `Branch Transfer - ${fromBranchName}`,
+                        fromBranchName,
                         0, // Open
                         amount || 0
                     ]

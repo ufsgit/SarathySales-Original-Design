@@ -114,13 +114,23 @@ const getNextInvoiceFromProformaNumber = async (req, res) => {
 
 
 const getInvoiceFromProformaExecutives = async (req, res) => {
+    const branchId = req.query.branchId;
     const branchName = req.query.branchName;
     try {
         let rows = [];
-        if (branchName) {
+        if (branchId) {
             [rows] = await db.execute(
                 `SELECT emp_id, e_first_name FROM tbl_employee
-                 WHERE e_branch = ? AND e_designation = 'Executive' ORDER BY e_first_name`, [branchName]
+                 WHERE (e_branch = ? OR e_branch = ?)
+                   AND e_designation = 'Executive'
+                 ORDER BY e_first_name`, [branchId, branchName || branchId]
+            );
+        } else if (branchName) {
+            [rows] = await db.execute(
+                `SELECT emp_id, e_first_name FROM tbl_employee
+                 WHERE (e_branch = ?)
+                   AND e_designation = 'Executive'
+                 ORDER BY e_first_name`, [branchName]
             );
         } else {
             [rows] = await db.execute(

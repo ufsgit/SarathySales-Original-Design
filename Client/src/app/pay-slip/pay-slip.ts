@@ -147,7 +147,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     errorMessage = signal('');
 
     private customerSearch$ = new Subject<string>();
-    private currentId: number | null = null;
+    currentId: number | null = null;
     private slipNoRetryDone = false;
     private initialLoadAttempts = 0;
     private readonly maxInitialLoadAttempts = 6;
@@ -503,6 +503,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             next: (res: any) => {
                 if (res.success && res.data) {
                     this.loadPaySlipIntoForm(res.data);
+                    this.currentId = id;
                 }
             },
             error: (err) => { this.errorMessage.set(err?.error?.message || 'Failed to load pay slip'); }
@@ -652,6 +653,32 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 this.isSaving.set(false);
                 this.errorMessage.set(err?.error?.message || 'Server error');
                 alert(this.errorMessage());
+            }
+        });
+    }
+
+    isEditing(): boolean {
+        return this.currentId !== null;
+    }
+
+    deleteSlip(): void {
+        if (!this.currentId) return;
+        const confirmMsg = `Delete Pay Slip ${this.paySlipNo() || ''}?`;
+        if (!window.confirm(confirmMsg)) return;
+        this.isSaving.set(true);
+        this.api.deletePaySlip(this.currentId).subscribe({
+            next: (res) => {
+                this.isSaving.set(false);
+                if (res.success) {
+                    alert('Pay slip deleted');
+                    this.navigate('/previous-pay-slip');
+                } else {
+                    this.errorMessage.set(res.message || 'Failed to delete pay slip');
+                }
+            },
+            error: (err) => {
+                this.isSaving.set(false);
+                this.errorMessage.set(err?.error?.message || 'Failed to delete pay slip');
             }
         });
     }

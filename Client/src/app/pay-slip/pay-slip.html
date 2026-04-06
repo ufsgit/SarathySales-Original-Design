@@ -23,6 +23,8 @@
                         <button class="btn-list" (click)="navigate('/previous-pay-slip')">List Pay Slips</button>
                         <button class="btn-save" (click)="$event.preventDefault(); onSave()" [disabled]="isSaving()">{{
                             isSaving() ? 'Saving...' : 'Save & Print' }}</button>
+                        <button *ngIf="isEditing()" class="btn-list" style="background:#d32f2f"
+                            (click)="deleteSlip()" [disabled]="isSaving()">Delete</button>
                     </div>
                 </header>
 

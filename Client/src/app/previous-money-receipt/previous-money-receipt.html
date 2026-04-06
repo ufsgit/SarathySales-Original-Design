@@ -51,6 +51,7 @@
                             <th>Payment Type</th>
                             <th>Reason</th>
                             <th>Total Amount</th>
+                            <th style="min-width:140px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -77,6 +78,11 @@
                             <td>{{ row.pay_type }}</td>
                             <td>{{ row.reason }}</td>
                             <td class="amount-text">₹{{ formatAmount(row.receipt_amount) }}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" (click)="editReceipt(row)">Edit</button>
+                                <button class="btn btn-danger btn-sm" style="margin-left:6px;"
+                                    (click)="deleteReceipt(row)">Delete</button>
+                            </td>
                         </tr>
                         }
                         }
