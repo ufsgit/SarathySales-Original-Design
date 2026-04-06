@@ -214,3 +214,70 @@
         justify-content: flex-end;
     }
 }
+
+/* Action Buttons */
+.action-cell-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 5px 0;
+}
+
+.btn-text-action {
+    padding: 4px 12px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    width: 60px;
+    text-align: center;
+}
+
+.btn-text-action.edit {
+    background-color: #2ecc71;
+}
+
+.btn-text-action.edit:hover {
+    background-color: #27ae60;
+}
+
+.btn-text-action.delete {
+    background-color: #e74c3c;
+}
+
+.btn-text-action.delete:hover {
+    background-color: #c0392b;
+}
+
+.btn-text-action:active {
+    transform: translateY(1px);
+}
+
+.amount-text {
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+}
+
+.primary-text {
+    font-weight: 600;
+    color: #3498db;
+}
+
+/* Clickable Customer Name */
+.cus-name.clickable-print {
+    color: #e74c3c;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.cus-name.clickable-print:hover {
+    color: #c0392b;
+    text-decoration: underline;
+}

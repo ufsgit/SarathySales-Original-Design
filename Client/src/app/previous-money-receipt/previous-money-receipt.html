@@ -57,18 +57,20 @@
                     <tbody>
                         @if (isLoading()) {
                         <tr>
-                            <td colspan="9" class="text-center">Loading...</td>
+                            <td colspan="10" class="text-center">Loading...</td>
                         </tr>
                         } @else if (records().length === 0) {
                         <tr class="no-data-row">
-                            <td colspan="9" class="text-center">No money receipts found.</td>
+                            <td colspan="10" class="text-center">No money receipts found.</td>
                         </tr>
                         } @else {
                         @for (row of records(); track row.receipt_id; let i = $index) {
                         <tr>
                             <td>{{ rowIndex(i) }}</td>
                             <td>
-                                <div class="cus-name">{{ row.receipt_cus }}</div>
+                                <div class="cus-name clickable-print" (click)="printReceipt(row)" title="Click to print PDF">
+                                    {{ row.receipt_cus }}
+                                </div>
                                 <div class="cus-addr">{{ row.receipt_cus_address }}</div>
                             </td>
                             <td>{{ row.branch_name }}</td>
@@ -78,10 +80,13 @@
                             <td>{{ row.pay_type }}</td>
                             <td>{{ row.reason }}</td>
                             <td class="amount-text">₹{{ formatAmount(row.receipt_amount) }}</td>
-                            <td>
-                                <button class="btn btn-primary btn-sm" (click)="editReceipt(row)">Edit</button>
-                                <button class="btn btn-danger btn-sm" style="margin-left:6px;"
-                                    (click)="deleteReceipt(row)">Delete</button>
+                            <td class="action-cell-stacked">
+                                <button class="btn-text-action edit" (click)="editReceipt(row)">
+                                    Edit
+                                </button>
+                                <button class="btn-text-action delete" (click)="deleteReceipt(row)">
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                         }

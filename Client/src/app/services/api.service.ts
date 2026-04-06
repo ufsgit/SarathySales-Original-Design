@@ -168,6 +168,10 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getMoneyReceiptPdfUrl(id: number): string {
+        return `${this.BASE_URL}/money-receipt/pdf/${id}`;
+    }
+
     // ─── Pay Slip ─────────────────────────────────────────────────────────────────
 
     getPaySlipNextNo(branchId?: string, branchName?: string): Observable<ApiResponse> {

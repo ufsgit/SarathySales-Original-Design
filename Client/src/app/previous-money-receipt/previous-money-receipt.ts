@@ -133,6 +133,12 @@ export class PreviousMoneyReceipt implements OnInit, OnDestroy {
     return isNaN(n) ? (v || '—') : n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  printReceipt(row: any): void {
+    if (!row?.receipt_id) return;
+    const url = this.api.getMoneyReceiptPdfUrl(row.receipt_id);
+    window.open(url, '_blank');
+  }
+
   editReceipt(row: any): void {
     if (!row?.receipt_id) return;
     this.router.navigate(['/money-receipt', row.receipt_id]);
