@@ -72,6 +72,7 @@ const getStockVerification = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
+    const search = (req.query.search || '').trim();
 
     try {
         const sql = `
@@ -108,11 +109,12 @@ const getStockVerification = async (req, res) => {
             (
                 /* Vehicle master with insertion order */
                 SELECT 
-                    pi.materialName AS vehicle_name,
+                    MAX(pi.materialName) AS vehicle_name,
                     pi.materialsId AS vehicle_code,
                     MIN(pi.purchaseItemId) AS first_id
                 FROM purchaseitem pi
-                GROUP BY pi.materialsId, pi.materialName
+                GROUP BY pi.materialsId
+                ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}
             ) v
             CROSS JOIN tbl_branch b
 
@@ -179,7 +181,9 @@ const getStockVerification = async (req, res) => {
             LIMIT ${limit} OFFSET ${offset}
         `;
 
-        const params = [
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(
             fromDate, // p_open
             fromDate, // s_open
             fromDate, // t_open
@@ -187,16 +191,23 @@ const getStockVerification = async (req, res) => {
             fromDate, toDate, // s_cur
             fromDate, toDate, // t_cur
             branchId, branchId // Global filter
-        ];
+        );
 
         const [rows] = await db.execute(sql, params);
 
         /* Total vehicle count x branch count if no branch selected */
+        const baseCountSql = search 
+            ? `SELECT materialsId FROM purchaseitem GROUP BY materialsId HAVING (MAX(materialName) LIKE ? OR materialsId LIKE ?)`
+            : `SELECT materialsId FROM purchaseitem GROUP BY materialsId`;
+            
+        const countParams = [];
+        if (search) countParams.push(`%${search}%`, `%${search}%`);
+        
         const countSql = branchId
-            ? `SELECT COUNT(*) as total FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId) x`
-            : `SELECT (SELECT COUNT(*) FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId) x) * (SELECT COUNT(*) FROM tbl_branch) as total`;
+            ? `SELECT COUNT(*) as total FROM (${baseCountSql}) x`
+            : `SELECT (SELECT COUNT(*) FROM (${baseCountSql}) x) * (SELECT COUNT(*) FROM tbl_branch) as total`;
 
-        const [countRows] = await db.execute(countSql);
+        const [countRows] = await db.execute(countSql, countParams);
 
         res.json({
             success: true,
@@ -223,6 +234,7 @@ const getStockSplitup = async (req, res) => {
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toISOString().split('T')[0];
     const chassisNo = (req.query.chassisNo || '').trim();
+    const search = (req.query.search || '').trim();
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -244,6 +256,11 @@ const getStockSplitup = async (req, res) => {
         if (chassisNo) {
             conditions.push('pi.chassis_no LIKE ?');
             params.push(`%${chassisNo}%`);
+        }
+
+        if (search) {
+            conditions.push('(pb.invoiceNo LIKE ? OR pi.materialsId LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`);
         }
 
         const vehicleCodeStr = req.query.vehicleCode;
@@ -293,7 +310,7 @@ const getStockSplitup = async (req, res) => {
         const [rows] = await db.execute(mainSql, params);
         const [countRows] = await db.execute(countSql, params);
 
-        res.json({ success: true, data: rows, total: countRows[0].total, page, limit });
+        res.json({ success: true, data: rows, total: countRows[0] ? countRows[0].total : 0, page, limit });
     } catch (err) {
         console.error('getStockSplitup Error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message });
@@ -372,6 +389,7 @@ const exportStockVerificationExcel = async (req, res) => {
 
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const search = (req.query.search || '').trim();
 
     try {
         const sql = `
@@ -383,7 +401,7 @@ const exportStockVerificationExcel = async (req, res) => {
                 COALESCE(t_cur.transfer_cur,0) AS branch_transfer,
                 (COALESCE(p_open.pur_open,0) - COALESCE(s_open.sales_open,0) - COALESCE(t_open.transfer_open,0) + COALESCE(p_cur.pur_cur,0) - COALESCE(s_cur.sales_cur,0) - COALESCE(t_cur.transfer_cur,0)) AS stock
             FROM
-            (SELECT pi.materialName AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId, pi.materialName) v
+            (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
             LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
@@ -394,7 +412,11 @@ const exportStockVerificationExcel = async (req, res) => {
             WHERE (? IS NULL OR b.b_id = ?)
             ORDER BY v.first_id, b.branch_name
         `;
-        const [rows] = await db.execute(sql, [fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId]);
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId);
+        
+        const [rows] = await db.execute(sql, params);
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Verification');
@@ -432,6 +454,7 @@ const exportStockVerificationPagedExcel = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
+    const search = (req.query.search || '').trim();
 
     try {
         const sql = `
@@ -443,7 +466,7 @@ const exportStockVerificationPagedExcel = async (req, res) => {
                 COALESCE(t_cur.transfer_cur,0) AS branch_transfer,
                 (COALESCE(p_open.pur_open,0) - COALESCE(s_open.sales_open,0) - COALESCE(t_open.transfer_open,0) + COALESCE(p_cur.pur_cur,0) - COALESCE(s_cur.sales_cur,0) - COALESCE(t_cur.transfer_cur,0)) AS stock
             FROM
-            (SELECT pi.materialName AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId, pi.materialName) v
+            (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
             LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
@@ -455,7 +478,11 @@ const exportStockVerificationPagedExcel = async (req, res) => {
             ORDER BY v.first_id, b.branch_name
             LIMIT ${limit} OFFSET ${offset}
         `;
-        const [rows] = await db.execute(sql, [fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId]);
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId);
+        
+        const [rows] = await db.execute(sql, params);
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Verification Page');
@@ -492,6 +519,7 @@ const exportStockVerificationPagedCsv = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
+    const search = (req.query.search || '').trim();
 
     try {
         const sql = `
@@ -503,7 +531,7 @@ const exportStockVerificationPagedCsv = async (req, res) => {
                 COALESCE(t_cur.transfer_cur,0) AS branch_transfer,
                 (COALESCE(p_open.pur_open,0) - COALESCE(s_open.sales_open,0) - COALESCE(t_open.transfer_open,0) + COALESCE(p_cur.pur_cur,0) - COALESCE(s_cur.sales_cur,0) - COALESCE(t_cur.transfer_cur,0)) AS stock
             FROM
-            (SELECT pi.materialName AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId, pi.materialName) v
+            (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
             LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
@@ -515,7 +543,11 @@ const exportStockVerificationPagedCsv = async (req, res) => {
             ORDER BY v.first_id, b.branch_name
             LIMIT ${limit} OFFSET ${offset}
         `;
-        const [rows] = await db.execute(sql, [fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId]);
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(fromDate, fromDate, fromDate, fromDate, toDate, fromDate, toDate, fromDate, toDate, branchId, branchId);
+        
+        const [rows] = await db.execute(sql, params);
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Verification CSV');
@@ -544,6 +576,7 @@ const getStockSplitupQuery = (req) => {
     const toDate = req.query.to || new Date().toISOString().split('T')[0];
     const chassisNo = (req.query.chassisNo || '').trim();
     const vehicleCodeStr = req.query.vehicleCode;
+    const search = (req.query.search || '').trim();
 
     let conditions = [
         'si.inv_chassis IS NULL',
@@ -561,6 +594,11 @@ const getStockSplitupQuery = (req) => {
     if (chassisNo) {
         conditions.push('pi.chassis_no LIKE ?');
         params.push(`%${chassisNo}%`);
+    }
+
+    if (search) {
+        conditions.push('(pb.invoiceNo LIKE ? OR pi.materialsId LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
     }
 
     if (vehicleCodeStr) {

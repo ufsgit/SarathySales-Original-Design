@@ -63,12 +63,6 @@
             </div>
 
             <div class="filter-row">
-                <label>Chassis No</label>
-                <input type="text" class="form-control" [ngModel]="chassisNo()"
-                    (ngModelChange)="chassisNo.set($event); onFilterChange()">
-            </div>
-
-            <div class="filter-row">
                 <label>Search Option</label>
                 <select class="form-control" [ngModel]="searchOption()" (ngModelChange)="onSearchOptionChange($event)">
                     <option value="Custom Date">Custom Date</option>
@@ -90,6 +84,18 @@
                     <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event); onFilterChange()"
                         [disabled]="searchOption() !== 'Custom Date'">
                 </div>
+            </div>
+
+            <div class="filter-row">
+                <label>Chassis No</label>
+                <input type="text" class="form-control" [ngModel]="chassisNo()"
+                    (ngModelChange)="chassisNo.set($event); onFilterChange()">
+            </div>
+
+            <div class="filter-row">
+                <label>Search</label>
+                <input type="text" class="form-control" [ngModel]="searchTerm()"
+                    (ngModelChange)="searchTerm.set($event); onFilterChange()" placeholder="Invoice, Code...">
             </div>
         </div>
 

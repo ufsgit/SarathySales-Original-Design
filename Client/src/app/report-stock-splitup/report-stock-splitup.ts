@@ -24,6 +24,7 @@ export class ReportStockSplitup {
 
     // Filter signals
     chassisNo = signal<string>('');
+    searchTerm = signal<string>('');
     selectedVehicleCodes = signal<string[]>([]);
     isVehicleDropdownOpen = signal<boolean>(false);
     labourCodes = signal<any[]>([]);
@@ -89,7 +90,8 @@ export class ReportStockSplitup {
             this.chassisNo(),
             this.selectedVehicleCodes(),
             this.page(),
-            this.limit()
+            this.limit(),
+            this.searchTerm()
         ).subscribe({
             next: (res) => {
                 if (res.success) {
@@ -246,8 +248,9 @@ export class ReportStockSplitup {
         const to = this.toDate();
         const chassisNo = this.chassisNo() || undefined;
         const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
+        const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupExcelUrl(branchId, from, to, chassisNo, vehicleCode);
+        const url = this.api.getStockSplitupExcelUrl(branchId, from, to, chassisNo, vehicleCode, search);
         window.open(url, '_blank');
     }
 
@@ -259,8 +262,9 @@ export class ReportStockSplitup {
         const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
         const page = this.page();
         const limit = this.limit();
+        const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupPagedExcelUrl(branchId, from, to, chassisNo, vehicleCode, page, limit);
+        const url = this.api.getStockSplitupPagedExcelUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
         window.open(url, '_blank');
     }
 
@@ -272,8 +276,9 @@ export class ReportStockSplitup {
         const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
         const page = this.page();
         const limit = this.limit();
+        const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupPagedCsvUrl(branchId, from, to, chassisNo, vehicleCode, page, limit);
+        const url = this.api.getStockSplitupPagedCsvUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
         window.open(url, '_blank');
     }
 }

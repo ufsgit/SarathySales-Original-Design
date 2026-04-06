@@ -82,6 +82,12 @@
                         [disabled]="searchOption() !== 'Custom Date'">
                 </div>
             </div>
+
+            <div class="filter-row">
+                <label>Search</label>
+                <input type="text" class="form-control" [ngModel]="searchTerm()"
+                    (ngModelChange)="searchTerm.set($event); onFilterChange()" placeholder="Vehicle, Code...">
+            </div>
         </div>
 
         <!-- Table Controls (CSV/Excel + Show entries) -->

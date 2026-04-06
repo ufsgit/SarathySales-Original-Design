@@ -26,6 +26,7 @@ export class ReportsStockVerification {
 
     // Filter signals
     searchOption = signal<string>('Custom Date');
+    searchTerm = signal<string>('');
     fromDate = signal<string>(new Date().toISOString().split('T')[0]);
     toDate = signal<string>(new Date().toISOString().split('T')[0]);
 
@@ -97,7 +98,8 @@ export class ReportsStockVerification {
             this.fromDate(),
             this.toDate(),
             this.page(),
-            this.limit()
+            this.limit(),
+            this.searchTerm()
         ).subscribe({
             next: (res) => {
                 if (res.success) {
@@ -222,14 +224,15 @@ export class ReportsStockVerification {
     exportExcel(whole: boolean = false) {
         let url = '';
         if (whole) {
-            url = this.api.getStockVerificationExcelUrl(this.branchId(), this.fromDate(), this.toDate());
+            url = this.api.getStockVerificationExcelUrl(this.branchId(), this.fromDate(), this.toDate(), this.searchTerm());
         } else {
             url = this.api.getStockVerificationPagedExcelUrl(
                 this.branchId(),
                 this.fromDate(),
                 this.toDate(),
                 this.page(),
-                this.limit()
+                this.limit(),
+                this.searchTerm()
             );
         }
         window.open(url, '_blank');
@@ -241,7 +244,8 @@ export class ReportsStockVerification {
             this.fromDate(),
             this.toDate(),
             this.page(),
-            this.limit()
+            this.limit(),
+            this.searchTerm()
         );
         window.open(url, '_blank');
     }
