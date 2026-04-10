@@ -288,7 +288,7 @@ const getStockSplitup = async (req, res) => {
                 pi.color_name AS color,
                 pb.rc_no AS rc_no,
                 pi.p_date AS mfg_date,
-                pb.total_bill_amount AS total_amount
+                pi.lc_rate AS total_amount
             FROM purchaseitem pi
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
             LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
@@ -624,7 +624,7 @@ const getStockSplitupQuery = (req) => {
             pi.color_name AS color,
             pb.rc_no AS rc_no,
             pi.p_date AS mfg_date,
-            pb.total_bill_amount AS total_amount
+            pi.lc_rate AS total_amount
         FROM purchaseitem pi
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
@@ -657,7 +657,7 @@ const exportStockSplitupExcel = async (req, res) => {
             { header: 'COLOR', key: 'color', width: 15 },
             { header: 'RC NO', key: 'rc_no', width: 15 },
             { header: 'MFG DATE', key: 'mfg_date', width: 15 },
-            { header: 'TOTAL AMOUNT', key: 'total_amount', width: 15 }
+            { header: 'Cost', key: 'total_amount', width: 15 }
         ];
 
         worksheet.getRow(1).font = { bold: true };
@@ -696,7 +696,7 @@ const exportStockSplitupPagedExcel = async (req, res) => {
         worksheet.getRow(1).getCell(1).alignment = { horizontal: 'center' };
         worksheet.getRow(1).getCell(1).font = { bold: true };
 
-        worksheet.getRow(2).values = ['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'TOTAL AMOUNT'];
+        worksheet.getRow(2).values = ['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost'];
         worksheet.getRow(2).font = { bold: true };
 
         rows.forEach(r => {
@@ -723,7 +723,7 @@ const exportStockSplitupPagedCsv = async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Splitup CSV');
-        worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'TOTAL AMOUNT']);
+        worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost']);
 
         rows.forEach(r => {
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
