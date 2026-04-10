@@ -103,3 +103,14 @@
 .placeholder {
     color: #ff0000;
 }
+
+.data-table td.receipt-link {
+    font-weight: bold;
+    color: #d32f2f !important;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.data-table td.receipt-link:hover {
+    text-decoration: underline;
+}

@@ -143,7 +143,7 @@
                         } @else {
                         @for (row of records(); track row.receipt_id) {
                         <tr>
-                            <td>{{ row.receipt_no }}</td>
+                            <td class="receipt-link" (click)="viewPdf(row.receipt_id)">{{ row.receipt_no }}</td>
                             <td>{{ formatDisplayDate(row.receipt_date) }}</td>
                             <td>{{ row.branch_name }}</td>
                             <td>{{ row.reference }}</td>

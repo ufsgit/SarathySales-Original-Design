@@ -212,6 +212,11 @@ export class ReportsMoneyReceipt implements OnInit {
     }
 
     navigate(path: string) { this.router.navigate([path]); }
+    
+    viewPdf(id: number) {
+        const url = this.api.getMoneyReceiptPdfUrl(id);
+        window.open(url, '_blank');
+    }
 
     exportToExcel() {
         const branchId = this.branchId() || undefined;
