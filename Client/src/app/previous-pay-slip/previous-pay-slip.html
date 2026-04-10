@@ -64,13 +64,15 @@
                             <th>Remarks</th>
                             <th>Finance / Cash</th>
                             <th>Balance Amount</th>
+                            @if (isAdmin()) {
                             <th style="min-width: 140px;">Action</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @if (!isLoading() && records().length === 0) {
                         <tr class="no-data-row">
-                            <td colspan="10">No data available in table</td>
+                            <td [attr.colspan]="isAdmin() ? 11 : 10">No data available in table</td>
                         </tr>
                         }
                         @for (row of records(); track row.payslip_id; let i = $index) {
@@ -92,12 +94,14 @@
                             <td>{{ row.pay_remarks || '—' }}</td>
                             <td>{{ row.pay_finance || '—' }}</td>
                             <td class="text-right">{{ formatAmount(row.pay_grand_tot) }}</td>
+                            @if (isAdmin()) {
                             <td class="action-cell">
                                 <div class="action-buttons">
                                     <button class="btn-action btn-edit" (click)="editSlip(row)">Edit</button>
                                     <button class="btn-action btn-delete" (click)="cancelSlip(row)">Cancel Bill</button>
                                 </div>
                             </td>
+                            }
                         </tr>
                         }
                     </tbody>
