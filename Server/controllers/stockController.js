@@ -242,10 +242,11 @@ const getStockSplitup = async (req, res) => {
     try {
         let conditions = [
             'si.inv_id IS NULL',
+            'bt.lc_id IS NULL',
             "pi.retn_status = 'Available'",
             'pb.invoiceDate BETWEEN ? AND ?'
         ];
-        let params = [toDate, fromDate, toDate];
+        let params = [toDate, toDate, fromDate, toDate];
 
         if (branchId && branchId !== 'ALL') {
             conditions.push('pb.purch_branchId = ?');
@@ -293,6 +294,7 @@ const getStockSplitup = async (req, res) => {
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
             LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
             LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
+            LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
             ${where} 
             ORDER BY pb.invoiceDate DESC 
             LIMIT ${limit} OFFSET ${offset}
@@ -303,6 +305,7 @@ const getStockSplitup = async (req, res) => {
             FROM purchaseitem pi
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
             LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
+            LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
             ${where}
         `;
 
@@ -315,6 +318,8 @@ const getStockSplitup = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message });
     }
 };
+
+
 
 const fs = require('fs');
 const updateStock = async (req, res) => {
@@ -579,10 +584,11 @@ const getStockSplitupQuery = (req) => {
 
     let conditions = [
         'si.inv_id IS NULL',
+        'bt.lc_id IS NULL',
         "pi.retn_status = 'Available'",
         'pb.invoiceDate BETWEEN ? AND ?'
     ];
-    let params = [toDate, fromDate, toDate];
+    let params = [toDate, toDate, fromDate, toDate];
 
     if (branchId && branchId !== 'ALL') {
         conditions.push('pb.purch_branchId = ?');
@@ -629,6 +635,7 @@ const getStockSplitupQuery = (req) => {
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
         LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
+        LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
         ${where} 
         ORDER BY pb.invoiceDate DESC 
     `;

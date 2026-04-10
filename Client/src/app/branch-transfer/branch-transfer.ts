@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed, AfterViewInit, ViewChild, ElementRef, HostListener } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
@@ -32,11 +32,11 @@ import { UppercaseDirective } from '../uppercase.directive';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
-             <h2>Branch Transfer</h2>
+             <h2>{{ editId() ? 'Edit ' : '' }}Branch Transfer</h2>
           </div>
           <div class="header-actions">
              <button class="btn-view" (click)="navigate('/previous-branch-transfer')">View</button>
-             <button class="btn-save" (click)="onSave($event)" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="onSave($event)" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : (editId() ? 'Update' : 'Save & Print') }}</button>
           </div>
         </header>
 
@@ -49,12 +49,12 @@ import { UppercaseDirective } from '../uppercase.directive';
                 <!-- Column 1 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Branch Name:</label>
+                        <label>Branch Name: <span class="required-star">*</span></label>
                         <ng-container *ngIf="isAdmin(); else staffBranch">
                             <div class="custom-dropdown" #branchDropdownRef>
-                                <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
+                                <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="editId() ? null : toggleBranchDropdown()">
                                     {{ branchName() }}
-                                    <i class="fas fa-caret-down"></i>
+                                    <i class="fas fa-caret-down" *ngIf="!editId()"></i>
                                 </div>
                                 <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
                                     <div class="dropdown-search">
@@ -83,7 +83,7 @@ import { UppercaseDirective } from '../uppercase.directive';
                         </ng-template>
                     </div>
                     <div class="form-group">
-                        <label>Debit Note No :</label>
+                        <label>Debit Note No : <span class="required-star">*</span></label>
                         <input type="text" class="form-control readonly" [value]="debitNoteNo()" readonly>
                     </div>
                     <div class="form-group">
@@ -101,13 +101,13 @@ import { UppercaseDirective } from '../uppercase.directive';
                 <!-- Column 2 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Institution:</label>
-                        <div class="custom-dropdown" #institutionDropdownRef>
-                            <div class="dropdown-toggle" [class.placeholder]="!institution()" (click)="toggleInstitutionDropdown()">
+                        <label>Institution: <span class="required-star">*</span></label>
+                        <div class="custom-dropdown" #institutionDropdownRef [class.disabled]="editId()">
+                            <div class="dropdown-toggle" [class.placeholder]="!institution()" (click)="editId() ? null : toggleInstitutionDropdown()">
                                 {{ getSelectedInstitutionName() || '--Select--' }}
-                                <i class="fas fa-caret-down"></i>
+                                <i class="fas fa-caret-down" *ngIf="!editId()"></i>
                             </div>
-                            <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen()">
+                            <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen() && !editId()">
                                 <div class="dropdown-search">
                                     <input type="text" placeholder="Search institution..."
                                         [ngModel]="institutionSearchTerm()"
@@ -130,23 +130,23 @@ import { UppercaseDirective } from '../uppercase.directive';
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Customer Name:</label>
-                        <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
+                        <label>Customer Name: <span class="required-star">*</span></label>
+                        <input type="text" class="form-control" [class.readonly]="editId()" [readonly]="editId()" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
                     </div>
                      <div class="form-group" style="align-items: flex-start;">
-                        <label style="margin-top: 5px;">Address:</label>
-                        <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="3"></textarea>
+                        <label style="margin-top: 5px;">Address: <span class="required-star">*</span></label>
+                        <textarea class="form-control" [class.readonly]="editId()" [readonly]="editId()" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="3"></textarea>
                     </div>
                 </div>
 
                 <!-- Column 3 -->
                 <div class="form-column">
                     <div class="form-group">
-                        <label>Chassis No:</label>
-                        <div class="custom-dropdown" #chassisDropdownRef>
-                            <div class="dropdown-toggle" [class.placeholder]="!chassisNo()" (click)="toggleChassisDropdown()">
+                        <label>Chassis No: <span class="required-star">*</span></label>
+                        <div class="custom-dropdown" #chassisDropdownRef [class.disabled]="editId()">
+                            <div class="dropdown-toggle" [class.placeholder]="!chassisNo()" (click)="editId() ? null : toggleChassisDropdown()">
                                 {{ chassisNo() || '--Select--' }}
-                                <i class="fas fa-caret-down"></i>
+                                <i class="fas fa-caret-down" *ngIf="!editId()"></i>
                             </div>
                             <div class="dropdown-menu" *ngIf="isChassisDropdownOpen()">
                                 <div class="dropdown-search">
@@ -212,6 +212,7 @@ import { UppercaseDirective } from '../uppercase.directive';
 </div>
   `,
   styles: [`
+    .required-star { color: #d32f2f; font-weight: bold; margin-left: 2px; }
     .app-container {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background-color: #f4f4f4;
@@ -493,6 +494,7 @@ import { UppercaseDirective } from '../uppercase.directive';
   `]
 })
 export class BranchTransferComponent implements OnInit, AfterViewInit {
+  editId = signal<number | null>(null);
   branchName = signal('SARATHY KOLLAM KTM');
   branchId = signal('');
   isAdmin = signal(false);
@@ -563,7 +565,7 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
   @ViewChild('chassisDropdownRef') chassisDropdownRef!: ElementRef;
   @ViewChild('chassisSearchInput') chassisSearchInput!: ElementRef;
 
-  constructor(private router: Router, private api: ApiService) { }
+  constructor(private router: Router, private route: ActivatedRoute, private api: ApiService) { }
 
   loadBranches() {
     this.api.getBranches().subscribe({
@@ -645,8 +647,86 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
       if (admin) this.loadBranches();
     }
     this.transferDate.set(this.todayIso);
-    this.loadInitialData();
+
+    this.loadInstitutionOptions();
+
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam) {
+      this.editId.set(Number(idParam));
+      this.loadTransferDetails(Number(idParam));
+    } else {
+      this.loadNextTransferNo();
+    }
   }
+
+  private loadInstitutionOptions(): void {
+    this.api.getBranches().subscribe({
+      next: (res: any) => {
+        if (res?.success && Array.isArray(res.data)) {
+          const mapped = res.data.map((b: any) => ({
+            b_id: parseInt(b.b_id, 10) || 0,
+            branch_name: (b.branch_name || '').toString().trim(),
+            branch_address: (b.branch_address || '').toString().trim()
+          }));
+          this.institutionOptions.set(mapped);
+
+          if (!this.editId()) {
+            if (!this.isAdmin() && !this.branchId()) {
+              const own = mapped.find(
+                (b: any) => (b.branch_name || '').toLowerCase() === (this.branchName() || '').toLowerCase()
+              );
+              const fallback = own || mapped[0];
+              this.branchId.set(String(fallback?.b_id || ''));
+              if (fallback?.branch_name) this.branchName.set(fallback.branch_name);
+            }
+            this.loadNextTransferNo();
+            this.loadChassisOptions();
+          }
+        }
+      }
+    });
+  }
+
+  private loadTransferDetails(id: number): void {
+    this.isLoadingEdit = true;
+    this.api.getBranchTransfer(id).subscribe({
+      next: (res: any) => {
+        if (res?.success && res.transfer) {
+          const t = res.transfer;
+          this.debitNoteNo.set(t.debit_note_no || '');
+          let dpDate = '';
+          if (t.debit_note_date) {
+            const d = new Date(t.debit_note_date);
+            dpDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+          }
+          this.transferDate.set(dpDate);
+          this.issueType.set(t.issue_type || '');
+          this.branchId.set(String(t.ic_branch || ''));
+          this.branchName.set(t.from_branch_name || '');
+          this.institution.set(String(t.lnstitute_branch_id || ''));
+          this.customerName.set(t.lnstitute_name || '');
+          this.address.set(t.institute_addrss || '');
+          this.chassisNo.set(t.chassis_no || '');
+          this.engineNo.set(t.engine_no || '');
+          this.vehicle.set(t.vehicle || '');
+          this.color.set(t.vehicle_color || '');
+          this.pCode.set(t.vehicle_code || '');
+          this.totalAmountDisplay.set(Number(t.trans_total || 0).toFixed(2));
+          // Provide only the transferred chassis in the dropdown for Edit mode
+          this.chassisOptions.set([{
+            chassis_no: t.chassis_no || '',
+            engine_no: t.engine_no || '',
+            vehicle: t.vehicle || '',
+            color: t.vehicle_color || '',
+            p_code: t.vehicle_code || '',
+            amount: Number(t.trans_total || 0)
+          }]);
+        }
+      }
+    });
+  }
+
+  private isLoadingEdit = false;
 
   ngAfterViewInit(): void {
     this.enforceMaxDate();
@@ -674,30 +754,7 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
   }
 
   private loadInitialData(): void {
-    this.loadNextTransferNo();
-    this.api.getBranches().subscribe({
-      next: (res: any) => {
-        if (res?.success && Array.isArray(res.data)) {
-          const mapped = res.data.map((b: any) => ({
-            b_id: parseInt(b.b_id, 10) || 0,
-            branch_name: (b.branch_name || '').toString().trim(),
-            branch_address: (b.branch_address || '').toString().trim()
-          }));
-          this.institutionOptions.set(mapped);
-
-          if (!this.isAdmin() && !this.branchId()) {
-            const own = mapped.find(
-              (b: any) => (b.branch_name || '').toLowerCase() === (this.branchName() || '').toLowerCase()
-            );
-            const fallback = own || mapped[0];
-            this.branchId.set(String(fallback?.b_id || ''));
-            if (fallback?.branch_name) this.branchName.set(fallback.branch_name);
-          }
-          this.loadNextTransferNo();
-          this.loadChassisOptions();
-        }
-      }
-    });
+    this.loadInstitutionOptions();
   }
 
   onInstitutionChange(idValue: any): void {
@@ -868,15 +925,23 @@ export class BranchTransferComponent implements OnInit, AfterViewInit {
     };
 
     this.isSaving.set(true);
-    this.api.saveBranchTransfer(payload).subscribe({
+    const obs = this.editId()
+      ? this.api.updateBranchTransfer(this.editId()!, payload)
+      : this.api.saveBranchTransfer(payload);
+
+    obs.subscribe({
       next: (res: any) => {
         this.isSaving.set(false);
         if (res?.success) {
-          this.successMessage.set('Branch transfer saved');
+          this.successMessage.set(this.editId() ? 'Branch transfer updated' : 'Branch transfer saved');
           alert(this.successMessage());
-          this.resetFormAfterSave();
-          this.loadNextTransferNo();
-          this.loadChassisOptions();
+          if (this.editId()) {
+            this.router.navigate(['/previous-branch-transfer']);
+          } else {
+            this.resetFormAfterSave();
+            this.loadNextTransferNo();
+            this.loadChassisOptions();
+          }
         } else {
           this.errorMessage.set(res?.message || 'Save failed');
           alert(this.errorMessage());

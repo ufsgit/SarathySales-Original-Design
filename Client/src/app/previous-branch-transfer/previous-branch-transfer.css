@@ -265,3 +265,18 @@
     color: #666;
     padding: 0 6px;
 }
+.edit-btn {
+    background-color: #28a745;
+    color: #ffffff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.edit-btn:hover {
+    background-color: #218838;
+}

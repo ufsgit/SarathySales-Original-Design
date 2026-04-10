@@ -91,6 +91,8 @@ export const routes: Routes = [
     { path: 'report-branch-transfer', component: ReportBranchTransfer, canActivate: [authGuard] },
     { path: 'myprofile-changepassword', component: MyProfileChangePassword, canActivate: [authGuard] },
     { path: 'branch-transfer', component: BranchTransferComponent, canActivate: [authGuard] },
+    { path: 'branch-transfer/:id', component: BranchTransferComponent, canActivate: [authGuard] },
+
     { path: 'gate-pass', component: GatePassComponent, canActivate: [authGuard] },
     { path: 'money-receipt', component: MoneyReceiptComponent, canActivate: [authGuard] },
     { path: 'money-receipt/:id', component: MoneyReceiptComponent, canActivate: [authGuard] },

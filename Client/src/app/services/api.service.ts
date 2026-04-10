@@ -568,6 +568,16 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getBranchTransfer(id: number | string): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/branch-transfer/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    updateBranchTransfer(id: number | string, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/branch-transfer/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     getBranchTransferPdfUrl(no: string | number): string {
         return `${this.BASE_URL}/branch-transfer/pdf-by-no/${no}`;
     }

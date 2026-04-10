@@ -57,6 +57,9 @@
                             <th>Vehicle</th>
                             <th>Chassis No</th>
                             <th>Total Amount</th>
+                            @if (isAdmin()) {
+                            <th>Action</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -96,6 +99,11 @@
                                 </div>
                             </td>
                             <td class="text-right">{{ row.trans_total || '—' }}</td>
+                            @if (isAdmin()) {
+                            <td>
+                                <button class="edit-btn" (click)="editBill(row)">Edit Bill</button>
+                            </td>
+                            }
                         </tr>
                         }
                     </tbody>

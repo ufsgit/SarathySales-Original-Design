@@ -83,7 +83,8 @@ const getAvailableStock = async (req, res) => {
                 pi.materialsId AS stock_type,
                 pi.materialsId AS p_code,
                 pb.invoiceDate AS stock_date,
-                pb.total_bill_amount AS total_bill_amount
+                pb.total_bill_amount AS total_bill_amount,
+                pi.lc_rate AS lc_rate
             FROM purchaseitem pi
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
             LEFT JOIN (
@@ -234,9 +235,21 @@ const saveBranchTransfer = async (req, res) => {
         const finalTransferNo = nextTransferNoFromLast(lastNo, year, effectiveFromBranchId);
 
         const firstItem = (items && items[0]) || {};
-        const amount = Number(firstItem.amount || 0) || 0;
+        let amount = Number(firstItem.amount || 0) || 0;
         let vehicleColorId = (firstItem.colorId || firstItem.colorCode || '').toString().trim();
         const productId = (firstItem.productId || firstItem.pCode || '').toString().trim();
+
+        // Force amount to be lc_rate from purchaseitem
+        const itemChassisNo = (firstItem.chassisNo || '').toString().trim();
+        if (itemChassisNo) {
+            const [rateRows] = await conn.execute(
+                `SELECT lc_rate FROM purchaseitem WHERE chassis_no = ? AND item_status = 'Available' ORDER BY purchaseItemId DESC LIMIT 1`,
+                [itemChassisNo]
+            );
+            if (rateRows.length && rateRows[0].lc_rate != null) {
+                amount = Number(rateRows[0].lc_rate);
+            }
+        }
 
         // If color id is not provided by UI, resolve it from DB by chassis/color.
         if (!vehicleColorId) {
@@ -593,6 +606,153 @@ const createBranchTransferPdfByNo = async (req, res) => {
     }
 };
 
+const updateBranchTransfer = async (req, res) => {
+    const { id } = req.params;
+    const {
+        transferNo,
+        fromBranchId,
+        toBranchId,
+        transferDate,
+        issueType,
+        institutionName,
+        institutionAddress,
+        items
+    } = req.body;
+
+    if (!toBranchId || !items?.[0]) {
+        return res.status(400).json({ success: false, message: 'Required fields missing' });
+    }
+
+    const firstItem = items[0];
+    const chassisNo = (firstItem.chassisNo || '').toString().trim();
+    const conn = await db.getConnection();
+
+    try {
+        await conn.beginTransaction();
+
+        let amount = Number(firstItem.amount || 0);
+        if (chassisNo) {
+            const [rateRows] = await conn.execute(
+                `SELECT lc_rate FROM purchaseitem WHERE chassis_no = ? ORDER BY purchaseItemId DESC LIMIT 1`,
+                [chassisNo]
+            );
+            if (rateRows.length && rateRows[0].lc_rate != null) {
+                amount = Number(rateRows[0].lc_rate);
+            }
+        }
+
+        // 1. Get existing record to check for chassis change
+        const [oldRecords] = await conn.execute(
+            `SELECT * FROM tbl_branch_transfer WHERE lc_id = ?`, [id]
+        );
+        if (!oldRecords.length) {
+            await conn.rollback();
+            return res.status(404).json({ success: false, message: 'Transfer record not found' });
+        }
+        const oldData = oldRecords[0];
+        const oldChassis = (oldData.chassis_no || '').toString().trim();
+        const oldToBranchId = oldData.lnstitute_branch_id;
+
+        // 2. Update the main transfer record
+        await conn.execute(
+            `UPDATE tbl_branch_transfer SET 
+                debit_note_no = ?, ic_branch = ?, lnstitute_branch_id = ?, debit_note_date = ?, issue_type = ?,
+                lnstitute_name = ?, institute_addrss = ?, chassis_no = ?, engine_no = ?, vehicle = ?, vehicle_color = ?,
+                vehicle_code = ?, trans_total = ?
+             WHERE lc_id = ?`,
+            [
+                transferNo || oldData.debit_note_no,
+                fromBranchId || oldData.ic_branch,
+                toBranchId,
+                transferDate || oldData.debit_note_date,
+                issueType || oldData.issue_type,
+                institutionName || oldData.lnstitute_name,
+                institutionAddress || oldData.institute_addrss,
+                chassisNo,
+                firstItem.engineNo || oldData.engine_no,
+                firstItem.model || oldData.vehicle,
+                firstItem.color || firstItem.colour || oldData.vehicle_color,
+                firstItem.pCode || oldData.vehicle_code,
+                amount || Number(oldData.trans_total || 0),
+                id
+            ]
+        );
+
+        // 3. Handle chassis change logic if needed
+        if (oldChassis !== chassisNo || oldToBranchId !== toBranchId) {
+            // Revert old chassis status at source
+            await conn.execute(
+                `UPDATE purchaseitem SET item_status = 'Available' 
+                 WHERE chassis_no = ? AND item_status = 'Transfered' 
+                   AND purchaseItemId IN (SELECT stock_id FROM (SELECT purchaseItemId as stock_id FROM purchaseitem WHERE chassis_no = ? LIMIT 1) tmp)`,
+                [oldChassis, oldChassis]
+            );
+
+            // Revert stock counts
+            await updateStockQuantity(conn, oldData.product_id, oldData.ic_branch, 1);
+            await updateStockQuantity(conn, oldData.product_id, oldToBranchId, -1);
+
+            // Delete destination records for old transfer
+            // We identify them by invoiceNo matching the old debit_note_no
+            const [oldBills] = await conn.execute(
+                `SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?`,
+                [oldData.debit_note_no, oldToBranchId]
+            );
+            if (oldBills.length) {
+                const billId = oldBills[0].purchaseItemBillId;
+                await conn.execute(`DELETE FROM purchaseitem WHERE purchaseItemBillId = ?`, [billId]);
+                await conn.execute(`DELETE FROM purchaseitembill WHERE purchaseItemBillId = ?`, [billId]);
+            }
+
+            // Apply new transfer logic (similar to save)
+            if (chassisNo) {
+                const [sourceItems] = await conn.execute(
+                    `SELECT * FROM purchaseitem WHERE chassis_no = ? AND item_status = 'Available' LIMIT 1`,
+                    [chassisNo]
+                );
+                if (sourceItems.length > 0) {
+                    const sourceItem = sourceItems[0];
+                    await conn.execute(`UPDATE purchaseitem SET item_status = 'Transfered' WHERE purchaseItemId = ?`, [sourceItem.purchaseItemId]);
+                    await updateStockQuantity(conn, sourceItem.product_id, oldData.ic_branch, -1);
+                    await updateStockQuantity(conn, sourceItem.product_id, toBranchId, 1);
+
+                    const [branchRows] = await conn.execute(`SELECT branch_name FROM tbl_branch WHERE b_id = ?`, [oldData.ic_branch]);
+                    const fromBranchName = branchRows?.[0]?.branch_name || 'Source Branch';
+
+                    const [billResult] = await conn.execute(
+                        `INSERT INTO purchaseitembill (invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount) 
+                         VALUES (?, ?, ?, ?, ?, ?)`,
+                        [transferNo || oldData.debit_note_no, toBranchId, transferDate || new Date(), fromBranchName, 0, Number(firstItem.amount || 0)]
+                    );
+                    const newBillId = billResult.insertId;
+
+                    await conn.execute(
+                        `INSERT INTO purchaseitem (purchaseItemBillId, product_id, materialsId, materialName, chassis_no, engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                        [newBillId, sourceItem.product_id, sourceItem.materialsId, sourceItem.materialName, sourceItem.chassis_no, sourceItem.engine_no, sourceItem.color_name, sourceItem.color_id, sourceItem.p_date || transferDate || new Date(), sourceItem.sale_type, Number(firstItem.amount || 0), toBranchId]
+                    );
+                }
+            }
+        } else {
+            // If only metadata changed, update the destination bill amount/date if it exists
+            await conn.execute(
+                `UPDATE purchaseitembill SET invoiceDate = ?, total_bill_amount = ? 
+                 WHERE invoiceNo = ? AND purch_branchId = ?`,
+                [transferDate || oldData.debit_note_date, Number(firstItem.amount || 0), oldData.debit_note_no, toBranchId]
+            );
+        }
+
+        await conn.commit();
+        res.json({ success: true, message: 'Branch transfer updated' });
+    } catch (err) {
+        await conn.rollback();
+        console.error('updateBranchTransfer error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update transfer', error: err.message });
+    } finally {
+        conn.release();
+    }
+};
+
 module.exports = {
     getNextBranchTransferNo,
     getAvailableStock,
@@ -600,6 +760,7 @@ module.exports = {
     listBranchTransfers,
     getBranchTransfer,
     saveBranchTransfer,
+    updateBranchTransfer,
     createBranchTransferPdf,
     createBranchTransferPdfByNo
 };

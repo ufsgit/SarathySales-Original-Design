@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { Subject } from 'rxjs';
@@ -55,7 +55,7 @@ export class PreviousBranchTransfer implements OnInit, OnDestroy {
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
     this.searchInput$.pipe(
@@ -114,6 +114,11 @@ export class PreviousBranchTransfer implements OnInit, OnDestroy {
   }
 
   rowIndex(i: number): number { return (this.page() - 1) * this.limit() + i + 1; }
+
+  editBill(row: any): void {
+    if (!row?.lc_id) return;
+    this.router.navigate(['/branch-transfer', row.lc_id]);
+  }
 
   generatePdf(row: any): void {
     if (!row.debit_note_no) return;
