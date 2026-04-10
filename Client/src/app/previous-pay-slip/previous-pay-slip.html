@@ -92,10 +92,11 @@
                             <td>{{ row.pay_remarks || '—' }}</td>
                             <td>{{ row.pay_finance || '—' }}</td>
                             <td class="text-right">{{ formatAmount(row.pay_grand_tot) }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary" (click)="editSlip(row)">Edit</button>
-                                <button class="btn btn-sm btn-danger" style="margin-left:6px;"
-                                    (click)="deleteSlip(row)">Delete</button>
+                            <td class="action-cell">
+                                <div class="action-buttons">
+                                    <button class="btn-action btn-edit" (click)="editSlip(row)">Edit</button>
+                                    <button class="btn-action btn-delete" (click)="cancelSlip(row)">Cancel Bill</button>
+                                </div>
                             </td>
                         </tr>
                         }

@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
   selector: 'app-edit-purchase-previous',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserNav, UserFooter],
+  imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
   templateUrl: './edit-purchase-previous.html',
   styleUrl: './edit-purchase-previous.css'
 })

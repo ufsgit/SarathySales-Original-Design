@@ -36,18 +36,49 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
         const total = this.totalPages();
         const current = this.page();
         const pages: (number | string)[] = [];
+        
         if (total <= 7) {
             for (let i = 1; i <= total; i++) pages.push(i);
         } else {
+            // Always show first page
             pages.push(1);
-            if (current > 4) pages.push('...');
+
+            if (current > 4) {
+                pages.push('...');
+            }
+
+            // Show current page and neighbors
             const start = Math.max(2, current - 2);
             const end = Math.min(total - 1, current + 2);
-            for (let i = start; i <= end; i++) pages.push(i);
-            if (current < total - 3) pages.push('...');
-            if (total > 1) pages.push(total);
+            
+            // Adjust start/end if we are near boundaries to keep length consistent
+            let adjustedStart = start;
+            let adjustedEnd = end;
+            
+            if (current <= 4) {
+                adjustedEnd = 6;
+            } else if (current > total - 4) {
+                adjustedStart = total - 5;
+            }
+
+            for (let i = adjustedStart; i <= adjustedEnd; i++) {
+                if (i > 1 && i < total) {
+                    pages.push(i);
+                }
+            }
+
+            if (current < total - 3) {
+                pages.push('...');
+            }
+
+            // Always show last page
+            if (total > 1) {
+                pages.push(total);
+            }
         }
-        return pages;
+        
+        // Final sanity check: unique values and filtered
+        return pages.filter((v, i, a) => a.indexOf(v) === i);
     });
 
     private searchInput$ = new Subject<string>();
@@ -96,7 +127,7 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
     }
 
     onSearchInput(value: string): void {
-        this.searchInput$.next(value);
+        this.searchInput$.next(value.trim());
     }
 
     onLimitChange(value: string): void {

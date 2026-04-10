@@ -241,12 +241,11 @@ const getStockSplitup = async (req, res) => {
 
     try {
         let conditions = [
-            'si.inv_chassis IS NULL',
+            'si.inv_id IS NULL',
             "pi.retn_status = 'Available'",
-            "pi.item_status = 'Available'",
             'pb.invoiceDate BETWEEN ? AND ?'
         ];
-        let params = [fromDate, toDate];
+        let params = [toDate, fromDate, toDate];
 
         if (branchId && branchId !== 'ALL') {
             conditions.push('pb.purch_branchId = ?');
@@ -293,7 +292,7 @@ const getStockSplitup = async (req, res) => {
             FROM purchaseitem pi
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
             LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
             ${where} 
             ORDER BY pb.invoiceDate DESC 
             LIMIT ${limit} OFFSET ${offset}
@@ -303,7 +302,7 @@ const getStockSplitup = async (req, res) => {
             SELECT COUNT(*) as total 
             FROM purchaseitem pi
             JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
-            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
             ${where}
         `;
 
@@ -579,12 +578,11 @@ const getStockSplitupQuery = (req) => {
     const search = (req.query.search || '').trim();
 
     let conditions = [
-        'si.inv_chassis IS NULL',
+        'si.inv_id IS NULL',
         "pi.retn_status = 'Available'",
-        "pi.item_status = 'Available'",
         'pb.invoiceDate BETWEEN ? AND ?'
     ];
-    let params = [fromDate, toDate];
+    let params = [toDate, fromDate, toDate];
 
     if (branchId && branchId !== 'ALL') {
         conditions.push('pb.purch_branchId = ?');
@@ -630,7 +628,7 @@ const getStockSplitupQuery = (req) => {
         FROM purchaseitem pi
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
         ${where} 
         ORDER BY pb.invoiceDate DESC 
     `;

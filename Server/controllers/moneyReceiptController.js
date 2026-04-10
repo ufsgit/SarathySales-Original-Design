@@ -214,8 +214,8 @@ const createMoneyReceiptPdf = async (req, res) => {
         doc.text('Code: 32 Kerala [State Code : 32]', 200, 52, { align: 'center', width: 200 });
 
         // Right Header
-        const brLoc = (data.branch_location || data.branch_name || '').split(' ')[0].toUpperCase();
-        doc.fontSize(18).font('Times-Bold').text(brLoc, col.end - 100, 30, { align: 'right', width: 100 });
+        // const brLoc = (data.branch_location || data.branch_name || '').split(' ')[0].toUpperCase();
+        // doc.fontSize(18).font('Times-Bold').text(brLoc, col.end - 100, 30, { align: 'right', width: 100 });
 
         y = 105;
         doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, col.start, y);

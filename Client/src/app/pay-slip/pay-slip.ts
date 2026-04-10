@@ -1,4 +1,5 @@
 import { Component, OnInit, AfterViewInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -7,11 +8,13 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
     selector: 'app-pay-slip',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
     templateUrl: './pay-slip.html',
     styleUrls: ['./pay-slip.css']
 })
@@ -68,7 +71,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     remarks = signal('');
     financeCash = signal('');
     vehicleType = signal('');
-    payStatus = signal('Pending');
+    payStatus = signal<any>(1);
 
     // numeric signals left column
     vehicleAmount = signal<number>(0);
@@ -156,7 +159,8 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
     constructor(private router: Router,
         private api: ApiService,
-        private route: ActivatedRoute) { }
+        private route: ActivatedRoute,
+        private titleService: Title) { }
 
     navigate(path: string) { this.router.navigate([path]); }
 
@@ -280,16 +284,21 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             if (admin) this.loadBranches();
         }
         this.paySlipDate.set(this.todayIso);
+        this.loadAdvisers();
+        this.loadLabourCodes();
+        this.loadInsuranceCompanies();
+        this.loadFormData();
 
         const idParam = this.route.snapshot.paramMap.get('id');
         if (idParam) {
             const id = Number(idParam);
             if (!isNaN(id)) {
                 this.currentId = id;
+                this.titleService.setTitle('Edit Pay Slip');
                 this.loadPaySlip(id);
             }
         } else {
-            this.loadInitialData();
+            this.loadSlipNo();
         }
     }
 
@@ -396,12 +405,22 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.paySlipDate.set(d.pay_slip_date ? new Date(d.pay_slip_date).toISOString().substr(0, 10) : '');
         this.customerName.set(d.pay_cus_name || '');
         this.vehicleName.set(d.pay_slip_reference || '');
-        this.adviserId.set(d.adviser_id || null);
-        this.adviserName.set(d.adviser_name || '');
         this.remarks.set(d.pay_remarks || '');
         this.financeCash.set(d.pay_finance || '');
         this.vehicleType.set(d.pay_vehil_type || '');
-        this.payStatus.set(d.pay_status || 'Pending');
+        this.payStatus.set(d.pay_status || 1);
+
+        this.branchName.set(d.branch_name || 'Select Branch');
+        this.branchId.set(String(d.pay_branch_id || ''));
+
+        const exName = (d.pay_regn || '').toString().trim();
+        this.adviserName.set(exName);
+        const foundAdv = this.advisers().find(a => (a.e_first_name || a.name || '').toString().trim() === exName);
+        if (foundAdv) {
+            this.adviserId.set(foundAdv.emp_id);
+        } else {
+            this.adviserId.set(null);
+        }
 
         if (this.labourCodes().length && this.vehicleName()) {
             this.onVehicleSelect();
@@ -420,7 +439,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.rsaAmount.set(this.toNumber(d.pay_rsa_amt));
         this.ownershipAmt.set(this.toNumber(d.pay_ownership_amt));
 
-        this.financeAmount.set(this.toNumber(d.pay_finance_amt));
+        this.financeAmount.set(this.toNumber(d.pay_dcc));
         this.advanceCash.set(this.toNumber(d.pay_advance));
         this.bankTransfer.set(this.toNumber(d.pay_bank_transfer));
         this.swipe.set(this.toNumber(d.pay_swipe_amt));
@@ -440,11 +459,21 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.api.getAdvisers(branchName || undefined).subscribe({
             next: (res: any) => {
                 if (res.success) {
-                    this.advisers.set((res.data || []).map((a: any) => ({
+                    const list = (res.data || []).map((a: any) => ({
                         ...a,
                         e_first_name: (a.e_first_name || a.name || '').toString().trim(),
                         name: (a.e_first_name || a.name || '').toString().trim()
-                    })));
+                    }));
+                    this.advisers.set(list);
+
+                    // Re-sync ID if name was already loaded from Pay Slip (Edit mode)
+                    if (this.adviserName() && !this.adviserId()) {
+                        const name = this.adviserName().toLowerCase();
+                        const found = list.find((a: any) =>
+                            (a.e_first_name || a.name || '').toString().trim().toLowerCase() === name
+                        );
+                        if (found) this.adviserId.set(found.emp_id);
+                    }
                 }
             },
             error: () => { this.advisers.set([]); }
@@ -477,8 +506,18 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     }
 
     onAdviserChange(): void {
-        const adv = this.advisers().find(a => a.emp_id == this.adviserId());
-        this.adviserName.set(adv ? (adv.e_first_name || adv.name || '') : '');
+        const id = this.adviserId();
+        const name = this.adviserName().toString().trim().toLowerCase();
+
+        if (id) {
+            const adv = this.advisers().find(a => a.emp_id == id);
+            if (adv) this.adviserName.set(adv.e_first_name || adv.name || '');
+        } else if (name) {
+            const found = this.advisers().find(a =>
+                (a.e_first_name || a.name || '').toString().trim().toLowerCase() === name
+            );
+            if (found) this.adviserId.set(found.emp_id);
+        }
     }
 
     onCustomerInput(val: string): void {
@@ -512,6 +551,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
     onSave(): void {
         this.enforceMaxDate();
+        this.onAdviserChange();
         const branchIdForSave = this.branchId();
 
         const missingFields: string[] = [];
@@ -632,9 +672,8 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 if (res.success) {
                     this.successMessage.set(this.currentId ? 'Pay slip updated' : 'Pay slip saved');
                     alert(this.successMessage());
-                    if (!this.currentId) {
-                        this.currentId = res.payslip_id || null;
-                    }
+                    this.resetForm();
+                    this.navigate('/previous-pay-slip');
                     // if (this.currentId) {
                     //     this.api.getPaySlip(this.currentId).subscribe({
                     //         next: (savedRes: any) => {
@@ -671,6 +710,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 this.isSaving.set(false);
                 if (res.success) {
                     alert('Pay slip deleted');
+                    this.resetForm();
                     this.navigate('/previous-pay-slip');
                 } else {
                     this.errorMessage.set(res.message || 'Failed to delete pay slip');
@@ -681,5 +721,52 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 this.errorMessage.set(err?.error?.message || 'Failed to delete pay slip');
             }
         });
+    }
+
+    resetForm(): void {
+        this.currentId = null;
+        this.customerName.set('');
+        this.vehicleName.set('');
+        this.adviserId.set(null);
+        this.adviserName.set('');
+        this.remarks.set('');
+        this.financeCash.set('');
+        this.vehicleType.set('');
+        this.payStatus.set(1);
+
+        // Reset numeric signals
+        this.vehicleAmount.set(0);
+        this.roadTax.set(0);
+        this.insurance.set(0);
+        this.regnFee.set(0);
+        this.vpCharges.set(0);
+        this.extendedWarranty.set(0);
+        this.serviceStamp.set(0);
+        this.fittingsAmt.set(0);
+        this.bflInsOthers.set(0);
+        this.advanceEMI.set(0);
+        this.rsaAmount.set(0);
+        this.ownershipAmt.set(0);
+
+        this.financeAmount.set(0);
+        this.advanceCash.set(0);
+        this.bankTransfer.set(0);
+        this.swipe.set(0);
+        this.exchange.set(0);
+        this.discount.set(0);
+        this.bflDiscount.set(0);
+        this.specialDiscount.set(0);
+        this.duesAmt.set(0);
+        this.gpay.set(0);
+        this.others1.set(0);
+        this.others2.set(0);
+        this.others3.set(0);
+
+        this.paySlipNo.set('');
+        this.loadSlipNo();
+
+        // Uncheck confirmation checkbox
+        const checkbox = document.querySelector('.confirm input[type="checkbox"]') as HTMLInputElement | null;
+        if (checkbox) checkbox.checked = false;
     }
 }

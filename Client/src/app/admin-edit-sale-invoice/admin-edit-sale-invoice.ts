@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
   selector: 'app-admin-edit-sale-invoice',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserNav, UserFooter],
+  imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
   templateUrl: './admin-edit-sale-invoice.html',
   styleUrl: './admin-edit-sale-invoice.css'
 })

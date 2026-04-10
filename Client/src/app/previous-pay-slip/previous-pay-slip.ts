@@ -182,9 +182,9 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
     this.router.navigate(['/pay-slip', row.payslip_id]);
   }
 
-  deleteSlip(row: any): void {
+  cancelSlip(row: any): void {
     if (!row?.payslip_id) return;
-    const confirmMsg = `Delete Pay Slip ${row.pay_slip_no || ''}?`;
+    const confirmMsg = `Cancel Pay Slip ${row.pay_slip_no || ''}?`;
     if (!window.confirm(confirmMsg)) return;
     this.isLoading.set(true);
     this.api.deletePaySlip(row.payslip_id).subscribe({
@@ -198,7 +198,7 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.isLoading.set(false);
-        this.errorMsg.set(err?.error?.message || 'Server error deleting pay slip');
+        this.errorMsg.set(err?.error?.message || 'Server error cancelling pay slip');
       }
     });
   }

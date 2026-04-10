@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -12,7 +12,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
     standalone: true,
     imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
     template: `
-<div class="app-container">
+<div class="app-container" (click)="closeDropdowns()">
   <app-user-nav></app-user-nav>
 
   <main class="page-container">
@@ -31,7 +31,6 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
-             <i class="fas fa-bars menu-icon"></i>
              <h2>VSI TAX INVOICE</h2>
           </div>
           <div class="header-actions">
@@ -46,7 +45,37 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
             <div class="form-grid-row">
                 <div class="form-col">
                     <label>Branch Name:</label>
-                    <input type="text" class="form-control readonly" [value]="branchName" readonly>
+                    <ng-container *ngIf="isAdmin(); else staffBranch">
+                        <div class="custom-dropdown" (click)="$event.stopPropagation()">
+                            <div class="dropdown-toggle" (click)="toggleBranchDropdown()">
+                                {{ branchName() }}
+                                <i class="fas fa-caret-down"></i>
+                            </div>
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search branch..."
+                                        [ngModel]="branchSearchTerm()"
+                                        (ngModelChange)="branchSearchTerm.set($event)"
+                                        name="branchSearch"
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option"
+                                        *ngFor="let b of searchableBranchList()"
+                                        (click)="onBranchSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results"
+                                        *ngIf="searchableBranchList().length === 0">
+                                        No branches found
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                    <ng-template #staffBranch>
+                        <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Sales Invoice No:</label>
@@ -66,7 +95,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
              <div class="form-grid-row">
                 <div class="form-col">
                     <label>Invoice No:</label>
-                    <input type="text" class="form-control readonly" [value]="invoiceNo" readonly>
+                    <input type="text" class="form-control readonly" [value]="invoiceNo()" readonly>
                 </div>
                 <div class="form-col">
                     <label>Customer GSTIN:</label>
@@ -77,16 +106,42 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                     <input type="tel" class="form-control" numericOnly [(ngModel)]="mobile" name="mobile" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="mobile = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
                 </div>
                 <div class="form-col">
-                    <!-- Empty 4th col in row 2 based on image -->
+                    <label>Post:</label>
+                    <div class="custom-dropdown" (click)="$event.stopPropagation()">
+                        <div class="dropdown-toggle" (click)="togglePostDropdown()">
+                            {{ post() || '--Select--' }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isPostDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search post..."
+                                    [ngModel]="postSearchTerm()"
+                                    (ngModelChange)="postSearchTerm.set($event)"
+                                    name="postSearch"
+                                    (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option"
+                                    *ngFor="let p of searchablePostList()"
+                                    (click)="onPostSelect(p)">
+                                    {{ p.label }}
+                                </div>
+                                <div class="dropdown-option no-results"
+                                    *ngIf="searchablePostList().length === 0">
+                                    No results found
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
              </div>
 
-             <!-- Row 3 -->
+            <!-- Row 3 -->
              <div class="form-grid-row">
                 <div class="form-col">
                     <label>Invoice Date:</label>
                     <div class="date-input-wrapper">
-                         <input type="text" class="form-control" [value]="invoiceDate" readonly>
+                         <input type="text" class="form-control" [value]="invoiceDate()" readonly>
                     </div>
                 </div>
                  <div class="form-col"></div>
@@ -221,14 +276,6 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
         gap: 15px;
     }
 
-    .menu-icon {
-        background: #d85c15;
-        padding: 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
     .orange-header-strip h2 {
         margin: 0;
         font-size: 16px;
@@ -289,7 +336,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
     }
 
     .form-control {
-        flex: 1; /* Input takes remaining space */
+        flex: 1;
         padding: 4px 8px;
         font-size: 12px;
         border: 1px solid #ccc;
@@ -305,9 +352,63 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
         color: #555;
     }
 
-    .form-control:focus {
-        border-color: #f36f21;
-        outline: none;
+    /* Custom Dropdown Styles (Searchable) */
+    .custom-dropdown {
+        position: relative;
+        flex: 1;
+        max-width: 180px;
+        width: 100%;
+    }
+    .dropdown-toggle {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 28px;
+    }
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-top: 2px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .dropdown-search {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+    }
+    .dropdown-search input {
+        width: 100%;
+        border: 1px solid #ddd;
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    .dropdown-options-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .dropdown-option {
+        padding: 8px 12px;
+        font-size: 11px;
+        cursor: pointer;
+    }
+    .dropdown-option:hover {
+        background-color: #f1f5f9;
+        color: #f36f21;
+    }
+    .dropdown-option.no-results {
+        color: #999;
+        cursor: default;
     }
 
     .date-input-wrapper {
@@ -393,43 +494,43 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
         font-weight: bold;
         cursor: pointer;
     }
-
-
-    /* Responsive */
-    @media (max-width: 1200px) {
-        .form-grid-row {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    @media (max-width: 768px) {
-        .form-grid-row {
-            grid-template-columns: 1fr;
-        }
-        .form-col {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 5px;
-        }
-        .form-col label {
-            text-align: left;
-        }
-        .form-control {
-            max-width: 100%;
-        }
-    }
   `]
 })
 export class VsiInvoiceComponent implements OnInit {
     isAdmin = signal(false);
-    branchName = 'SARATHY KOLLAM KTM';
-    invoiceNo = 'VSI2026131770001';
-    invoiceDate = '19-02-2026';
-
     salesInvoiceNo = '';
     customerName = '';
     address = '';
+    post = signal('');
     gstin = '';
     mobile = '';
+    invoiceNo = signal('VSI2026131770001');
+    invoiceDate = signal('19-02-2026');
+
+    // Branch selection for Admins
+    selectedBranchId = signal<string | number>('');
+    branchName = signal('Select Branch');
+    branches = signal<any[]>([]);
+    isBranchDropdownOpen = signal(false);
+    branchSearchTerm = signal('');
+
+    // Post selection (Static)
+    postOptions = signal<string[]>([
+        'Kollam', 'Pallimukku', 'Chathannoor', 'Kottiyam', 'Mevaram', 
+        'Ayathil', 'Eravipuram', 'Mundanakkal', 'Paravur', 'Parippally'
+    ]);
+    isPostDropdownOpen = signal(false);
+    postSearchTerm = signal('');
+
+    searchableBranchList = computed(() => {
+        const query = this.branchSearchTerm().toLowerCase().trim();
+        return this.branches().filter(b => b.branch_name.toLowerCase().includes(query));
+    });
+
+    searchablePostList = computed(() => {
+        const query = this.postSearchTerm().toLowerCase().trim();
+        return this.postOptions().filter(p => p.toLowerCase().includes(query)).map(p => ({ label: p, value: p }));
+    });
 
     invoiceItems = [
         { particular: '', rate: '', taxableAmt: '', sgstPercent: '', sgstAmt: '', cgstPercent: '', cgstAmt: '', cessPercent: '', cessAmt: '', amount: '' }
@@ -451,7 +552,43 @@ export class VsiInvoiceComponent implements OnInit {
 
     ngOnInit(): void {
         const user = this.api.getCurrentUser();
-        this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
+        if (user) {
+            this.isAdmin.set(user.role == 1 || user.role_des === 'admin');
+            if (this.isAdmin()) {
+                this.loadBranches();
+            } else {
+                this.branchName.set(user.branch_name || 'SARATHY KOLLAM KTM');
+                this.selectedBranchId.set(user.branch_id || '');
+            }
+        }
+    }
+
+    loadBranches() {
+        this.api.getBranches().subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    this.branches.set(res.data || []);
+                }
+            }
+        });
+    }
+
+    toggleBranchDropdown() { this.isBranchDropdownOpen.update(v => !v); }
+    onBranchSelect(b: any) {
+        this.selectedBranchId.set(b.b_id);
+        this.branchName.set(b.branch_name);
+        this.isBranchDropdownOpen.set(false);
+    }
+
+    togglePostDropdown() { this.isPostDropdownOpen.update(v => !v); }
+    onPostSelect(p: any) {
+        this.post.set(p.value);
+        this.isPostDropdownOpen.set(false);
+    }
+    
+    closeDropdowns() {
+        this.isBranchDropdownOpen.set(false);
+        this.isPostDropdownOpen.set(false);
     }
 
     navigate(path: string) { this.router.navigate([path]); }

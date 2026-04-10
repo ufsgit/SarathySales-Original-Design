@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
 
 @Component({
   selector: 'app-vsi-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserNav, UserFooter],
+  imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
   template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -30,7 +31,6 @@ import { ApiService } from '../services/api.service';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
            <div class="header-left">
-             <i class="fas fa-bars menu-icon"></i>
              <h2>VSI BILL LIST</h2>
           </div>
         </header>
@@ -38,14 +38,16 @@ import { ApiService } from '../services/api.service';
         <div class="page-card-content">
            <div class="list-controls">
                <div class="search-box">
-                 <input type="text" class="form-control" placeholder="Search bills...">
+                 <input type="text" class="form-control" placeholder="Search bills..." 
+                   [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)">
                </div>
                <div class="entries-select">
                  <span>Show</span>
-                 <select class="form-control" style="width: auto; padding: 4px; height: 30px;">
-                   <option>10</option>
-                   <option>25</option>
-                   <option>50</option>
+                 <select class="form-control" style="width: auto; padding: 4px; height: 30px;"
+                   [ngModel]="limit()" (ngModelChange)="onLimitChange($event)">
+                   <option [value]="10">10</option>
+                   <option [value]="25">25</option>
+                   <option [value]="50">50</option>
                  </select>
                  <span>entries</span>
                </div>
@@ -58,65 +60,48 @@ import { ApiService } from '../services/api.service';
                     <th>SI:No</th>
                     <th>Customer Details</th>
                     <th>Branch</th>
-                    <th>Sales Inv No</th>
+                    <th>Chassis No</th>
                     <th>Invoice No</th>
                     <th>Invoice Date</th>
-                    <th>Customer GSTIN</th>
-                    <th class="text-right">Total Amount</th>
-                    <th>Action</th>
+                    <th>Model</th>
+                    <th class="text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- Row 1 -->
-                  <tr>
-                    <td>1</td>
+                  <tr *ngFor="let bill of bills(); let i = index">
+                    <td>{{ (page() - 1) * limit() + i + 1 }}</td>
                     <td>
                       <div class="cust-info">
-                        <strong>Arun Kumar</strong>
-                        <div class="text-muted small">+91 98471 23456</div>
+                        <strong>{{ bill.vsi_cus_name }}</strong>
+                        <div class="text-muted small">{{ bill.vsi_engine }}</div>
                       </div>
                     </td>
-                    <td>Kollam KTM</td>
-                    <td>SINV-2025-001</td>
-                    <td>VSI-2026-042</td>
-                    <td>14-02-2026</td>
-                    <td>32ABCDE1234F1Z5</td>
-                    <td class="text-right font-weight-bold">₹ 14,500.00</td>
-                    <td>
-                      <button class="btn-icon edit" title="Edit"><i class="fas fa-edit"></i> Edit</button>
-                      <button class="btn-icon print" title="Print"><i class="fas fa-print"></i> Print</button>
+                    <td>{{ bill.branch_name }}</td>
+                    <td>{{ bill.vsi_chassis }}</td>
+                    <td>{{ bill.inv_no }}</td>
+                    <td>{{ bill.vsi_date | date:'dd-MM-yyyy' }}</td>
+                    <td>{{ bill.vsi_model }}</td>
+                    <td class="text-right">
+                      <button class="btn-icon edit" title="Edit" (click)="onEdit(bill)"><i class="fas fa-edit"></i> Edit</button>
+                      <button class="btn-icon print" title="Print" (click)="onPrint(bill)"><i class="fas fa-print"></i> Print</button>
                     </td>
                   </tr>
-                   <!-- Row 2 -->
-                  <tr>
-                    <td>2</td>
-                    <td>
-                      <div class="cust-info">
-                        <strong>Priya Nair</strong>
-                        <div class="text-muted small">+91 98460 98765</div>
-                      </div>
-                    </td>
-                    <td>Trivandrum KTM</td>
-                    <td>SINV-2025-089</td>
-                    <td>VSI-2026-041</td>
-                    <td>13-02-2026</td>
-                    <td>--</td>
-                    <td class="text-right font-weight-bold">₹ 2,450.00</td>
-                    <td>
-                      <button class="btn-icon edit" title="Edit"><i class="fas fa-edit"></i> Edit</button>
-                      <button class="btn-icon print" title="Print"><i class="fas fa-print"></i> Print</button>
-                    </td>
+                  <tr *ngIf="bills().length === 0 && !isLoading()">
+                    <td colspan="8" class="text-center" style="color:red;font-weight:bold;">no data</td>
+                  </tr>
+                  <tr *ngIf="isLoading()">
+                    <td colspan="8" class="text-center">Loading...</td>
                   </tr>
                 </tbody>
               </table>
            </div>
 
            <div class="pagination-footer">
-              <span>Showing 1 to 2 of 2 entries</span>
+              <span>Showing {{ (page() -1) * limit() + 1 }} to {{ Math.min(page() * limit(), total()) }} of {{ total() }} entries</span>
               <div class="pagination-buttons">
-                <button disabled>Previous</button>
-                <button class="active">1</button>
-                <button disabled>Next</button>
+                <button [disabled]="page() === 1 || isLoading()" (click)="onPageChange(page() - 1)">Previous</button>
+                <button class="active">{{ page() }}</button>
+                <button [disabled]="page() * limit() >= total() || isLoading()" (click)="onPageChange(page() + 1)">Next</button>
               </div>
            </div>
         </div>
@@ -329,11 +314,77 @@ import { ApiService } from '../services/api.service';
 })
 export class VsiListComponent implements OnInit {
   isAdmin = signal(false);
+  branchId = signal('');
+  bills = signal<any[]>([]);
+  searchTerm = signal('');
+  page = signal(1);
+  limit = signal(10);
+  total = signal(0);
+  isLoading = signal(false);
+  Math = Math;
+
   constructor(private router: Router, private api: ApiService) { }
 
   ngOnInit(): void {
     const user = this.api.getCurrentUser();
-    this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
+    if (user) {
+      this.isAdmin.set(user.role == 1 || user.role_des === 'admin');
+      if (!this.isAdmin()) {
+        this.branchId.set(user.branch_id ? String(user.branch_id) : '');
+      } else {
+        this.branchId.set(''); // Admin sees all by default
+      }
+    }
+    this.loadBills();
+  }
+
+  loadBills(): void {
+    // this.isLoading.set(true);
+    // this.api.listVsi(this.page(), this.limit(), this.searchTerm(), this.branchId()).subscribe({
+    //   next: (res: any) => {
+    //     this.isLoading.set(false);
+    //     if (res.success && Array.isArray(res.data)) {
+    //       this.bills.set(res.data);
+    //       this.total.set(res.total || res.data.length);
+    //     } else {
+    //       this.bills.set([]);
+    //       this.total.set(0);
+    //     }
+    //   },
+    //   error: (err) => {
+    //     this.isLoading.set(false);
+    //     console.error('Error loading VSI bills:', err);
+    //     this.bills.set([]);
+    //     this.total.set(0);
+    //   }
+    // });
+  }
+
+  onSearchChange(val: string): void {
+    this.searchTerm.set(val);
+    this.page.set(1);
+    this.loadBills();
+  }
+
+  onLimitChange(val: any): void {
+    this.limit.set(Number(val));
+    this.page.set(1);
+    this.loadBills();
+  }
+
+  onPageChange(p: number): void {
+    this.page.set(p);
+    this.loadBills();
+  }
+
+  onEdit(bill: any): void {
+    // Navigate to edit page if implemented
+    // this.router.navigate(['/edit-vsi', bill.vsi_id]);
+    alert('Edit functionality not yet implemented for VSI');
+  }
+
+  onPrint(bill: any): void {
+    alert('Print functionality not yet implemented for VSI');
   }
 
   navigate(path: string) { this.router.navigate([path]); }

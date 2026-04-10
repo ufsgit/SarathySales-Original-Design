@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService, ApiResponse } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
     selector: 'app-money-receipt',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
     template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -46,8 +48,8 @@ import { ApiService, ApiResponse } from '../services/api.service';
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col">
-                    <label>Branch Name:</label>
-                    <div class="custom-dropdown" *ngIf="isAdmin(); else staffBranch" #dropdownRef>
+                    <label>Branch Name: <span style="color:red">*</span></label>
+                    <div class="custom-dropdown" *ngIf="isAdmin() && !isEditing(); else branchReadonly" #dropdownRef>
                         <div class="dropdown-toggle" (click)="toggleDropdown()" [class.placeholder]="branchName() === 'Select Branch'">
                             {{ branchName() }}
                             <i class="fas fa-caret-down"></i>
@@ -64,16 +66,16 @@ import { ApiService, ApiResponse } from '../services/api.service';
                             </div>
                         </div>
                     </div>
-                    <ng-template #staffBranch>
+                    <ng-template #branchReadonly>
                         <input type="text" class="form-control readonly" [value]="branchName()" readonly>
                     </ng-template>
                 </div>
                 <div class="form-col">
-                    <label>Name:</label>
+                    <label>Name: <span style="color:red">*</span></label>
                     <input type="text" class="form-control" [ngModel]="customerName()" (ngModelChange)="customerName.set($event)" name="customerName">
                 </div>
                 <div class="form-col">
-                    <label>Pay Type:</label>
+                    <label>Pay Type: <span style="color:red">*</span></label>
                     <select class="form-control" [ngModel]="payType()" (ngModelChange)="payType.set($event)" name="payType">
                         <option value="">--Select--</option>
                         <option value="Cash">Cash</option>
@@ -82,7 +84,7 @@ import { ApiService, ApiResponse } from '../services/api.service';
                     </select>
                 </div>
                 <div class="form-col">
-                    <label>Cheque/DD Date:</label>
+                    <label>Cheque/DD Date: <span style="color:red">*</span></label>
                     <div class="date-input-wrapper">
                         <input type="date" class="form-control" [ngModel]="chequeDate()" (ngModelChange)="chequeDate.set($event)" name="chequeDate">
                     </div>
@@ -92,11 +94,11 @@ import { ApiService, ApiResponse } from '../services/api.service';
             <!-- Row 2 -->
             <div class="form-grid-row">
                 <div class="form-col">
-                    <label>Receipt No:</label>
+                    <label>Receipt No: <span style="color:red">*</span></label>
                     <input type="text" class="form-control readonly" [value]="receiptNo()" readonly>
                 </div>
                 <div class="form-col">
-                    <label>Customer Address:</label>
+                    <label>Customer Address: <span style="color:red">*</span></label>
                     <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1"></textarea>
                 </div>
                 <div class="form-col">
@@ -131,7 +133,7 @@ import { ApiService, ApiResponse } from '../services/api.service';
                     <input type="text" class="form-control" [ngModel]="bank()" (ngModelChange)="bank.set($event)" name="bank">
                 </div>
                 <div class="form-col">
-                    <label>Amount:</label>
+                    <label>Amount: <span style="color:red">*</span></label>
                     <input type="number" class="form-control" [ngModel]="amount()" (ngModelChange)="amount.set($event)" name="amount">
                 </div>
             </div>
@@ -594,20 +596,42 @@ export class MoneyReceiptComponent {
         this.customerName.set(d.receipt_cus || '');
         this.address.set(d.receipt_cus_address || '');
         this.payType.set(d.pay_type || '');
-        this.chequeNo.set(d.cheque_dd_no || '');
+        this.chequeNo.set(d.cheque_dd_po_no || d.cheque_dd_no || '');
         this.chequeDate.set(d.cheque_dd_date ? d.cheque_dd_date.substring(0, 10) : '');
         this.refundYN.set(d.refund_status || 'No');
         this.reason.set(d.reason || '');
-        this.bank.set(d.bank || '');
+        this.bank.set(d.bank_name || d.bank || '');
         this.amount.set(d.receipt_amount ?? null);
         this.reference.set(d.reference || '');
-        this.place.set(d.place || '');
+        this.place.set(d.bank_place || d.place || '');
         this.receiptDate.set(d.receipt_date ? new Date(d.receipt_date).toLocaleDateString('en-GB') : this.receiptDate());
     }
 
     onSave(): void {
-        if (!this.customerName() || !this.amount()) {
-            this.errorMessage.set('Customer Name and Amount are required.');
+        const requiredFields = [
+            { value: this.customerName(), label: 'Customer Name' },
+            { value: this.address(), label: 'Customer Address' },
+            { value: this.payType(), label: 'Pay Type' },
+            { value: this.amount(), label: 'Amount' },
+            { value: this.chequeDate(), label: 'Cheque/DD Date' },
+            { value: this.branchId(), label: 'Branch selection' }
+        ];
+
+        const missing = requiredFields.filter(f => {
+            if (f.label === 'Amount') return f.value === null || f.value === undefined;
+            return !(f.value || '').toString().trim();
+        });
+
+        if (missing.length > 0) {
+            const fieldList = missing.map(m => m.label).join(', ');
+            this.errorMessage.set(`The following fields are required: ${fieldList}`);
+            alert(this.errorMessage());
+            return;
+        }
+
+        if (!this.receiptNo() || this.receiptNo() === 'ERROR') {
+            this.errorMessage.set('Invalid Receipt No. Please select a valid Branch.');
+            alert(this.errorMessage());
             return;
         }
         this.isSaving.set(true);
@@ -670,6 +694,10 @@ export class MoneyReceiptComponent {
         this.amount.set(null);
         this.reference.set('');
         this.place.set('');
+    }
+
+    isEditing(): boolean {
+        return this.currentId !== null;
     }
 
     navigate(path: string) { this.router.navigate([path]); }

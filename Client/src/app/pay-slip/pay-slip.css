@@ -178,7 +178,18 @@
 .amount-right {
     text-align: right;
     font-weight: 600;
+    padding-right: 24px !important;
 }
+
+/* Increase spacing between digits and spinner arrows */
+input[type="number"].amount-right::-webkit-inner-spin-button,
+input[type="number"].amount-right::-webkit-outer-spin-button {
+    opacity: 1;
+    height: 26px;
+    margin-left: 6px;
+    cursor: pointer;
+}
+
 
 .date-input-wrapper {
     position: relative;

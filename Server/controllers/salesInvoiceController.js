@@ -1086,22 +1086,26 @@ const saveInvoice = async (req, res) => {
 
         await conn.beginTransaction();
 
-        // 🔹 Fetch vehicle details using chassis number
+        // 🔹 Fetch vehicle details using chassis number, scoped to the current branch
         const [purchaseRows] = await conn.execute(
-            `SELECT materialsId, color_id, product_id 
-             FROM purchaseitem
-             WHERE chassis_no = ?
+            `SELECT pi.materialsId, pi.color_id, pi.product_id, pi.purchaseItemBillId
+             FROM purchaseitem pi
+             LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
+             WHERE pi.chassis_no = ?
+               AND pi.item_status = 'Available'
+               AND pb.purch_branchId = ?
              LIMIT 1`,
-            [chassisNo]
+            [chassisNo, branchId]
         );
 
         if (purchaseRows.length === 0) {
-            throw new Error("Vehicle not found for this chassis number");
+            throw new Error("Vehicle not found for this chassis number in this branch");
         }
 
         const vehicleCode = purchaseRows[0].materialsId;
         const colorCode = purchaseRows[0].color_id;
         const productId = purchaseRows[0].product_id;
+        const purchaseItemBillId = purchaseRows[0].purchaseItemBillId;
 
         const insertSql = `
             INSERT INTO tbl_invoice_labour (
@@ -1192,10 +1196,16 @@ const saveInvoice = async (req, res) => {
             );
         }
 
-        if (chassisNo) {
+        if (chassisNo && purchaseItemBillId) {
+            // 🔹 Only mark THIS specific purchaseitem record as Delivered.
+            // Using purchaseItemBillId + chassis_no ensures we do NOT affect
+            // other entries with the same chassis_no on different branches
+            // or past entries of the same chassis_no on this branch.
             await conn.execute(
-                `UPDATE purchaseitem SET item_status = 'Delivered' WHERE chassis_no = ?`,
-                [chassisNo]
+                `UPDATE purchaseitem 
+                 SET item_status = 'Delivered' 
+                 WHERE chassis_no = ? AND purchaseItemBillId = ?`,
+                [chassisNo, purchaseItemBillId]
             );
 
             // 🔹 Decrement stock in tbl_stock

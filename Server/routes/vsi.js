@@ -12,18 +12,18 @@ router.get('/next-no', async (req, res) => {
     const year = new Date().getFullYear().toString();
     try {
         const [rows] = await db.execute(
-            'SELECT MAX(vsi_id) as max_id FROM tbl_vsi WHERE vsi_branch = ?',
+            'SELECT MAX(vsi_id) as max_id FROM tbl_vsi_invoice WHERE vsi_branch = ?',
             [branchId]
         );
         const maxId = rows[0].max_id;
         if (!maxId) {
             return res.json({ success: true, vsiNo: `VS${year}${branchId}${String(1).padStart(5, '0')}` });
         }
-        const [recRows] = await db.execute('SELECT vsi_no FROM tbl_vsi WHERE vsi_id = ?', [maxId]);
+        const [recRows] = await db.execute('SELECT inv_no FROM tbl_vsi_invoice WHERE vsi_id = ?', [maxId]);
         if (!recRows.length) {
             return res.json({ success: true, vsiNo: `VS${year}${branchId}${String(1).padStart(5, '0')}` });
         }
-        const lastNo = recRows[0].vsi_no;
+        const lastNo = recRows[0].inv_no;
         const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
         const lastYear = lastNo.substring(2, 6);
         const serial = lastYear === year ? lastSerial + 1 : 1;
@@ -44,21 +44,29 @@ router.get('/list', async (req, res) => {
     const limit = parseInt(req.query.limit) || 25;
     const search = req.query.search || '';
     const offset = (page - 1) * limit;
+
     try {
-        let where = 'WHERE tbl_vsi.vsi_branch = ?';
-        let params = [branchId];
+        let where = 'WHERE 1=1';
+        let params = [];
+
+        if (branchId && branchId !== 'undefined' && branchId !== '') {
+            where += ' AND tbl_vsi_invoice.vsi_branch = ?';
+            params.push(branchId);
+        }
+
         if (search) {
-            where += ` AND (vsi_no LIKE ? OR vsi_cus_name LIKE ? OR vsi_chassis LIKE ?)`;
+            where += ` AND (inv_no LIKE ? OR vsi_cus_name LIKE ? OR vsi_chassis LIKE ?)`;
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
+
         const [rows] = await db.execute(
-            `SELECT tbl_vsi.*, tbl_branch.branch_name
-       FROM tbl_vsi
-       LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_vsi.vsi_branch
+            `SELECT tbl_vsi_invoice.*, tbl_branch.branch_name
+       FROM tbl_vsi_invoice
+       LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_vsi_invoice.vsi_branch
        ${where} ORDER BY vsi_id DESC LIMIT ${limit} OFFSET ${offset}`,
             params
         );
-        const [countRows] = await db.execute(`SELECT COUNT(*) as total FROM tbl_vsi ${where}`, params);
+        const [countRows] = await db.execute(`SELECT COUNT(*) as total FROM tbl_vsi_invoice ${where}`, params);
         res.json({ success: true, data: rows, total: countRows[0].total, page, limit });
     } catch (err) {
         console.error('vsi list error:', err);
@@ -69,19 +77,21 @@ router.get('/list', async (req, res) => {
 /**
  * GET /api/vsi/:id
  * Get single VSI invoice with items.
- * Matches PHP: Vsi_model functions
  */
 router.get('/:id', async (req, res) => {
     try {
         const [vsiRows] = await db.execute(
-            `SELECT tbl_vsi.*, tbl_branch.branch_name
-       FROM tbl_vsi
-       LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_vsi.vsi_branch
+            `SELECT tbl_vsi_invoice.*, tbl_branch.branch_name
+       FROM tbl_vsi_invoice
+       LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_vsi_invoice.vsi_branch
        WHERE vsi_id = ?`,
             [req.params.id]
         );
         if (!vsiRows.length) return res.status(404).json({ success: false, message: 'VSI not found' });
-        const [itemRows] = await db.execute('SELECT * FROM tbl_vsi_items WHERE vsi_id = ?', [req.params.id]);
+        
+        const invNo = vsiRows[0].inv_no;
+        const [itemRows] = await db.execute('SELECT * FROM tbl_vsi_invoice_cost WHERE ic_inv_id = ?', [invNo]);
+        
         res.json({ success: true, vsi: vsiRows[0], items: itemRows });
     } catch (err) {
         console.error(err);
@@ -101,27 +111,27 @@ router.post('/save', async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const [dupCheck] = await conn.execute('SELECT vsi_id FROM tbl_vsi WHERE vsi_no = ?', [vsiNo]);
+        const [dupCheck] = await conn.execute('SELECT vsi_id FROM tbl_vsi_invoice WHERE inv_no = ?', [vsiNo]);
         if (dupCheck.length > 0) {
             await conn.rollback();
             return res.status(409).json({ success: false, message: 'VSI number already exists' });
         }
         const [result] = await conn.execute(
-            `INSERT INTO tbl_vsi (vsi_no, vsi_branch, vsi_date, vsi_cus_name, vsi_chassis, vsi_engine, vsi_model)
+            `INSERT INTO tbl_vsi_invoice (inv_no, vsi_branch, vsi_date, vsi_cus_name, vsi_chassis, vsi_engine, vsi_model)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [vsiNo, branchId, vsiDate || new Date(),
                 customerName, chassisNo || '', engineNo || '', modelName || '']
         );
-        const vsiId = result.insertId;
+        
         for (const item of (items || [])) {
             await conn.execute(
-                `INSERT INTO tbl_vsi_items (vsi_id, item_description, item_qty, item_rate, item_amount, item_tax)
+                `INSERT INTO tbl_vsi_invoice_cost (ic_inv_id, item_description, item_qty, item_rate, item_amount, item_tax)
          VALUES (?, ?, ?, ?, ?, ?)`,
-                [vsiId, item.description || '', item.qty || 1, item.rate || 0, item.amount || 0, item.tax || 0]
+                [vsiNo, item.description || '', item.qty || 1, item.rate || 0, item.amount || 0, item.tax || 0]
             );
         }
         await conn.commit();
-        res.json({ success: true, message: 'VSI invoice saved', vsi_id: vsiId });
+        res.json({ success: true, message: 'VSI invoice saved' });
     } catch (err) {
         await conn.rollback();
         console.error(err);
@@ -140,17 +150,25 @@ router.put('/:id', async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
+        const [oldRows] = await conn.execute('SELECT inv_no FROM tbl_vsi_invoice WHERE vsi_id = ?', [req.params.id]);
+        if (!oldRows.length) {
+            await conn.rollback();
+            return res.status(404).json({ success: false, message: 'VSI not found' });
+        }
+        const invNo = oldRows[0].inv_no;
+
         await conn.execute(
-            `UPDATE tbl_vsi SET vsi_date = ?, vsi_cus_name = ?, vsi_chassis = ?, vsi_engine = ?, vsi_model = ?
+            `UPDATE tbl_vsi_invoice SET vsi_date = ?, vsi_cus_name = ?, vsi_chassis = ?, vsi_engine = ?, vsi_model = ?
        WHERE vsi_id = ?`,
             [vsiDate, customerName, chassisNo, engineNo, modelName, req.params.id]
         );
+        
         if (items && items.length) {
-            await conn.execute('DELETE FROM tbl_vsi_items WHERE vsi_id = ?', [req.params.id]);
+            await conn.execute('DELETE FROM tbl_vsi_invoice_cost WHERE ic_inv_id = ?', [invNo]);
             for (const item of items) {
                 await conn.execute(
-                    'INSERT INTO tbl_vsi_items (vsi_id, item_description, item_qty, item_rate, item_amount, item_tax) VALUES (?, ?, ?, ?, ?, ?)',
-                    [req.params.id, item.description, item.qty, item.rate, item.amount, item.tax]
+                    'INSERT INTO tbl_vsi_invoice_cost (ic_inv_id, item_description, item_qty, item_rate, item_amount, item_tax) VALUES (?, ?, ?, ?, ?, ?)',
+                    [invNo, item.description, item.qty, item.rate, item.amount, item.tax]
                 );
             }
         }

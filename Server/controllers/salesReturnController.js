@@ -56,12 +56,17 @@ const createSalesReturnPdf = async (req, res) => {
 
                 // Main Title Center
                 doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 240, 30, { width: 200, align: 'center' });
+                
+                const centerAddrHeight = doc.heightOfString(branchAddr, { width: 200, size: 7.5 });
                 doc.font('Times-Roman').fontSize(7.5).text(branchAddr, 240, 42, { width: 200, align: 'center' });
-                doc.text(`GSTIN: ${data.branch_gstin || ''}`, 240, 65, { width: 200, align: 'center' });
+                
+                let gstinY = 42 + centerAddrHeight + 2;
+                doc.text(`GSTIN: ${data.branch_gstin || ''}`, 240, gstinY, { width: 200, align: 'center' });
 
                 doc.fontSize(25).font('Times-Bold').text('SALES RETURN', 430, 30, { width: 145, align: 'right' });
 
-                doc.fontSize(16).text('TAX INVOICE', 240, 95, { width: 200, align: 'center' });
+                let taxInvoiceY = Math.max(95, gstinY + 15);
+                doc.fontSize(16).text('TAX INVOICE', 240, taxInvoiceY, { width: 200, align: 'center' });
 
                 doc.moveTo(40, 125).lineTo(col.end, 125).lineWidth(1).stroke();
 
@@ -109,11 +114,13 @@ const createSalesReturnPdf = async (req, res) => {
 
                 const addrHeight = doc.heightOfString(billedAddr, { width: 250, size: 7.5 });
                 const hypH = doc.heightOfString(data.inv_hypothication || '', { width: 100, size: 7.5 });
-                let currentRightY = detailY + Math.max(12, hypH);
+                
+                let currentRightY = detailY + Math.max(12, hypH + 2);
                 let currentLeftY = detailY + addrHeight + 2;
 
                 doc.font('Times-Roman').text(`Pincode : ${data.inv_pincode || ''}`, fieldX2, currentLeftY);
                 doc.text('Kerala[State Code :32] INDIA', fieldX2, currentLeftY + 10);
+                currentLeftY += 22; // Move past pincode and state lines
 
                 doc.font('Times-Bold').text('Fin Dues', fieldX3, currentRightY);
                 doc.text(':', fieldX4 - 10, currentRightY);
@@ -155,6 +162,7 @@ const createSalesReturnPdf = async (req, res) => {
                 drawLeftField('Customer GSTIN', data.inv_gstin || '', currentLeftY);
                 currentLeftY += 15;
 
+                // Final detail section Y is the deepest point reached by either left or right columns
                 detailY = Math.max(currentLeftY, currentRightY);
 
                 doc.font('Times-Bold').text('Return Date', fieldX3, detailY);
@@ -434,10 +442,29 @@ const saveSalesReturn = async (req, res) => {
 
         // 3. Update purchaseitem status back to 'Available'
         if (inv.inv_chassis) {
-            await conn.execute(
-                `UPDATE purchaseitem SET item_status = 'Available', retn_status = 'Available' WHERE chassis_no = ?`,
-                [inv.inv_chassis]
+            // 🔹 Find the EXACT purchaseitem record for this branch+chassis so we do NOT
+            // affect other entries with the same chassis_no on different branches
+            // or past entries of the same chassis_no on this branch.
+            const [piRows] = await conn.execute(
+                `SELECT pi.purchaseItemBillId
+                 FROM purchaseitem pi
+                 LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
+                 WHERE pi.chassis_no = ?
+                   AND pi.item_status = 'Delivered'
+                   AND pb.purch_branchId = ?
+                 LIMIT 1`,
+                [inv.inv_chassis, inv.inv_branch]
             );
+
+            if (piRows.length > 0) {
+                const purchaseItemBillId = piRows[0].purchaseItemBillId;
+                await conn.execute(
+                    `UPDATE purchaseitem
+                     SET item_status = 'Available', retn_status = 'Available'
+                     WHERE chassis_no = ? AND purchaseItemBillId = ?`,
+                    [inv.inv_chassis, purchaseItemBillId]
+                );
+            }
 
             // 4. Increment stock in tbl_stock
             // We need to fetch product info from the invoice

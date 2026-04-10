@@ -17,14 +17,14 @@
             <div class="theme-card">
                 <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : null">
                     <div class="header-left">
-                        <h2>Staff Pay Slip</h2>
+                        <h2>{{ isEditing() ? 'Edit Pay Slip' : 'Staff Pay Slip' }}</h2>
                     </div>
                     <div class="header-actions">
                         <button class="btn-list" (click)="navigate('/previous-pay-slip')">List Pay Slips</button>
                         <button class="btn-save" (click)="$event.preventDefault(); onSave()" [disabled]="isSaving()">{{
-                            isSaving() ? 'Saving...' : 'Save & Print' }}</button>
-                        <button *ngIf="isEditing()" class="btn-list" style="background:#d32f2f"
-                            (click)="deleteSlip()" [disabled]="isSaving()">Delete</button>
+                            isSaving() ? 'Saving...' : (isEditing() ? 'Update Pay Slip' : 'Save & Print') }}</button>
+                        <!-- <button *ngIf="isEditing()" class="btn-list" style="background:#d32f2f"
+                            (click)="deleteSlip()" [disabled]="isSaving()">Delete</button> -->
                     </div>
                 </header>
 
@@ -38,7 +38,7 @@
                             <div class="col-stack">
                                 <div class="form-col-vertical">
                                     <label>Branch Name:</label>
-                                    <ng-container *ngIf="isAdmin(); else staffBranch">
+                                    <ng-container *ngIf="isAdmin() && !isEditing(); else branchReadonly">
                                         <div class="custom-dropdown" #branchDropdownRef>
                                             <div class="dropdown-toggle" (click)="toggleBranchDropdown()"
                                                 [class.placeholder]="branchName() === 'Select Branch'">
@@ -67,7 +67,7 @@
                                             </div>
                                         </div>
                                     </ng-container>
-                                    <ng-template #staffBranch>
+                                    <ng-template #branchReadonly>
                                         <input type="text" class="form-control readonly" [value]="branchName()"
                                             readonly>
                                     </ng-template>
@@ -326,10 +326,10 @@
                             </div>
 
                             <div class="summary-right">
-                                <label class="confirm"><input type="checkbox"> Are you sure want to save?</label>
+                                <label class="confirm"><input type="checkbox"> {{ isEditing() ? 'Are you sure want to update?' : 'Are you sure want to save?' }}</label>
                                 <button class="btn-save bottom-save" (click)="$event.preventDefault(); onSave()"
                                     [disabled]="isSaving()">
-                                    {{ isSaving() ? 'Saving...' : 'Save & Print' }}
+                                    {{ isSaving() ? 'Saving...' : (isEditing() ? 'Update Pay Slip' : 'Save & Print') }}
                                 </button>
                             </div>
                         </div>

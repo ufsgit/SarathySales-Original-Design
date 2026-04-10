@@ -233,6 +233,9 @@ const listPaySlips = async (req, res) => {
             params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
         }
 
+        // Only show active bills
+        conditions.push('tbl_payslip.pay_status = 1');
+
         const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
         const [rows] = await db.execute(
@@ -355,7 +358,7 @@ const savePaySlip = async (req, res) => {
                 amount(serviceStampCharges), amount(bflInsOthers), amount(advanceEmi), amount(rsaAmount), amount(ownershipAmt),
                 amount(bankTransfer), amount(swipe), amount(specialDiscount), amount(fittingsAmt),
                 amount(others1), amount(others2), amount(others3), amount(gpay),
-                totals.addTotal, totals.lessTotal, totals.grandTotal, payStatus || 'Open'
+                totals.addTotal, totals.lessTotal, totals.grandTotal, payStatus || 1
             ]
         );
         res.json({ success: true, message: 'Pay slip saved', payslip_id: result.insertId });
@@ -444,7 +447,7 @@ const updatePaySlip = async (req, res) => {
                 amount(serviceStampCharges), amount(bflInsOthers), amount(advanceEmi), amount(rsaAmount),
                 amount(ownershipAmt), amount(bankTransfer), amount(swipe), amount(specialDiscount),
                 amount(fittingsAmt), amount(others1), amount(others2), amount(others3), amount(gpay),
-                totals.addTotal, totals.lessTotal, totals.grandTotal, payStatus || 'Open',
+                totals.addTotal, totals.lessTotal, totals.grandTotal, payStatus || 1,
                 req.params.id
             ]
         );
@@ -821,6 +824,16 @@ const createPdfByNo = async (req, res) => {
     }
 };
 
+const deletePaySlip = async (req, res) => {
+    try {
+        await db.execute('UPDATE tbl_payslip SET pay_status = 0 WHERE payslip_id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Pay slip cancelled successfully' });
+    } catch (err) {
+        console.error('deletePaySlip error:', err);
+        res.status(500).json({ success: false, message: 'Failed to cancel pay slip' });
+    }
+};
+
 module.exports = {
     getNextPaySlipNo,
     getAdvisers,
@@ -829,6 +842,7 @@ module.exports = {
     savePaySlip,
     getPaySlip,
     updatePaySlip,
+    deletePaySlip,
     createPdf,
     createPdfByNo
 };

@@ -6,11 +6,13 @@ import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
 import { NumericOnlyDirective } from '../numeric-only.directive';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
     selector: 'app-sales-invoice',
     standalone: true,
-    imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective],
+    imports: [CommonModule, FormsModule, UserNav, UserFooter, NumericOnlyDirective, UppercaseDirective],
     template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>

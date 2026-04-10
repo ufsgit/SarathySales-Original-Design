@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { UppercaseDirective } from '../uppercase.directive';
+
 
 @Component({
   selector: 'app-purchase-invoice',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserNav, UserFooter],
+  imports: [CommonModule, FormsModule, UserNav, UserFooter, UppercaseDirective],
   template: `
 <div class="app-container">
   <app-user-nav></app-user-nav>
@@ -49,7 +51,7 @@ import { ApiService } from '../services/api.service';
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col vertical">
-                    <label>Branch Name:</label>
+                    <label>Branch Name: <span style="color:red;">*</span></label>
                     <ng-container *ngIf="isAdmin(); else staffBranch">
                         <div class="custom-dropdown" #branchDropdownRef>
                             <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleBranchDropdown()">
@@ -83,11 +85,11 @@ import { ApiService } from '../services/api.service';
                     </ng-template>
                 </div>
                 <div class="form-col">
-                    <label>Inv No:</label>
+                    <label>Inv No: <span style="color:red;">*</span></label>
                     <input type="text" class="form-control" [ngModel]="invNo()" (ngModelChange)="invNo.set($event)" name="invNo">
                 </div>
                 <div class="form-col">
-                    <label>Institution:</label>
+                    <label>Institution: <span style="color:red;">*</span></label>
                     <div class="custom-dropdown" #institutionDropdownRef>
                         <div class="dropdown-toggle" [class.placeholder]="!institutionId()" (click)="toggleInstitutionDropdown()">
                             {{ institution() || '--Select--' }}
@@ -139,7 +141,7 @@ import { ApiService } from '../services/api.service';
                 </div>
                 
                 <div class="form-col">
-                    <label>Invoice Date:</label>
+                    <label>Invoice Date: <span style="color:red;">*</span></label>
                     <div class="date-input-wrapper">
                          <input type="date" class="form-control" [ngModel]="invoiceDate()" (ngModelChange)="invoiceDate.set($event)" name="invoiceDate">
                     </div>
@@ -194,12 +196,12 @@ import { ApiService } from '../services/api.service';
 
              <!-- Line Items Table Header -->
              <div class="items-table-header">
-                <div class="th" style="flex: 1;">Product Code</div>
+                <div class="th" style="flex: 1;">Product Code <span style="color:red;">*</span></div>
                 <div class="th" style="flex: 1.5;">Product Description</div>
-                <div class="th" style="flex: 1;">Chassis No</div>
-                <div class="th" style="flex: 1;">Engine No</div>
-                <div class="th" style="flex: 0.8;">Color Code</div>
-                <div class="th" style="flex: 0.8;">Mfg Date</div>
+                <div class="th" style="flex: 1;">Chassis No <span style="color:red;">*</span></div>
+                <div class="th" style="flex: 1;">Engine No <span style="color:red;">*</span></div>
+                <div class="th" style="flex: 0.8;">Color Code <span style="color:red;">*</span></div>
+                <div class="th" style="flex: 0.8;">Mfg Date <span style="color:red;">*</span></div>
                 <div class="th" style="flex: 0.8;">Sale Type/Age</div>
                 <div class="th" style="flex: 0.8;">Amount</div>
                 <div class="th action-th" style="width: 30px;"><button type="button" (click)="addRow()" class="btn-add">+</button></div>
@@ -997,10 +999,64 @@ export class PurchaseInvoiceComponent implements OnInit {
       alert(this.errorMessage());
       return;
     }
+    if (!this.invNo() || !this.invNo().trim()) {
+      this.errorMessage.set('Please enter Invoice Number');
+      alert(this.errorMessage());
+      return;
+    }
     if (!this.institutionId()) {
       this.errorMessage.set('Please select an Institution');
       alert(this.errorMessage());
       return;
+    }
+    if (!this.invoiceDate()) {
+      this.errorMessage.set('Please select Invoice Date');
+      alert(this.errorMessage());
+      return;
+    }
+
+    // Filter items to find valid ones (non-empty)
+    const validItems = this.items().filter(i => 
+      (i.prodCode || '').trim() || 
+      (i.chassisNo || '').trim() || 
+      (i.engineNo || '').trim()
+    );
+
+    if (validItems.length === 0) {
+      this.errorMessage.set('Please add at least one product');
+      alert(this.errorMessage());
+      return;
+    }
+
+    // Validate mandatory fields for each valid item
+    for (let i = 0; i < validItems.length; i++) {
+      const item = validItems[i];
+      const rowNum = i + 1;
+      if (!item.productId || !item.prodCode) {
+        this.errorMessage.set(`Row ${rowNum}: Product Code is mandatory`);
+        alert(this.errorMessage());
+        return;
+      }
+      if (!item.chassisNo || !item.chassisNo.trim()) {
+        this.errorMessage.set(`Row ${rowNum}: Chassis No is mandatory`);
+        alert(this.errorMessage());
+        return;
+      }
+      if (!item.engineNo || !item.engineNo.trim()) {
+        this.errorMessage.set(`Row ${rowNum}: Engine No is mandatory`);
+        alert(this.errorMessage());
+        return;
+      }
+      if (!item.colorCode) {
+        this.errorMessage.set(`Row ${rowNum}: Color Code is mandatory`);
+        alert(this.errorMessage());
+        return;
+      }
+      if (!item.mfgDate) {
+        this.errorMessage.set(`Row ${rowNum}: Mfg Date is mandatory`);
+        alert(this.errorMessage());
+        return;
+      }
     }
 
     // Validate duplicate chassis numbers
