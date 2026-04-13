@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
@@ -32,11 +32,11 @@ import { UppercaseDirective } from '../uppercase.directive';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
           <div class="header-left">
-             <h2>Vehicle Selection Slip</h2>
+             <h2>{{ gatePassId() ? 'Edit Vehicle Selection Slip' : 'Vehicle Selection Slip' }}</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="navigate('/previous-gate-pass')">List Gate Pass</button>
-             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : (gatePassId() ? 'Update' : 'Save & Print') }}</button>
           </div>
         </header>
 
@@ -48,48 +48,59 @@ import { UppercaseDirective } from '../uppercase.directive';
             <!-- Row 1 -->
             <div class="form-grid-row">
                 <div class="form-col">
-                    <label>Branch Name:</label>
-                    <!-- Admin searchable dropdown -->
-                    <div class="custom-dropdown" *ngIf="isAdmin(); else staffBranch" #dropdownRef>
-                        <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleDropdown()">
-                            {{ branchName() }}
-                            <i class="fas fa-caret-down"></i>
-                        </div>
-                        <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
-                            <div class="dropdown-search">
-                                <input type="text" placeholder="Search..." [ngModel]="branchSearchTerm()" (ngModelChange)="branchSearchTerm.set($event)" name="branchSearchTerm" #searchInputRef (click)="$event.stopPropagation()">
+                    <label>Branch Name: <span *ngIf="gatePassId()" style="color:red">*</span></label>
+                    <!-- Admin searchable dropdown (create mode) -->
+                    <ng-container *ngIf="!gatePassId(); else editBranch">
+                        <div class="custom-dropdown" *ngIf="isAdmin(); else staffBranch" #dropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="branchName() === 'Select Branch'" (click)="toggleDropdown()">
+                                {{ branchName() }}
+                                <i class="fas fa-caret-down"></i>
                             </div>
-                            <div class="dropdown-options-list">
-                                <div class="dropdown-option" *ngFor="let b of searchableBranchList()" (click)="onBranchSelect(b)">
-                                    {{ b.branch_name }}
+                            <div class="dropdown-menu" *ngIf="isBranchDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search..." [ngModel]="branchSearchTerm()" (ngModelChange)="branchSearchTerm.set($event)" name="branchSearchTerm" #searchInputRef (click)="$event.stopPropagation()">
                                 </div>
-                                <div class="dropdown-option no-results" *ngIf="searchableBranchList().length === 0">No results found</div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option" *ngFor="let b of searchableBranchList()" (click)="onBranchSelect(b)">
+                                        {{ b.branch_name }}
+                                    </div>
+                                    <div class="dropdown-option no-results" *ngIf="searchableBranchList().length === 0">No results found</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <ng-template #staffBranch>
+                        <ng-template #staffBranch>
+                            <input type="text" class="form-control readonly" [value]="branchName()" readonly>
+                        </ng-template>
+                    </ng-container>
+                    <ng-template #editBranch>
                         <input type="text" class="form-control readonly" [value]="branchName()" readonly>
                     </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Invoice No <span style="color:red">*</span>:</label>
-                    <div class="custom-dropdown" #invoiceDropdownRef>
-                        <div class="dropdown-toggle" [class.placeholder]="!branchId() || invoiceNo() === ''" (click)="toggleInvoiceDropdown()">
-                            {{ !branchId() ? 'Select Branch' : (invoiceNo() || '--Select--') }}
-                            <i class="fas fa-caret-down"></i>
-                        </div>
-                        <div class="dropdown-menu" *ngIf="isInvoiceDropdownOpen()">
-                            <div class="dropdown-search">
-                                <input type="text" placeholder="Search invoice..." [ngModel]="invoiceSearchTerm()" (ngModelChange)="invoiceSearchTerm.set($event)" name="invoiceSearchTerm" #invoiceSearchInputRef (click)="$event.stopPropagation()">
+                    <!-- In edit mode show as readonly text -->
+                    <ng-container *ngIf="!gatePassId(); else editInvoice">
+                        <div class="custom-dropdown" #invoiceDropdownRef>
+                            <div class="dropdown-toggle" [class.placeholder]="!branchId() || invoiceNo() === ''" (click)="toggleInvoiceDropdown()">
+                                {{ !branchId() ? 'Select Branch' : (invoiceNo() || '--Select--') }}
+                                <i class="fas fa-caret-down"></i>
                             </div>
-                            <div class="dropdown-options-list">
-                                <div class="dropdown-option" *ngFor="let inv of searchableInvoiceList()" (click)="onInvoiceSelect(inv)">
-                                    {{ inv.inv_no }}
+                            <div class="dropdown-menu" *ngIf="isInvoiceDropdownOpen()">
+                                <div class="dropdown-search">
+                                    <input type="text" placeholder="Search invoice..." [ngModel]="invoiceSearchTerm()" (ngModelChange)="invoiceSearchTerm.set($event)" name="invoiceSearchTerm" #invoiceSearchInputRef (click)="$event.stopPropagation()">
                                 </div>
-                                <div class="dropdown-option no-results" *ngIf="searchableInvoiceList().length === 0">No results found</div>
+                                <div class="dropdown-options-list">
+                                    <div class="dropdown-option" *ngFor="let inv of searchableInvoiceList()" (click)="onInvoiceSelect(inv)">
+                                        {{ inv.inv_no }}
+                                    </div>
+                                    <div class="dropdown-option no-results" *ngIf="searchableInvoiceList().length === 0">No results found</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </ng-container>
+                    <ng-template #editInvoice>
+                        <input type="text" class="form-control readonly" [value]="invoiceNo()" readonly>
+                    </ng-template>
                 </div>
                 <div class="form-col">
                     <label>Chassis No:</label>
@@ -104,11 +115,11 @@ import { UppercaseDirective } from '../uppercase.directive';
             <!-- Row 2 -->
             <div class="form-grid-row">
                 <div class="form-col">
-                    <label>Gate Pass No:</label>
+                    <label>Gate Pass No: <span *ngIf="gatePassId()" style="color:red">*</span></label>
                     <input type="text" class="form-control readonly" [value]="gatePassNo()" readonly>
                 </div>
                 <div class="form-col">
-                    <label>Customer Name:</label>
+                    <label>Customer Name: <span *ngIf="gatePassId()" style="color:red">*</span></label>
                     <input type="text" class="form-control readonly" [value]="customerName()" readonly>
                 </div>
                 <div class="form-col">
@@ -124,14 +135,14 @@ import { UppercaseDirective } from '../uppercase.directive';
              <!-- Row 3 -->
              <div class="form-grid-row">
                 <div class="form-col">
-                    <label>Gate Pass Date:</label>
+                    <label>Gate Pass Date: <span *ngIf="gatePassId()" style="color:red">*</span></label>
                     <div class="date-input-wrapper">
-                        <input type="date" class="form-control" [ngModel]="passDate()" (ngModelChange)="passDate.set($event)" name="passDate">
+                        <input type="date" class="form-control" [class.readonly]="!!gatePassId()" [ngModel]="passDate()" (ngModelChange)="passDate.set($event)" name="passDate" [readonly]="!!gatePassId()">
                     </div>
                 </div>
                 <div class="form-col">
-                    <label>Address:</label>
-                    <textarea class="form-control" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1" readonly></textarea>
+                    <label>Address: <span *ngIf="gatePassId()" style="color:red">*</span></label>
+                    <textarea class="form-control readonly" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" rows="1" readonly></textarea>
                 </div>
                 <div class="form-col">
                     <label>Vehicle:</label>
@@ -463,8 +474,9 @@ export class GatePassComponent implements OnInit {
   isSaving = signal(false);
   successMessage = signal('');
   errorMessage = signal('');
+  gatePassId = signal<number | null>(null);
 
-  constructor(private router: Router, private api: ApiService) { }
+  constructor(private router: Router, private route: ActivatedRoute, private api: ApiService) { }
 
   toggleDropdown() {
     this.isBranchDropdownOpen.update(v => !v);
@@ -530,8 +542,50 @@ export class GatePassComponent implements OnInit {
     }
     this.passDate.set(this.today());
     this.selectionDate.set(this.today());
-    this.loadNextGatePassNo();
-    this.loadInvoiceOptions();
+
+    this.route.paramMap.subscribe(params => {
+      const idStr = params.get('id');
+      if (idStr) {
+        const passId = Number(idStr);
+        this.gatePassId.set(passId);
+        this.loadGatePassForEdit(passId);
+      } else {
+        this.loadNextGatePassNo();
+        this.loadInvoiceOptions();
+      }
+    });
+  }
+
+  private loadGatePassForEdit(id: number) {
+    this.api.getGatePass(id).subscribe({
+      next: (res: any) => {
+        if (res.success && res.data) {
+          const d = res.data;
+          const toLocalDate = (val: string) => {
+            const dt = new Date(val);
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+          };
+          this.gatePassNo.set(d.gate_pass_no);
+          if (d.gate_pass_date) this.passDate.set(toLocalDate(d.gate_pass_date));
+          if (d.selection_date) this.selectionDate.set(toLocalDate(d.selection_date));
+          
+          this.branchId.set(d.gate_branch_id ? d.gate_branch_id.toString() : '');
+          this.branchName.set(d.branch_name || '');
+          this.gateInvoiceId.set(d.gate_invoice_id || 0);
+          this.issueType.set(d.pass_issue_type || '');
+          this.customerName.set(d.pass_cus_name || '');
+          this.invoiceNo.set(d.pass_invoic_no || '');
+          this.address.set(d.pass_cus_addrs || '');
+          this.chassisNo.set(d.pass_chassis_no || '');
+          this.engineNo.set(d.pass_engine_no || '');
+          this.vehicleModel.set(d.pass_vehicle || '');
+          this.color.set(d.pass_vehicle_color || '');
+          this.productCode.set(d.pass_vehicle_code || '');
+
+          this.loadInvoiceOptions();
+        }
+      }
+    });
   }
 
   private loadBranches(): void {
@@ -656,13 +710,20 @@ export class GatePassComponent implements OnInit {
       status: 1
     };
 
+    const id = this.gatePassId();
+    const action = id 
+      ? this.api.updateGatePass(id, payload) 
+      : this.api.saveGatePass(payload);
+
     this.isSaving.set(true);
-    this.api.saveGatePass(payload).subscribe({
+    action.subscribe({
       next: (res: any) => {
         this.isSaving.set(false);
         if (res.success) {
-          this.successMessage.set('Gate pass saved');
-          this.loadNextGatePassNo();
+          this.successMessage.set(id ? 'Gate pass updated' : 'Gate pass saved');
+          if (!id) {
+            this.loadNextGatePassNo();
+          }
         } else {
           this.errorMessage.set(res.message || 'Save failed');
         }

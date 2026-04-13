@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const PDFDocument = require('pdfkit');
 
 function padSerial(n) { return String(n).padStart(5, '0'); }
 async function getNextNo(branchId, branchName = '') {
@@ -176,7 +177,7 @@ const listGatePasses = async (req, res) => {
     }
 
     try {
-        let conditions = [];
+        let conditions = ['tbl_gate_pass.pass_status = 1'];
         let params = [];
 
         if (branchId) {
@@ -302,6 +303,168 @@ const updateGatePass = async (req, res) => {
     }
 };
 
+const cancelGatePass = async (req, res) => {
+    try {
+        await db.execute('UPDATE tbl_gate_pass SET pass_status = 0 WHERE gate_pass_id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Gate pass canceled successfully' });
+    } catch (err) {
+        console.error('[gatePassController] cancelGatePass error:', err);
+        res.status(500).json({ success: false, message: 'Failed to cancel gate pass' });
+    }
+};
+
+const createGatePassPdf = async (req, res) => {
+    try {
+        const [records] = await db.execute(
+            `SELECT tbl_gate_pass.*, tbl_branch.branch_name, tbl_branch.branch_address, tbl_branch.branch_ph, tbl_branch.branch_gstin 
+             FROM tbl_gate_pass
+             LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_gate_pass.gate_branch_id
+             WHERE gate_pass_id = ? ${req.user && req.user.role == 2 ? 'AND gate_branch_id = ?' : ''}`,
+            req.user && req.user.role == 2 ? [req.params.id, req.user.branch_id] : [req.params.id]
+        );
+
+        if (!records.length) return res.status(404).json({ success: false, message: 'Gate pass not found' });
+        const data = records[0];
+
+        const doc = new PDFDocument({ margin: 30, size: 'A4' });
+        let filename = `GatePass_${data.gate_pass_no}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        doc.pipe(res);
+
+        const col = { start: 40, mid: 300, end: 560 };
+        const labelWidth = 80;
+        let y = 30;
+
+        doc.font('Times-Bold').fontSize(7.5).text('Branch Address:', col.start, y);
+        y += 12;
+        doc.font('Times-Bold').fontSize(8.5).text(data.branch_name || '', col.start, y);
+        y += 10;
+        doc.font('Times-Roman').fontSize(7).text(data.branch_address ? data.branch_address.replace(/\r/g, '').replace(/\n/g, ' ') : '', col.start, y, { width: 180 });
+        doc.text(`PH : ${data.branch_ph || ''}`, col.start, doc.y + 1);
+
+        doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', 200, 30, { align: 'center', width: 200 });
+        doc.font('Times-Roman').fontSize(7).text('Sarathy Bajaj Pallimukku Kollam Kerala State', 200, 42, { align: 'center', width: 200 });
+        doc.text('Code: 32 Kerala [State Code : 32]', 200, 52, { align: 'center', width: 200 });
+
+        y = 105;
+        doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, col.start, y);
+        doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '', col.start, y + 11);
+
+        doc.fontSize(14).text('Gate Pass', 200, y, { align: 'center', width: 200 });
+
+        y = 130;
+        doc.moveTo(col.start, y).lineTo(col.end, y).stroke();
+
+        y += 10;
+        doc.font('Times-Bold').fontSize(8);
+        
+        const drawRow = (label1, val1, label2, val2, currY) => {
+            doc.font('Times-Bold').text(label1, col.start, currY);
+            doc.font('Times-Roman').text(`: ${val1 || ''}`, col.start + labelWidth, currY, { width: 180 });
+            doc.font('Times-Bold').text(label2, 350, currY);
+            doc.font('Times-Roman').text(`: ${val2 || ''}`, 440, currY, { width: 120 });
+        };
+
+        drawRow('Pass No.', data.gate_pass_no, 'Billed TO', data.pass_cus_name, y);
+        y += 12;
+        drawRow('Pass Date', data.gate_pass_date ? new Date(data.gate_pass_date).toLocaleDateString('en-GB') : '', 'Customer Address', data.pass_cus_addrs ? data.pass_cus_addrs.replace(/\r/g, '').replace(/\n/g, ' ') : '', y);
+        y += 12;
+        drawRow('Issue Type', data.pass_issue_type || '', 'Selection Date', data.selection_date ? new Date(data.selection_date).toLocaleDateString('en-GB') : '', y);
+        
+        y = Math.max(y + 24, doc.y + 10);
+        doc.moveTo(col.start, y).lineTo(col.end, y).stroke();
+
+        y += 10;
+
+        // 5-column table: SL | VEHICLE & COLOR | CHASSIS NO | ENGINE NO | INVOICE / CODE
+        const tCol = { sl: 40, veh: 70, chassis: 210, eng: 330, inv: 440, end: 560 };
+        const rowH = 25;
+
+        const drawTableHeader = (currY) => {
+            doc.rect(col.start, currY, col.end - col.start, rowH).stroke();
+            doc.font('Times-Bold').fontSize(7.5);
+            doc.text('SL.No.',         tCol.sl + 2,      currY + 9, { width: tCol.veh - tCol.sl - 4 });
+            doc.text('VEHICLE & COLOR', tCol.veh + 2,    currY + 9, { width: tCol.chassis - tCol.veh - 4 });
+            doc.text('CHASSIS NO',     tCol.chassis + 2, currY + 9, { width: tCol.eng - tCol.chassis - 4 });
+            doc.text('ENGINE NO',      tCol.eng + 2,     currY + 9, { width: tCol.inv - tCol.eng - 4 });
+            doc.text('INVOICE / CODE', tCol.inv + 2,     currY + 9, { width: tCol.end - tCol.inv - 4 });
+
+            doc.moveTo(tCol.veh,     currY).lineTo(tCol.veh,     currY + rowH).stroke();
+            doc.moveTo(tCol.chassis, currY).lineTo(tCol.chassis, currY + rowH).stroke();
+            doc.moveTo(tCol.eng,     currY).lineTo(tCol.eng,     currY + rowH).stroke();
+            doc.moveTo(tCol.inv,     currY).lineTo(tCol.inv,     currY + rowH).stroke();
+        };
+
+        drawTableHeader(y);
+        y += rowH;
+
+        const drawDataRow = (currY) => {
+            doc.font('Times-Roman').fontSize(8);
+
+            const vehicleDet = [data.pass_vehicle, data.pass_vehicle_color].filter(Boolean).join(' / ');
+            const chassisNo  = data.pass_chassis_no || '';
+            const engineNo   = data.pass_engine_no  || '';
+            const invCode    = [data.pass_invoic_no, data.pass_vehicle_code].filter(Boolean).join('\n');
+
+            const wVeh     = tCol.chassis - tCol.veh - 4;
+            const wChassis = tCol.eng - tCol.chassis - 4;
+            const wEng     = tCol.inv - tCol.eng - 4;
+            const wInv     = tCol.end - tCol.inv - 4;
+
+            const hVeh     = doc.heightOfString(vehicleDet, { width: wVeh });
+            const hChassis = doc.heightOfString(chassisNo,  { width: wChassis });
+            const hEng     = doc.heightOfString(engineNo,   { width: wEng });
+            const hInv     = doc.heightOfString(invCode,    { width: wInv });
+
+            const h = Math.max(20, hVeh, hChassis, hEng, hInv) + 10;
+
+            doc.rect(col.start, currY, col.end - col.start, h).stroke();
+
+            doc.text('1',        tCol.sl + 2,      currY + 5, { width: tCol.veh - tCol.sl - 4 });
+            doc.text(vehicleDet, tCol.veh + 2,     currY + 5, { width: wVeh });
+            doc.text(chassisNo,  tCol.chassis + 2, currY + 5, { width: wChassis });
+            doc.text(engineNo,   tCol.eng + 2,     currY + 5, { width: wEng });
+            doc.text(invCode,    tCol.inv + 2,     currY + 5, { width: wInv });
+
+            doc.moveTo(tCol.veh,     currY).lineTo(tCol.veh,     currY + h).stroke();
+            doc.moveTo(tCol.chassis, currY).lineTo(tCol.chassis, currY + h).stroke();
+            doc.moveTo(tCol.eng,     currY).lineTo(tCol.eng,     currY + h).stroke();
+            doc.moveTo(tCol.inv,     currY).lineTo(tCol.inv,     currY + h).stroke();
+            return h;
+        };
+
+        const dataRowH = drawDataRow(y);
+        y += dataRowH;
+
+        // Remarks row - no monetary total for gate pass
+        doc.rect(col.start, y, col.end - col.start, 15).stroke();
+        doc.font('Times-Bold').fontSize(7.5).text('Authorised Gate Pass — No Monetary Value', col.start + 4, y + 4, { width: col.end - col.start - 8 });
+        y += 15;
+
+        y += 60;
+        doc.fontSize(8.5).font('Times-Roman');
+        doc.text('Sign of Customer Or His Agent', col.start, y);
+        doc.text('Thank You & Happy Riding', 200, y, { align: 'center', width: 220 });
+        
+        doc.font('Times-Bold');
+        doc.text('SARATHY MOTORS', col.end - 120, y, { align: 'center', width: 120 });
+        doc.font('Times-Roman').fontSize(7.5).text('Authorised Signatory', col.end - 120, y + 10, { align: 'center', width: 120 });
+
+        y += 60;
+        doc.moveTo(col.start, y).lineTo(col.end, y).dash(2, { space: 2 }).stroke().undash();
+
+        const now = new Date();
+        doc.font('Times-Roman').fontSize(7).text(`Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`, col.start, 800);
+        doc.text('Page 1/1', col.end - 45, 800);
+
+        doc.end();
+    } catch (err) {
+        console.error('Gate Pass PDF Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+    }
+};
+
 module.exports = {
     getNextGatePassNo,
     getGatePassInvoices,
@@ -309,5 +472,7 @@ module.exports = {
     listGatePasses,
     saveGatePass,
     getGatePass,
-    updateGatePass
+    updateGatePass,
+    cancelGatePass,
+    createGatePassPdf
 };

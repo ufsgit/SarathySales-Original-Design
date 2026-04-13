@@ -65,12 +65,15 @@
                             <th>Chassis / Engine No</th>
                             <th>Color</th>
                             <th>Selection Date</th>
+                            @if(isAdmin()) {
+                            <th>Action</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @if (!isLoading() && records().length === 0) {
                         <tr class="no-data-row">
-                            <td colspan="10">No data available in table</td>
+                            <td [colSpan]="isAdmin() ? 11 : 10">No data available in table</td>
                         </tr>
                         }
                         @for (row of records(); track row.gate_pass_id; let i = $index) {
@@ -78,7 +81,7 @@
                             <td>{{ rowIndex(i) }}</td>
                             <td>
                                 <div class="customer-info">
-                                    <span class="highlight-red">{{ row.pass_cus_name || '—' }}</span>
+                                    <a class="highlight-red" style="cursor: pointer; text-decoration: none;" (click)="printGatePass(row)">{{ row.pass_cus_name || '—' }}</a>
                                     <span class="sub-name">{{ row.pass_cus_addrs || '' }}</span>
                                 </div>
                             </td>
@@ -97,6 +100,12 @@
                             </td>
                             <td>{{ row.pass_vehicle_color || '—' }}</td>
                             <td>{{ formatDate(row.selection_date) }}</td>
+                            @if(isAdmin()) {
+                            <td class="action-td">
+                                <button class="btn-action btn-edit" (click)="editBill(row)">Edit Bill</button>
+                                <button class="btn-action btn-cancel" (click)="cancelBill(row)">Cancel Bill</button>
+                            </td>
+                            }
                         </tr>
                         }
                     </tbody>

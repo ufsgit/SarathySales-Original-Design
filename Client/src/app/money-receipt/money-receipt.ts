@@ -32,11 +32,11 @@ import { UppercaseDirective } from '../uppercase.directive';
       <div class="theme-card">
         <header class="orange-header-strip" [style.background]="isAdmin() ? '#385dc4ff' : '#f36f21'">
           <div class="header-left">
-             <h2>Money Receipt</h2>
+             <h2>{{ isEditing() ? 'Edit Money Receipt' : 'Money Receipt' }}</h2>
           </div>
           <div class="header-actions">
              <button class="btn-list" (click)="navigate('/previous-money-receipt')">List Money Receipts</button>
-             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : 'Save & Print' }}</button>
+             <button class="btn-save" (click)="onSave()" [disabled]="isSaving()">{{ isSaving() ? 'Saving...' : (isEditing() ? 'Update' : 'Save & Print') }}</button>
           </div>
         </header>
 
@@ -591,7 +591,7 @@ export class MoneyReceiptComponent {
 
     private populateForm(d: any): void {
         this.receiptNo.set(d.receipt_no || '');
-        this.branchId.set((d.branch_id || d.receipt_branch_id || '').toString());
+        this.branchId.set((d.rec_branch_id || d.branch_id || d.receipt_branch_id || '').toString());
         this.branchName.set(d.branch_name || this.branchName());
         this.customerName.set(d.receipt_cus || '');
         this.address.set(d.receipt_cus_address || '');
@@ -667,6 +667,11 @@ export class MoneyReceiptComponent {
                 this.isSaving.set(false);
                 if (res.success) {
                     this.successMessage.set(this.currentId ? 'Money receipt updated successfully!' : 'Money receipt saved successfully!');
+                    if (this.currentId) {
+                        // After update, go back to list
+                        this.router.navigate(['/previous-money-receipt']);
+                        return;
+                    }
                     if (!this.currentId && (res as any).receipt_id) {
                         this.currentId = (res as any).receipt_id;
                     }

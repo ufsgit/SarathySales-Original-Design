@@ -302,6 +302,20 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateGatePass(id: number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/gate-pass/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    cancelGatePass(id: number): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/gate-pass/cancel/${id}`, {})
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getGatePassPdfUrl(id: number): string {
+        return `${this.BASE_URL}/gate-pass/pdf/${id}`;
+    }
+
     getGatePassInvoices(branchId?: string): Observable<ApiResponse> {
         const q = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
         return this.http.get<ApiResponse>(`${this.BASE_URL}/gate-pass/invoices${q}`).pipe(

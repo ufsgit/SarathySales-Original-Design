@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
 import { Subject } from 'rxjs';
@@ -58,7 +58,7 @@ export class PreviousGatePass implements OnInit, OnDestroy {
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit(): void {
     this.searchInput$.pipe(
@@ -146,5 +146,37 @@ export class PreviousGatePass implements OnInit, OnDestroy {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-IN');
+  }
+
+  printGatePass(row: any): void {
+    if (row.gate_pass_id) {
+      const url = this.api.getGatePassPdfUrl(row.gate_pass_id);
+      window.open(url, '_blank');
+    }
+  }
+
+  editBill(row: any): void {
+    if (row.gate_pass_id) {
+      this.router.navigate(['/gate-pass', row.gate_pass_id]);
+    }
+  }
+
+  cancelBill(row: any): void {
+    if (!row.gate_pass_id) return;
+    if (window.confirm(`Are you sure you want to cancel gate pass ${row.gate_pass_no}?`)) {
+      this.api.cancelGatePass(row.gate_pass_id).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            this.loadData();
+          } else {
+            alert(res.message || 'Failed to cancel gate pass');
+          }
+        },
+        error: (err: any) => {
+          console.error(err);
+          alert('Server error while canceling gate pass.');
+        }
+      });
+    }
   }
 }

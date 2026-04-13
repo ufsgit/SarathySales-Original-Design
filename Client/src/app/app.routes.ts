@@ -94,6 +94,7 @@ export const routes: Routes = [
     { path: 'branch-transfer/:id', component: BranchTransferComponent, canActivate: [authGuard] },
 
     { path: 'gate-pass', component: GatePassComponent, canActivate: [authGuard] },
+    { path: 'gate-pass/:id', component: GatePassComponent, canActivate: [authGuard] },
     { path: 'money-receipt', component: MoneyReceiptComponent, canActivate: [authGuard] },
     { path: 'money-receipt/:id', component: MoneyReceiptComponent, canActivate: [authGuard] },
     { path: 'pay-slip', component: PaySlipComponent, canActivate: [authGuard] },

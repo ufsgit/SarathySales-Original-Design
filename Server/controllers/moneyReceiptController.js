@@ -247,16 +247,16 @@ const createMoneyReceiptPdf = async (req, res) => {
         // --- Table Section ---
         y += 10;
         const tCol = { sl: 40, desc: 70, mode: 350, bank: 450, amt: 510, end: 560 };
-        const rowH = 20;
+        const rowH = 30;
 
         const drawTableHeader = (currY) => {
             doc.rect(col.start, currY, col.end - col.start, rowH).stroke();
             doc.font('Times-Bold').fontSize(7.5);
-            doc.text('SL.No.', tCol.sl + 2, currY + 6);
-            doc.text('PARTICULARS / REASON', tCol.desc + 2, currY + 6);
-            doc.text('PAYMENT MODE', tCol.mode + 2, currY + 6);
-            doc.text('BANK / REFERENCE', tCol.bank + 2, currY + 6);
-            doc.text('AMOUNT', tCol.amt + 2, currY + 6);
+            doc.text('SL.No.', tCol.sl + 2, currY + 6, { width: tCol.desc - tCol.sl - 4 });
+            doc.text('PARTICULARS / REASON', tCol.desc + 2, currY + 6, { width: tCol.mode - tCol.desc - 4 });
+            doc.text('PAYMENT MODE', tCol.mode + 2, currY + 6, { width: tCol.bank - tCol.mode - 4 });
+            doc.text('BANK / REFERENCE', tCol.bank + 2, currY + 6, { width: tCol.amt - tCol.bank - 4 });
+            doc.text('AMOUNT', tCol.amt + 2, currY + 6, { width: tCol.end - tCol.amt - 2 });
 
             doc.moveTo(tCol.desc, currY).lineTo(tCol.desc, currY + rowH).stroke();
             doc.moveTo(tCol.mode, currY).lineTo(tCol.mode, currY + rowH).stroke();
@@ -267,27 +267,39 @@ const createMoneyReceiptPdf = async (req, res) => {
         drawTableHeader(y);
         y += rowH;
 
-        // Data Row
+        // Data Row — dynamic height based on content
         const drawDataRow = (currY) => {
-            const h = 40;
-            doc.rect(col.start, currY, col.end - col.start, h).stroke();
             doc.font('Times-Roman').fontSize(8);
-            doc.text('1', tCol.sl + 5, currY + 5);
-            
+
             let particulars = data.reason || '';
             if (data.reference) particulars += ` (Ref: ${data.reference})`;
-            doc.text(particulars, tCol.desc + 2, currY + 5, { width: tCol.mode - tCol.desc - 4 });
-            
-            doc.text(data.pay_type || 'Cash', tCol.mode + 2, currY + 5);
-            
+
+            let payMode = data.pay_type || 'Cash';
+
             let bankInfo = '';
             if (data.pay_type !== 'Cash') {
                 bankInfo = `${data.bank_name || ''} ${data.bank_place || ''}\n${data.cheque_dd_po_no || ''}`;
                 if (data.cheque_dd_date) bankInfo += ` / ${new Date(data.cheque_dd_date).toLocaleDateString('en-GB')}`;
             }
-            doc.text(bankInfo, tCol.bank + 2, currY + 5, { width: tCol.amt - tCol.bank - 4 });
-            
-            doc.text(parseFloat(data.receipt_amount || 0).toFixed(2), tCol.amt, currY + 5, { width: tCol.end - tCol.amt - 2, align: 'right' });
+
+            const wDesc = tCol.mode - tCol.desc - 4;
+            const wMode = tCol.bank - tCol.mode - 4;
+            const wBank = tCol.amt - tCol.bank - 4;
+            const wAmt  = tCol.end - tCol.amt - 2;
+
+            const hDesc = doc.heightOfString(particulars, { width: wDesc });
+            const hMode = doc.heightOfString(payMode, { width: wMode });
+            const hBank = doc.heightOfString(bankInfo, { width: wBank });
+
+            const h = Math.max(20, hDesc, hMode, hBank) + 10;
+
+            doc.rect(col.start, currY, col.end - col.start, h).stroke();
+
+            doc.text('1', tCol.sl + 5, currY + 5, { width: tCol.desc - tCol.sl - 7 });
+            doc.text(particulars, tCol.desc + 2, currY + 5, { width: wDesc });
+            doc.text(payMode, tCol.mode + 2, currY + 5, { width: wMode });
+            doc.text(bankInfo, tCol.bank + 2, currY + 5, { width: wBank });
+            doc.text(parseFloat(data.receipt_amount || 0).toFixed(2), tCol.amt, currY + 5, { width: wAmt, align: 'right' });
 
             doc.moveTo(tCol.desc, currY).lineTo(tCol.desc, currY + h).stroke();
             doc.moveTo(tCol.mode, currY).lineTo(tCol.mode, currY + h).stroke();

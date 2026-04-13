@@ -260,3 +260,39 @@
     padding: 0 8px;
     line-height: 28px;
 }
+
+/* Action column */
+.action-td {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px 10px;
+    align-items: flex-start;
+}
+
+.btn-action {
+    border: none;
+    border-radius: 4px;
+    padding: 5px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 94px;
+    white-space: nowrap;
+    text-align: center;
+    transition: opacity 0.15s;
+}
+
+.btn-action:hover {
+    opacity: 0.85;
+}
+
+.btn-edit {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.btn-cancel {
+    background-color: #dc3545;
+    color: #fff;
+}
