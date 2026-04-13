@@ -107,11 +107,17 @@ const saveReceipt = async (req, res) => {
     if (!receiptNo || !customerName) {
         return res.status(400).json({ success: false, message: 'Receipt No and Customer Name are required' });
     }
+    const conn = await db.getConnection();
     try {
-        const [dupCheck] = await db.execute('SELECT receipt_id FROM tbl_money_receipt WHERE receipt_no = ?', [receiptNo]);
-        if (dupCheck.length > 0) return res.status(409).json({ success: false, message: 'Receipt number already exists' });
+        await conn.beginTransaction();
 
-        const [result] = await db.execute(
+        const [dupCheck] = await conn.execute('SELECT receipt_id FROM tbl_money_receipt WHERE receipt_no = ?', [receiptNo]);
+        if (dupCheck.length > 0) {
+            await conn.rollback();
+            return res.status(409).json({ success: false, message: 'Receipt number already exists' });
+        }
+
+        const [result] = await conn.execute(
             `INSERT INTO tbl_money_receipt
              (rec_branch_id, receipt_no, receipt_date, reference, reason, pay_type,
               cheque_dd_date, cheque_dd_po_no, receipt_cus, receipt_cus_address,
@@ -121,11 +127,14 @@ const saveReceipt = async (req, res) => {
                 reason || '', payType || '', chequeDate || null, chequeNo || '',
                 customerName, address || '', amount || 0, bank || '', place || '', refundStatus || 'No']
         );
+        await conn.commit();
         res.json({ success: true, message: 'Money receipt saved', receipt_id: result.insertId });
     } catch (err) {
-        console.error(err);
+        await conn.rollback();
+        console.error('saveReceipt error:', err);
         res.status(500).json({ success: false, message: 'Failed to save receipt' });
     }
+    finally { conn.release(); }
 };
 
 /** GET /api/money-receipt/:id */
@@ -149,19 +158,25 @@ const getReceipt = async (req, res) => {
 const updateReceipt = async (req, res) => {
     const { receiptDate, reference, reason, payType, chequeDate, chequeNo,
         customerName, address, amount, bank, place, refundStatus } = req.body;
+    const conn = await db.getConnection();
     try {
-        await db.execute(
+        await conn.beginTransaction();
+
+        await conn.execute(
             `UPDATE tbl_money_receipt SET receipt_date=?, reference=?, reason=?, pay_type=?,
              cheque_dd_date=?, cheque_dd_po_no=?, receipt_cus=?, receipt_cus_address=?,
              receipt_amount=?, bank_name=?, bank_place=?, refund_status=? WHERE receipt_id=?`,
             [receiptDate, reference, reason, payType, chequeDate || null, chequeNo,
                 customerName, address, amount, bank, place, refundStatus, req.params.id]
         );
+        await conn.commit();
         res.json({ success: true, message: 'Receipt updated' });
     } catch (err) {
-        console.error(err);
+        await conn.rollback();
+        console.error('updateReceipt error:', err);
         res.status(500).json({ success: false, message: 'Failed to update receipt' });
     }
+    finally { conn.release(); }
 };
 
 /** DELETE /api/money-receipt/:id */

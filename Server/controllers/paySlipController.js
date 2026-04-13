@@ -329,9 +329,15 @@ const savePaySlip = async (req, res) => {
 
     if (!branchId) return res.status(400).json({ success: false, message: 'Branch id required' });
 
+    const conn = await db.getConnection();
     try {
-        const [dupCheck] = await db.execute('SELECT payslip_id FROM tbl_payslip WHERE pay_slip_no = ?', [paySlipNo]);
-        if (dupCheck.length > 0) return res.status(409).json({ success: false, message: 'Pay slip number already exists' });
+        await conn.beginTransaction();
+
+        const [dupCheck] = await conn.execute('SELECT payslip_id FROM tbl_payslip WHERE pay_slip_no = ?', [paySlipNo]);
+        if (dupCheck.length > 0) {
+            await conn.rollback();
+            return res.status(409).json({ success: false, message: 'Pay slip number already exists' });
+        }
 
         const totals = calculateTotals({
             vehicleAmount, roadTax, insuranceAmount, regnFee, vpCharges,
@@ -341,7 +347,7 @@ const savePaySlip = async (req, res) => {
             duesAmt, gpay, others1, others2, others3
         });
 
-        const [result] = await db.execute(
+        const [result] = await conn.execute(
             `INSERT INTO tbl_payslip (
                 pay_branch_id, pay_slip_no, pay_slip_date, pay_finance, pay_slip_reference, pay_regn,
                 pay_regn_fee, pay_cus_name, pay_vehil_type, pay_vehile_amt, pay_remarks, pay_vp_charge, pay_insurance,
@@ -361,11 +367,14 @@ const savePaySlip = async (req, res) => {
                 totals.addTotal, totals.lessTotal, totals.grandTotal, payStatus || 1
             ]
         );
+        await conn.commit();
         res.json({ success: true, message: 'Pay slip saved', payslip_id: result.insertId });
     } catch (err) {
-        console.error(err);
+        await conn.rollback();
+        console.error('savePaySlip error:', err);
         res.status(500).json({ success: false, message: 'Failed to save pay slip' });
     }
+    finally { conn.release(); }
 };
 
 
@@ -420,7 +429,10 @@ const updatePaySlip = async (req, res) => {
     const others2 = pick(body, 'others2', 'pay_others2_amt');
     const others3 = pick(body, 'others3', 'pay_others3_amt');
 
+    const conn = await db.getConnection();
     try {
+        await conn.beginTransaction();
+
         const totals = calculateTotals({
             vehicleAmount, roadTax, insuranceAmount, regnFee, vpCharges,
             extendedWarranty, serviceStampCharges, fittingsAmt, bflInsOthers,
@@ -429,7 +441,7 @@ const updatePaySlip = async (req, res) => {
             duesAmt, gpay, others1, others2, others3
         });
 
-        await db.execute(
+        await conn.execute(
             `UPDATE tbl_payslip SET
                 pay_slip_date=?, pay_finance=?, pay_slip_reference=?, pay_regn=?, pay_regn_fee=?,
                 pay_cus_name=?, pay_vehil_type=?, pay_vehile_amt=?, pay_remarks=?, pay_vp_charge=?, pay_insurance=?,
@@ -451,11 +463,14 @@ const updatePaySlip = async (req, res) => {
                 req.params.id
             ]
         );
+        await conn.commit();
         res.json({ success: true, message: 'Pay slip updated' });
     } catch (err) {
-        console.error(err);
+        await conn.rollback();
+        console.error('updatePaySlip error:', err);
         res.status(500).json({ success: false, message: 'Failed to update pay slip' });
     }
+    finally { conn.release(); }
 };
 
 
