@@ -226,6 +226,8 @@ const getStockVerification = async (req, res) => {
     }
 };
 
+
+
 const getStockSplitup = async (req, res) => {
     let branchId = req.query.branchId;
     if (req.user && req.user.role == 2) {
@@ -242,24 +244,23 @@ const getStockSplitup = async (req, res) => {
     try {
         let conditions = [
             'si.inv_id IS NULL',
-            'bt.lc_id IS NULL',
-            "pi.retn_status = 'Available'",
-            'pb.invoiceDate BETWEEN ? AND ?'
+            "stock_base.retn_status = 'Available'",
+            'stock_base.invoice_date BETWEEN ? AND ?'
         ];
         let params = [toDate, toDate, fromDate, toDate];
 
         if (branchId && branchId !== 'ALL') {
-            conditions.push('pb.purch_branchId = ?');
+            conditions.push('stock_base.branch_id = ?');
             params.push(branchId);
         }
 
         if (chassisNo) {
-            conditions.push('pi.chassis_no LIKE ?');
+            conditions.push('stock_base.chassis_no LIKE ?');
             params.push(`%${chassisNo}%`);
         }
 
         if (search) {
-            conditions.push('(pb.invoiceNo LIKE ? OR pi.materialsId LIKE ?)');
+            conditions.push('(stock_base.invoice_no LIKE ? OR stock_base.product_code LIKE ?)');
             params.push(`%${search}%`, `%${search}%`);
         }
 
@@ -268,44 +269,80 @@ const getStockSplitup = async (req, res) => {
             const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
             if (codes.length > 0) {
                 const placeholders = codes.map(() => '?').join(',');
-                conditions.push(`pi.materialsId IN (${placeholders})`);
+                conditions.push(`stock_base.product_code IN (${placeholders})`);
                 params.push(...codes);
             }
         }
 
         const where = 'WHERE ' + conditions.join(' AND ');
+        const stockBaseSql = `
+            FROM (
+                SELECT
+                    pi.purchaseItemId,
+                    pb.invoiceNo AS invoice_no,
+                    pb.rac_date AS rc_date,
+                    pb.pucha_vendorName AS vendor_name,
+                    pi.materialName AS vehicle_code,
+                    pi.materialsId AS product_code,
+                    pb.invoiceDate AS invoice_date,
+                    pb.purch_branchId AS branch_id,
+                    pi.chassis_no,
+                    pi.engine_no,
+                    pi.color_name AS color,
+                    pb.rc_no AS rc_no,
+                    pi.p_date AS mfg_date,
+                    pi.lc_rate AS total_amount,
+                    pi.product_id,
+                    pi.item_status,
+                    pi.retn_status
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb
+                    ON pb.purchaseItemBillId = pi.purchaseItemBillId
+                INNER JOIN (
+                    SELECT
+                        pi2.chassis_no,
+                        MAX(pi2.purchaseItemId) AS latest_purchase_item_id
+                    FROM purchaseitem pi2
+                    JOIN purchaseitembill pb2
+                        ON pb2.purchaseItemBillId = pi2.purchaseItemBillId
+                    WHERE pb2.invoiceDate <= ?
+                    GROUP BY pi2.chassis_no
+                ) latest_pi
+                    ON latest_pi.latest_purchase_item_id = pi.purchaseItemId
+            ) stock_base
+            LEFT JOIN tbl_branch b
+                ON b.b_id = stock_base.branch_id
+            LEFT JOIN tbl_invoice_labour si
+                ON si.inv_chassis = stock_base.chassis_no
+                AND si.inv_inv_date <= ?
+        `;
 
         const mainSql = `
             SELECT 
-                pb.invoiceNo AS invoice_no,
-                pb.rac_date AS rc_date,
+                stock_base.invoice_no,
+                stock_base.rc_date,
                 b.branch_name AS branch_name,
-                pi.materialName AS vehicle_code,
-                pb.pucha_vendorName AS vendor_name,
-                pi.materialsId AS product_code,
-                pb.invoiceDate AS invoice_date,
-                pi.chassis_no AS chassis_no,
-                pi.engine_no AS engine_no,
-                pi.color_name AS color,
-                pb.rc_no AS rc_no,
-                pi.p_date AS mfg_date,
-                pi.lc_rate AS total_amount
-            FROM purchaseitem pi
-            JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
-            LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
-            LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
+                stock_base.vehicle_code,
+                stock_base.vendor_name,
+                stock_base.product_code,
+                stock_base.invoice_date,
+                stock_base.chassis_no,
+                stock_base.engine_no,
+                stock_base.color,
+                stock_base.rc_no,
+                stock_base.mfg_date,
+                stock_base.total_amount,
+                stock_base.product_id,
+                stock_base.item_status
+            ${stockBaseSql}
             ${where} 
-            ORDER BY pb.invoiceDate DESC 
+            ORDER BY stock_base.invoice_date DESC, stock_base.purchaseItemId DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
 
         const countSql = `
             SELECT COUNT(*) as total 
-            FROM purchaseitem pi
-            JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
-            LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
-            LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
+            ${stockBaseSql}
             ${where}
         `;
 
@@ -318,7 +355,6 @@ const getStockSplitup = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch stock splitup: ' + err.message });
     }
 };
-
 
 
 const fs = require('fs');
@@ -630,12 +666,14 @@ const getStockSplitupQuery = (req) => {
             pi.color_name AS color,
             pb.rc_no AS rc_no,
             pi.p_date AS mfg_date,
-            pi.lc_rate AS total_amount
+            pi.lc_rate AS total_amount,
+            pi.product_id AS product_id,
+            pi.item_status AS item_status
         FROM purchaseitem pi
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
-        LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date BETWEEN pb.invoiceDate AND ?
+        LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date BETWEEN pb.invoiceDate AND ?
         ${where} 
         ORDER BY pb.invoiceDate DESC 
     `;
