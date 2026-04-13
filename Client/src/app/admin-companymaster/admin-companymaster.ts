@@ -44,7 +44,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                 <div class="form-column">
                     <div class="form-group row">
                         <label>Company Code :</label>
-                        <input type="text" class="form-control" name="code" [(ngModel)]="company.code" placeholder="Company Code" [disabled]="isEdit()">
+                        <input type="text" class="form-control" name="code" [(ngModel)]="company.code" placeholder="Company Code" [disabled]="isEdit()" required>
                     </div>
                     <div class="form-group row">
                         <label>Company Name :</label>
@@ -64,7 +64,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                 <div class="form-column">
                     <div class="form-group row">
                         <label>Dealership Code :</label>
-                        <input type="text" class="form-control" name="dealershipCode" [(ngModel)]="company.dealershipCode" placeholder="Dealership Code">
+                        <input type="text" class="form-control" name="dealershipCode" [(ngModel)]="company.dealershipCode" placeholder="Dealership Code" required>
                     </div>
                     <div class="form-group row">
                         <label>C.S.T No :</label>
@@ -145,6 +145,8 @@ export class AdminCompanymaster implements OnInit {
   isEdit = signal(false);
   editId = signal<string | null>(null);
 
+  companies: any[] = [];
+
   company = {
     code: '',
     name: '',
@@ -167,6 +169,8 @@ export class AdminCompanymaster implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadCompanies();
+
     this.route.queryParams.subscribe(params => {
       if (params['id']) {
         this.isEdit.set(true);
@@ -183,9 +187,77 @@ export class AdminCompanymaster implements OnInit {
     });
   }
 
+  loadCompanies() {
+    this.apiService.listCompanies(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.companies = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading company list', err);
+      }
+    });
+  }
+
+  isCompanyCodeDuplicate(code: string): boolean {
+    const currentId = this.editId();
+    return this.companies.some(c => {
+      const codeInRow = (c.code || c.c_reg_no || c.reg_no || '').toString().trim().toLowerCase();
+      const sameCode = codeInRow === code.trim().toLowerCase();
+      const sameRecord = c.c_id?.toString() === currentId || c.id?.toString() === currentId || c._id?.toString() === currentId;
+      return sameCode && !sameRecord;
+    });
+  }
+
+  isCompanyNameDuplicate(name: string): boolean {
+    const currentId = this.editId();
+    return this.companies.some(c => {
+      const nameInRow = (c.name || c.c_name || '').toString().trim().toLowerCase();
+      const sameName = nameInRow === name.trim().toLowerCase();
+      const sameRecord = c.c_id?.toString() === currentId || c.id?.toString() === currentId || c._id?.toString() === currentId;
+      return sameName && !sameRecord;
+    });
+  }
+
+  isDealershipCodeDuplicate(dealershipCode: string): boolean {
+    const currentId = this.editId();
+    return this.companies.some(c => {
+      const codeInRow = (c.dealershipCode || c.c_dealership_code || '').toString().trim().toLowerCase();
+      const sameDealership = codeInRow === dealershipCode.trim().toLowerCase();
+      const sameRecord = c.c_id?.toString() === currentId || c.id?.toString() === currentId || c._id?.toString() === currentId;
+      return sameDealership && !sameRecord;
+    });
+  }
+
   onSubmit() {
+    if (!this.company.code) {
+      alert('Company code is required');
+      return;
+    }
+
     if (!this.company.name) {
       alert('Company name is required');
+      return;
+    }
+
+    if (!this.company.dealershipCode) {
+      alert('Dealership code is required');
+      return;
+    }
+
+    if (!this.isEdit() && this.isCompanyCodeDuplicate(this.company.code)) {
+      alert('Company code must be unique. This code already exists.');
+      return;
+    }
+
+    if (this.isCompanyNameDuplicate(this.company.name)) {
+      alert('Company name must be unique. This company name already exists.');
+      return;
+    }
+
+    if (this.isDealershipCodeDuplicate(this.company.dealershipCode)) {
+      alert('Dealership code must be unique. This dealership code already exists.');
       return;
     }
 
@@ -206,7 +278,8 @@ export class AdminCompanymaster implements OnInit {
         },
         error: (err: any) => {
           console.error(err);
-          alert('Server error occurred while updating company details');
+          const message = err?.error?.message || 'Server error occurred while updating company details';
+          alert(message);
         }
       });
     } else {
@@ -221,7 +294,8 @@ export class AdminCompanymaster implements OnInit {
         },
         error: (err: any) => {
           console.error(err);
-          alert('Server error occurred while saving company details');
+          const message = err?.error?.message || 'Server error occurred while saving company details';
+          alert(message);
         }
       });
     }

@@ -101,7 +101,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                         </div>
                         <div class="form-group row">
                             <label>Employee Code :</label>
-                            <input type="text" class="form-control" name="code" [(ngModel)]="employee.code" placeholder="Employee Code">
+                            <input type="text" class="form-control" name="code" [(ngModel)]="employee.code" placeholder="Employee Code" required>
                         </div>
                         <div class="form-group row">
                             <label>Employee Designation :</label>
@@ -135,11 +135,11 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                         </div>
                         <div class="form-group row" *ngIf="employee.isUser">
                             <label>Username :</label>
-                            <input type="text" class="form-control" name="username" [(ngModel)]="employee.username" placeholder="Username">
+                            <input type="text" class="form-control" name="username" [(ngModel)]="employee.username" placeholder="Username" required>
                         </div>
                         <div class="form-group row" *ngIf="employee.isUser">
                             <label>Password :</label>
-                            <input type="password" class="form-control" name="password" [(ngModel)]="employee.password" placeholder="Password">
+                            <input type="password" class="form-control" name="password" [(ngModel)]="employee.password" placeholder="Password" required>
                         </div>
                     </div>
                 </div>
@@ -225,6 +225,8 @@ export class AdminEmpolyee implements OnInit {
     password: ''
   };
 
+  employees: any[] = [];
+
   // Static Data
   prefixes: string[] = ['Mr.', 'Ms.', 'Mrs.'];
 
@@ -267,6 +269,7 @@ export class AdminEmpolyee implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.loadEmployees();
     this.loadBranches();
     this.loadDesignations();
 
@@ -289,6 +292,19 @@ export class AdminEmpolyee implements OnInit {
         this.designationSearch.set(this.employee.designation);
       } else {
         this.resetForm();
+      }
+    });
+  }
+
+  loadEmployees() {
+    this.apiService.listEmployees(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.employees = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading employee list', err);
       }
     });
   }
@@ -359,9 +375,29 @@ export class AdminEmpolyee implements OnInit {
     return /^\d{10}$/.test((phone || '').toString().trim());
   }
 
+  private isEmployeeCodeDuplicate(code: string): boolean {
+    const currentId = this.editId();
+    return this.employees.some(emp => emp.code?.toString().trim().toLowerCase() === code.trim().toLowerCase() && emp.id?.toString() !== currentId);
+  }
+
+  private isUsernameDuplicate(username: string): boolean {
+    const currentId = this.editId();
+    return this.employees.some(emp => emp.username?.toString().trim().toLowerCase() === username.trim().toLowerCase() && emp.id?.toString() !== currentId);
+  }
+
   onSubmit() {
+    if (!this.employee.code) {
+      alert('Employee code is required');
+      return;
+    }
+
     if (!this.employee.name) {
       alert('Please enter employee name');
+      return;
+    }
+
+    if (this.employee.code && this.isEmployeeCodeDuplicate(this.employee.code)) {
+      alert('Employee code must be unique. This code already exists.');
       return;
     }
 
@@ -377,6 +413,11 @@ export class AdminEmpolyee implements OnInit {
 
     if (this.employee.isUser && (!this.employee.username || !this.employee.password)) {
       alert('Please enter username and password');
+      return;
+    }
+
+    if (this.employee.isUser && this.employee.username && this.isUsernameDuplicate(this.employee.username)) {
+      alert('Username must be unique. This username already exists.');
       return;
     }
 
@@ -406,7 +447,8 @@ export class AdminEmpolyee implements OnInit {
         },
         error: (err: any) => {
           console.error('Error updating employee', err);
-          alert('Server error occurred while updating employee details');
+          const message = err?.error?.message || 'Server error occurred while updating employee details';
+          alert(message);
         }
       });
     } else {
@@ -421,7 +463,8 @@ export class AdminEmpolyee implements OnInit {
         },
         error: (err: any) => {
           console.error('Error adding employee', err);
-          alert('Server error occurred while saving employee details');
+          const message = err?.error?.message || 'Server error occurred while saving employee details';
+          alert(message);
         }
       });
     }

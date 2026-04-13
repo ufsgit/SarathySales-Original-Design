@@ -41,7 +41,7 @@ import { ApiService } from '../services/api.service';
                 
                 <div class="form-group row">
                     <label>Color Code :</label>
-                    <input type="text" class="form-control" name="code" [ngModel]="codeSignal()" (ngModelChange)="codeSignal.set($event)" placeholder="Color Code">
+                    <input type="text" class="form-control" name="code" [ngModel]="codeSignal()" (ngModelChange)="codeSignal.set($event)" placeholder="Color Code" [disabled]="isEdit()" required>
                 </div>
 
                 <div class="form-group row">
@@ -99,6 +99,8 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminColor implements OnInit {
+  colors: any[] = [];
+
   codeSignal = signal<string>('');
   descSignal = signal<string>('');
   
@@ -112,6 +114,8 @@ export class AdminColor implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadColors();
+
     this.route.queryParams.subscribe(params => {
       if (params['id'] && params['code']) {
         this.isEdit.set(true);
@@ -122,12 +126,35 @@ export class AdminColor implements OnInit {
     });
   }
 
+  loadColors() {
+    this.apiService.listColors(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.colors = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading color list', err);
+      }
+    });
+  }
+
+  private isColorCodeDuplicate(code: string): boolean {
+    const currentId = this.editId();
+    return this.colors.some(color => color.code?.toString().trim().toLowerCase() === code.trim().toLowerCase() && color.id?.toString() !== currentId);
+  }
+
   onSubmit() {
     const code = this.codeSignal();
     const desc = this.descSignal();
     
     if (!code) {
       alert('Color code is required');
+      return;
+    }
+
+    if (this.isColorCodeDuplicate(code)) {
+      alert('Color code must be unique. This code already exists.');
       return;
     }
 
@@ -149,7 +176,8 @@ export class AdminColor implements OnInit {
             },
             error: (err: any) => {
               console.error(err);
-              alert('Server error occurred while updating color details');
+              const message = err?.error?.message || 'Server error occurred while updating color details';
+              alert(message);
             }
         });
     } else {
@@ -164,7 +192,8 @@ export class AdminColor implements OnInit {
           },
           error: (err: any) => {
             console.error(err);
-            alert('Server error occurred while saving color details');
+            const message = err?.error?.message || 'Server error occurred while saving color details';
+            alert(message);
           }
         });
     }

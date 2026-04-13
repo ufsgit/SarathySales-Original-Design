@@ -41,7 +41,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
             <div class="form-center-layout">
                 <div class="form-group row">
                     <label>Institution Code :</label>
-                    <input type="text" class="form-control" name="code" [(ngModel)]="code" placeholder="Institution Code" [disabled]="isEdit()">
+                    <input type="text" class="form-control" name="code" [(ngModel)]="code" placeholder="Institution Code" [disabled]="isEdit()" required>
                 </div>
                 <div class="form-group row">
                     <label>Institution Name:</label>
@@ -49,7 +49,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                 </div>
                 <div class="form-group row align-start">
                     <label>Address :</label>
-                    <textarea class="form-control" name="address" [(ngModel)]="address" placeholder="Address" rows="4"></textarea>
+                    <textarea class="form-control" name="address" [(ngModel)]="address" placeholder="Address" rows="4" required></textarea>
                 </div>
                 <div class="form-group row">
                     <label>Location</label>
@@ -64,7 +64,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
 
                 <div class="form-group row">
                     <label>GSTIN Number</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="gstin" placeholder="GSTIN" maxlength="15" (input)="gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="gstin" placeholder="GSTIN" maxlength="15" required (input)="gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
                 </div>
                 <div class="form-group row">
                     <label>Phone Number :</label>
@@ -139,6 +139,8 @@ export class AdminInstitutionmaster implements OnInit {
   isEdit = signal(false);
   editId = signal<string | null>(null);
 
+  institutions: any[] = [];
+
   // Form Fields as properties (template uses ngModel)
   code = '';
   name = '';
@@ -156,6 +158,8 @@ export class AdminInstitutionmaster implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadInstitutions();
+
     this.route.queryParams.subscribe(params => {
         if (params['id']) {
             this.isEdit.set(true);
@@ -172,6 +176,39 @@ export class AdminInstitutionmaster implements OnInit {
     });
   }
 
+  loadInstitutions() {
+    this.apiService.listInstitutions(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.institutions = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading institution list', err);
+      }
+    });
+  }
+
+  isInstitutionCodeDuplicate(code: string): boolean {
+    const currentId = this.editId();
+    return this.institutions.some(i => {
+      const codeInRow = (i.code || i.branch_id || '').toString().trim().toLowerCase();
+      const sameCode = codeInRow === code.trim().toLowerCase();
+      const sameRecord = i.branch_id?.toString() === currentId || i.id?.toString() === currentId || i._id?.toString() === currentId;
+      return sameCode && !sameRecord;
+    });
+  }
+
+  isInstitutionNameDuplicate(name: string): boolean {
+    const currentId = this.editId();
+    return this.institutions.some(i => {
+      const nameInRow = (i.name || i.branch_name || '').toString().trim().toLowerCase();
+      const sameName = nameInRow === name.trim().toLowerCase();
+      const sameRecord = i.branch_id?.toString() === currentId || i.id?.toString() === currentId || i._id?.toString() === currentId;
+      return sameName && !sameRecord;
+    });
+  }
+
   private isPhoneValid(phone: string): boolean {
     return /^\d{10}$/.test((phone || '').toString().trim());
   }
@@ -181,8 +218,32 @@ export class AdminInstitutionmaster implements OnInit {
   }
 
   onSubmit() {
+    if (!this.code) {
+      alert('Institution code is required');
+      return;
+    }
+
     if (!this.name) {
       alert('Institution name is required');
+      return;
+    }
+
+    if (!this.address) {
+      alert('Institution address is required');
+      return;
+    }
+
+    if (!this.gstin) {
+      alert('GSTIN is required');
+      return;
+    }
+
+    if (this.isInstitutionNameDuplicate(this.name)) {
+      alert('Institution name must be unique. This institution name already exists.');
+      return;
+    }
+    if (this.isInstitutionCodeDuplicate(this.code)) {
+      alert('Institution code must be unique. This code already exists.');
       return;
     }
 
@@ -191,7 +252,7 @@ export class AdminInstitutionmaster implements OnInit {
       return;
     }
 
-    if (this.gstin && !this.isGstinValid(this.gstin)) {
+    if (!this.isGstinValid(this.gstin)) {
       alert('GSTIN must contain exactly 15 alphanumeric characters');
       return;
     }
@@ -219,7 +280,8 @@ export class AdminInstitutionmaster implements OnInit {
             },
             error: (err: any) => {
                 console.error(err);
-                alert('Server error occurred while updating institution details');
+                const message = err?.error?.message || 'Server error occurred while updating institution details';
+                alert(message);
             }
         });
     } else {
@@ -234,7 +296,8 @@ export class AdminInstitutionmaster implements OnInit {
             },
             error: (err: any) => {
                 console.error(err);
-                alert('Server error occurred while saving institution details');
+                const message = err?.error?.message || 'Server error occurred while saving institution details';
+                alert(message);
             }
         });
     }

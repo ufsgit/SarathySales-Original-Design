@@ -88,7 +88,7 @@ import { ApiService } from '../services/api.service';
 
                 <div class="form-group row">
                     <label>Opening Stock</label>
-                    <input type="number" class="form-control" name="qty" [ngModel]="qtySignal()" (ngModelChange)="qtySignal.set($event)" placeholder="Opening Stock">
+                    <input type="number" class="form-control" name="qty" [ngModel]="qtySignal()" (ngModelChange)="qtySignal.set($event)" placeholder="Opening Stock" required min="1">
                 </div>
 
                 <div class="form-actions-centered">
@@ -168,6 +168,7 @@ export class AdminStock implements OnInit {
 
   productsSignal = signal<any[]>([]);
   branchesSignal = signal<any[]>([]);
+  stocks: any[] = [];
 
   branchSearch = signal<string>('');
   showBranchList = signal<boolean>(false);
@@ -208,6 +209,7 @@ export class AdminStock implements OnInit {
 
   ngOnInit(): void {
     this.loadInitialData();
+    this.loadStockList();
     this.route.queryParams.subscribe(params => {
       if (params['id'] && params['productId']) {
         this.isEdit.set(true);
@@ -217,6 +219,19 @@ export class AdminStock implements OnInit {
         this.productIdSignal.set(params['productId']);
         this.branchSearch.set(params['branchName']);
         this.productSearch.set(`${params['code']} - ${params['name']}`);
+      }
+    });
+  }
+
+  loadStockList() {
+    this.apiService.listStocks(undefined, 1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.stocks = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading stock list', err);
       }
     });
   }
@@ -264,12 +279,37 @@ export class AdminStock implements OnInit {
     this.showProductList.set(false);
   }
 
+  private isStockEntryDuplicate(branchId: string, productId: string): boolean {
+    const currentId = this.editId();
+    return this.stocks.some(stock => {
+      const sameBranch = stock.branchId?.toString() === branchId.toString();
+      const sameProduct = stock.productId?.toString() === productId.toString();
+      const sameRecord = stock.id?.toString() === currentId;
+      return sameBranch && sameProduct && !sameRecord;
+    });
+  }
+
   onSubmit() {
     const pid = this.productIdSignal();
     const bid = this.branchIdSignal();
     
-    if (!pid || !bid) {
-      alert('Please select product and branch');
+    if (!bid) {
+      alert('Branch is required');
+      return;
+    }
+
+    if (!pid) {
+      alert('Please select an item');
+      return;
+    }
+
+    if (!this.qtySignal() || Number(this.qtySignal()) <= 0) {
+      alert('Opening stock quantity is required and must be greater than 0');
+      return;
+    }
+
+    if (this.isStockEntryDuplicate(bid, pid)) {
+      alert('An opening stock entry for this branch and item already exists.');
       return;
     }
 
@@ -294,7 +334,8 @@ export class AdminStock implements OnInit {
       },
       error: (err: any) => {
         console.error(err);
-        alert('Server error occurred while saving stock details');
+        const message = err?.error?.message || 'Server error occurred while saving stock details';
+        alert(message);
       }
     });
   }

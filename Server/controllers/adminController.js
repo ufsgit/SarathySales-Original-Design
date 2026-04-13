@@ -95,6 +95,13 @@ const updateEmployee = async (req, res) => {
         conn = await db.getConnection();
         await conn.beginTransaction();
 
+        // Uniqueness: employee code
+        const [dupCode] = await conn.execute('SELECT emp_id FROM tbl_employee WHERE e_code = ? AND emp_id <> ?', [code, id]);
+        if (dupCode.length > 0) {
+            await conn.rollback();
+            return res.status(400).json({ success: false, message: 'Employee Code already exists' });
+        }
+
         // Get current emp details to find login_id
         const [currEmp] = await conn.execute('SELECT emp_login_id FROM tbl_employee WHERE emp_id = ?', [id]);
         if (currEmp.length === 0) {
@@ -106,6 +113,13 @@ const updateEmployee = async (req, res) => {
 
         // If isUser is true, manage tbl_login
         if (isUser) {
+            // Username uniqueness
+            const [dupUser] = await conn.execute('SELECT login_id FROM tbl_login WHERE uname = ? AND login_id <> ?', [username.trim(), loginId || 0]);
+            if (dupUser.length > 0) {
+                await conn.rollback();
+                return res.status(400).json({ success: false, message: 'Username already exists' });
+            }
+
             if (loginId > 0) {
                 // Update existing login
                 await conn.execute(
@@ -186,6 +200,17 @@ const addProduct = async (req, res) => {
     const computedTotal = round(totalPrice ??
         ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0)));
 
+    // Enforce unique Product Code
+    try {
+        const [dup] = await db.execute('SELECT labour_id FROM tbl_labour_code WHERE labour_code = ?', [code]);
+        if (dup.length > 0) {
+            return res.status(400).json({ success: false, message: 'Product Code already exists' });
+        }
+    } catch (err) {
+        console.error('Add Product Unique Check Error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to add product: ' + err.message });
+    }
+
     try {
         const [result] = await db.execute(
             `INSERT INTO tbl_labour_code 
@@ -235,6 +260,16 @@ const listHypothecations = async (req, res) => {
 const addHypothecation = async (req, res) => {
     try {
         const { name, address, gstin } = req.body;
+
+        // Ensure finance company name is unique
+        const [dup] = await db.execute(
+            'SELECT com_id FROM tbl_insurance_company WHERE icompany_name = ?',
+            [name]
+        );
+        if (dup.length > 0) {
+            return res.status(400).json({ success: false, message: 'Finance company name already exists' });
+        }
+
         await db.execute(
             'INSERT INTO tbl_insurance_company (icompany_name, icompany_address, icompany_gst) VALUES (?, ?, ?)',
             [name, address, gstin]
@@ -250,6 +285,14 @@ const editHypothecation = async (req, res) => {
     const { id } = req.params;
     const { name, address, gstin } = req.body;
     try {
+        const [dup] = await db.execute(
+            'SELECT com_id FROM tbl_insurance_company WHERE icompany_name = ? AND com_id <> ?',
+            [name, id]
+        );
+        if (dup.length > 0) {
+            return res.status(400).json({ success: false, message: 'Finance company name already exists' });
+        }
+
         await db.execute(
             'UPDATE tbl_insurance_company SET icompany_name = ?, icompany_address = ?, icompany_gst = ? WHERE com_id = ?',
             [name, address, gstin, id]
@@ -304,8 +347,8 @@ const addCompany = async (req, res) => {
 
         // Check for duplicates
         const [existing] = await db.execute(
-            'SELECT c_id, c_reg_no, c_name FROM customer_details WHERE c_reg_no = ? OR c_name = ?',
-            [code, name]
+            'SELECT c_id, c_reg_no, c_name, c_dealership_code FROM customer_details WHERE c_reg_no = ? OR c_name = ? OR c_dealership_code = ?',
+            [code, name, dealershipCode]
         );
 
         if (existing.length > 0) {
@@ -315,6 +358,9 @@ const addCompany = async (req, res) => {
             }
             if (found.c_name === name) {
                 return res.status(400).json({ success: false, message: 'Company Name already exists' });
+            }
+            if (found.c_dealership_code === dealershipCode) {
+                return res.status(400).json({ success: false, message: 'Dealership Code already exists' });
             }
         }
 
@@ -333,6 +379,23 @@ const updateCompany = async (req, res) => {
     const { id } = req.params;
     const { code, name, address, phone, dealershipCode, cstNo, lstNo, email } = req.body;
     try {
+        const [existing] = await db.execute(
+            'SELECT c_id, c_reg_no, c_name, c_dealership_code FROM customer_details WHERE (c_reg_no = ? OR c_name = ? OR c_dealership_code = ?) AND c_id <> ?',
+            [code, name, dealershipCode, id]
+        );
+        if (existing.length > 0) {
+            const found = existing[0];
+            if (found.c_reg_no === code) {
+                return res.status(400).json({ success: false, message: 'Company Code already exists' });
+            }
+            if (found.c_name === name) {
+                return res.status(400).json({ success: false, message: 'Company Name already exists' });
+            }
+            if (found.c_dealership_code === dealershipCode) {
+                return res.status(400).json({ success: false, message: 'Dealership Code already exists' });
+            }
+        }
+
         await db.execute(
             'UPDATE customer_details SET c_reg_no=?, c_name=?, c_address=?, c_contact_no=?, c_dealership_code=?, cst_no=?, lst_no=?, c_email=? WHERE c_id=?',
             [code, name, address, phone, dealershipCode, cstNo, lstNo, email, id]
@@ -415,6 +478,20 @@ const updateInstitution = async (req, res) => {
     const { id } = req.params; // branch_id
     const { name, address, location, pinCode, gstin, phone, email } = req.body;
     try {
+        const [existing] = await db.execute(
+            'SELECT branch_id, branch_name FROM tbl_branch WHERE (branch_id = ? OR branch_name = ?) AND branch_id <> ?',
+            [id, name, id]
+        );
+        if (existing.length > 0) {
+            const found = existing[0];
+            if (found.branch_id == id) {
+                return res.status(400).json({ success: false, message: 'Institution Code already exists' });
+            }
+            if (found.branch_name === name) {
+                return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+            }
+        }
+
         const pin = parseInt(pinCode) || 0;
         await db.execute(
             'UPDATE tbl_branch SET branch_name=?, branch_address=?, branch_location=?, branch_pin=?, branch_gstin=?, branch_ph=?, branch_email=? WHERE branch_id=?',
@@ -466,6 +543,11 @@ const addColor = async (req, res) => {
     try {
         const { code, description } = req.body;
 
+        const [existing] = await db.execute('SELECT model_id FROM tbl_model WHERE mod_code = ?', [code]);
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, message: 'Color Code already exists' });
+        }
+
         await db.execute(
             'INSERT INTO tbl_model (mod_code, mod_name) VALUES (?, ?)',
             [code, description]
@@ -481,6 +563,14 @@ const updateColor = async (req, res) => {
     try {
         const { id } = req.params;
         const { code, description } = req.body;
+
+        const [existing] = await db.execute(
+            'SELECT model_id FROM tbl_model WHERE mod_code = ? AND model_id <> ?',[code, id]
+        );
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, message: 'Color Code already exists' });
+        }
+
         await db.execute(
             'UPDATE tbl_model SET mod_code = ?, mod_name = ? WHERE model_id = ?',
             [code, description, id]
@@ -527,6 +617,14 @@ const editProduct = async (req, res) => {
     const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
     const computedTotal = round(totalPrice ?? ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0)));
     try {
+        const [dup] = await db.execute(
+            'SELECT labour_id FROM tbl_labour_code WHERE labour_code = ? AND labour_id <> ?',
+            [code, id]
+        );
+        if (dup.length > 0) {
+            return res.status(400).json({ success: false, message: 'Product Code already exists' });
+        }
+
         await db.execute(
             `UPDATE tbl_labour_code SET 
             labour_code=?, labour_title=?, repair_type=?, fa_weight=?, ra_weight=?, oa_weight=?, hsn_code=?,

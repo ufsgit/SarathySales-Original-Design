@@ -46,11 +46,11 @@ import { ApiService } from '../services/api.service';
                 <div class="form-column">
                     <div class="form-group row">
                         <label>Product Code :</label>
-                        <input type="text" class="form-control" name="code" [(ngModel)]="product.code">
+                        <input type="text" class="form-control" name="code" [(ngModel)]="product.code" required>
                     </div>
                     <div class="form-group row">
                         <label>Product Name :</label>
-                        <input type="text" class="form-control" name="name" [(ngModel)]="product.name">
+                        <input type="text" class="form-control" name="name" [(ngModel)]="product.name" required>
                     </div>
                     <div class="form-group row">
                         <label>Class :</label>
@@ -210,6 +210,8 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminProductmaster implements OnInit {
+  products: any[] = [];
+
   product = {
     code: '',
     name: '',
@@ -241,7 +243,22 @@ export class AdminProductmaster implements OnInit {
 
   constructor(private apiService: ApiService, private router: Router) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.loadProducts();
+  }
+
+  loadProducts() {
+    this.apiService.listProducts(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.products = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading product list', err);
+      }
+    });
+  }
 
   calculateTotal() {
     const basic = Number(this.product.basicPrice) || 0;
@@ -251,9 +268,23 @@ export class AdminProductmaster implements OnInit {
     this.totalPrice = basic + cgst + sgst + cess;
   }
 
+  private isProductCodeDuplicate(code: string): boolean {
+    return this.products.some(p => p.code?.toString().trim().toLowerCase() === code.trim().toLowerCase());
+  }
+
   onSubmit() {
-    if (!this.product.code || !this.product.name) {
-      alert('Product Code and Name are required');
+    if (!this.product.code) {
+      alert('Product Code is required');
+      return;
+    }
+
+    if (!this.product.name) {
+      alert('Product Name is required');
+      return;
+    }
+
+    if (this.isProductCodeDuplicate(this.product.code)) {
+      alert('Product code must be unique. This code already exists.');
       return;
     }
 
@@ -271,7 +302,8 @@ export class AdminProductmaster implements OnInit {
       },
       error: (err: any) => {
         console.error(err);
-        alert('Server error occurred while saving product details');
+        const message = err?.error?.message || 'Server error occurred while saving product details';
+        alert(message);
       }
     });
   }

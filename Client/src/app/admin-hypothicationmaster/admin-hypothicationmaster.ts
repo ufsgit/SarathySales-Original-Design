@@ -41,17 +41,17 @@ import { ApiService } from '../services/api.service';
                 
                 <div class="form-group row">
                     <label>Finanace Company Name :</label>
-                    <input type="text" class="form-control" name="name" [(ngModel)]="financier.name" placeholder="">
+                    <input type="text" class="form-control" name="name" [(ngModel)]="financier.name" placeholder="" required>
                 </div>
                 
                 <div class="form-group row align-start">
                     <label>Address:</label>
-                    <textarea class="form-control" name="address" [(ngModel)]="financier.address" placeholder="Address" rows="5"></textarea>
+                    <textarea class="form-control" name="address" [(ngModel)]="financier.address" placeholder="Address" rows="5" required></textarea>
                 </div>
 
                 <div class="form-group row">
                     <label>GSTIN:</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="" maxlength="15" (input)="financier.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="" maxlength="15" required (input)="financier.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
                 </div>
 
                 <div class="form-actions-centered">
@@ -114,6 +114,8 @@ import { ApiService } from '../services/api.service';
   `]
 })
 export class AdminHypothicationmaster implements OnInit {
+  hypothecations: any[] = [];
+
   financier = {
     name: '',
     address: '',
@@ -126,7 +128,26 @@ export class AdminHypothicationmaster implements OnInit {
     return /^[0-9A-Z]{15}$/.test((gstin || '').trim().toUpperCase());
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.loadHypothecations();
+  }
+
+  loadHypothecations() {
+    this.apiService.listHypothecations(1, 1000).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.hypothecations = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading hypothecation list', err);
+      }
+    });
+  }
+
+  private isHypothecationNameDuplicate(name: string): boolean {
+    return this.hypothecations.some(item => item.name?.toString().trim().toLowerCase() === name.trim().toLowerCase());
+  }
 
   onSubmit() {
     if (!this.financier.name) {
@@ -134,8 +155,23 @@ export class AdminHypothicationmaster implements OnInit {
       return;
     }
 
-    if (this.financier.gstin && !this.isGstinValid(this.financier.gstin)) {
+    if (!this.financier.address) {
+      alert('Address is required');
+      return;
+    }
+
+    if (!this.financier.gstin) {
+      alert('GSTIN is required');
+      return;
+    }
+
+    if (!this.isGstinValid(this.financier.gstin)) {
       alert('GSTIN must contain exactly 15 alphanumeric characters');
+      return;
+    }
+
+    if (this.isHypothecationNameDuplicate(this.financier.name)) {
+      alert('Finance company name must be unique. This name already exists.');
       return;
     }
 
@@ -150,7 +186,8 @@ export class AdminHypothicationmaster implements OnInit {
       },
       error: (err: any) => {
         console.error(err);
-        alert('Server error occurred while saving hypothecation details');
+        const message = err?.error?.message || 'Server error occurred while saving hypothecation details';
+        alert(message);
       }
     });
   }
