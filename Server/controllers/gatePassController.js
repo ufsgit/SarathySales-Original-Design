@@ -232,14 +232,17 @@ const saveGatePass = async (req, res) => {
     if (!gatePassNo) return res.status(400).json({ success: false, message: 'Gate pass number required' });
     if (!branchId) return res.status(400).json({ success: false, message: 'branchId required' });
 
+    const conn = await db.getConnection();
     try {
-        const [dupCheck] = await db.execute('SELECT gate_pass_id FROM tbl_gate_pass WHERE gate_pass_no = ?', [gatePassNo]);
+        await conn.beginTransaction();
+        const [dupCheck] = await conn.execute('SELECT gate_pass_id FROM tbl_gate_pass WHERE gate_pass_no = ?', [gatePassNo]);
         if (dupCheck.length > 0) {
+            await conn.rollback();
             console.warn(`[gatePassController] Duplicate gate pass number detected: ${gatePassNo}`);
             return res.status(409).json({ success: false, message: 'Gate pass number already exists' });
         }
 
-        const [result] = await db.execute(
+        const [result] = await conn.execute(
             `INSERT INTO tbl_gate_pass (
                 gate_invoice_id, gate_pass_no, gate_pass_date, gate_branch_id, 
                 pass_issue_type, pass_cus_name, pass_invoic_no, pass_cus_addrs, 
@@ -253,11 +256,15 @@ const saveGatePass = async (req, res) => {
                 color || '', productCode || '', status || 1
             ]
         );
+        await conn.commit();
         console.log(`[gatePassController] Gate pass saved successfully. ID: ${result.insertId}`);
         res.json({ success: true, message: 'Gate pass saved', gate_pass_id: result.insertId });
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error('[gatePassController] saveGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to save gate pass' });
+    } finally {
+        if (conn) conn.release();
     }
 };
 
@@ -283,8 +290,10 @@ const updateGatePass = async (req, res) => {
         gate_invoice_id, gatePassDate, issueType, customerName, invoiceNo, address,
         selectionDate, chassisNo, engineNo, vehicleModel, color, productCode, status
     } = req.body;
+    const conn = await db.getConnection();
     try {
-        await db.execute(
+        await conn.beginTransaction();
+        await conn.execute(
             `UPDATE tbl_gate_pass SET 
                 gate_invoice_id=?, gate_pass_date=?, pass_issue_type=?, pass_cus_name=?, 
                 pass_invoic_no=?, pass_cus_addrs=?, selection_date=?, pass_chassis_no=?, 
@@ -296,20 +305,30 @@ const updateGatePass = async (req, res) => {
                 selectionDate, chassisNo, engineNo, vehicleModel, color, productCode, status, req.params.id
             ]
         );
+        await conn.commit();
         res.json({ success: true, message: 'Gate pass updated' });
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error('[gatePassController] updateGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to update gate pass' });
+    } finally {
+        if (conn) conn.release();
     }
 };
 
 const cancelGatePass = async (req, res) => {
+    const conn = await db.getConnection();
     try {
-        await db.execute('UPDATE tbl_gate_pass SET pass_status = 0 WHERE gate_pass_id = ?', [req.params.id]);
+        await conn.beginTransaction();
+        await conn.execute('UPDATE tbl_gate_pass SET pass_status = 0 WHERE gate_pass_id = ?', [req.params.id]);
+        await conn.commit();
         res.json({ success: true, message: 'Gate pass canceled successfully' });
     } catch (err) {
+        if (conn) await conn.rollback();
         console.error('[gatePassController] cancelGatePass error:', err);
         res.status(500).json({ success: false, message: 'Failed to cancel gate pass' });
+    } finally {
+        if (conn) conn.release();
     }
 };
 
