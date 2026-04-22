@@ -193,7 +193,8 @@ const addProduct = async (req, res) => {
         code, name, class: productClass, faWeight, raWeight, oaWeight, hsnCode,
         taWeight, ulWeight, rWeight, hp, description,
         cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
+        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice,
+        idTaxSlab, gstPercentage, cgstPercentage, sgstPercentage, igstPercentage, cessPercentage
     } = req.body;
 
     const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
@@ -217,13 +218,15 @@ const addProduct = async (req, res) => {
             (labour_code, labour_title, repair_type, fa_weight, ra_weight, oa_weight, hsn_code, 
             ta_weight, ul_weight, r_weight, hp, discription, 
             cc, tbody, no_of_cylider, fuel, wheel_base, booking_code, 
-            seat_capacity, sale_price, cgst, sgst, cess, purchase_cost, total_price) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            seat_capacity, sale_price, cgst, sgst, cess, purchase_cost, total_price,
+            id_tax_slab) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
-                taWeight, ulWeight, rWeight, hp, description,
-                cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-                seatCapacity, round(basicPrice), round(cgst), round(sgst), round(cess), round(purchaseCost), String(computedTotal)
+                code || '', name || '', productClass || '', faWeight || '', raWeight || '', oaWeight || '', hsnCode || '',
+                taWeight || '', ulWeight || '', rWeight || '', hp || '', description || '',
+                cc || '', typeOfBody || '', noOfCylinders || '', fuel || '', wheelBase || '', bookingCode || '',
+                seatCapacity || '', round(basicPrice) || 0, String(round(cgst) || 0), String(round(sgst) || 0), String(round(cess) || 0), String(round(purchaseCost) || 0), String(computedTotal || 0),
+                idTaxSlab || 0
             ]
         );
         res.json({ success: true, message: 'Product added successfully', id: result.insertId });
@@ -607,12 +610,14 @@ const listDesignations = async (req, res) => {
 };
 
 const editProduct = async (req, res) => {
+    console.log("edit product");
     const { id } = req.params;
     const {
         code, name, class: productClass, faWeight, raWeight, oaWeight, hsnCode,
         taWeight, ulWeight, rWeight, hp, description,
         cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice
+        seatCapacity, basicPrice, cgst, sgst, cess, purchaseCost, totalPrice,
+        idTaxSlab, gstPercentage, cgstPercentage, sgstPercentage, igstPercentage, cessPercentage
     } = req.body;
     const round = (val) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(Number(val).toFixed(2)) : val;
     const computedTotal = round(totalPrice ?? ((Number(basicPrice) || 0) + (Number(cgst) || 0) + (Number(sgst) || 0) + (Number(cess) || 0)));
@@ -622,6 +627,7 @@ const editProduct = async (req, res) => {
             [code, id]
         );
         if (dup.length > 0) {
+            console.log("Product Code already exists",dup);
             return res.status(400).json({ success: false, message: 'Product Code already exists' });
         }
 
@@ -630,12 +636,15 @@ const editProduct = async (req, res) => {
             labour_code=?, labour_title=?, repair_type=?, fa_weight=?, ra_weight=?, oa_weight=?, hsn_code=?,
             ta_weight=?, ul_weight=?, r_weight=?, hp=?, discription=?,
             cc=?, tbody=?, no_of_cylider=?, fuel=?, wheel_base=?, booking_code=?,
-            seat_capacity=?, sale_price=?, cgst=?, sgst=?, cess=?, purchase_cost=?, total_price=?
+            seat_capacity=?, sale_price=?, cgst=?, sgst=?, cess=?, purchase_cost=?, total_price=?,
+            id_tax_slab=?
             WHERE labour_id=?`,
-            [code, name, productClass, faWeight, raWeight, oaWeight, hsnCode,
-                taWeight, ulWeight, rWeight, hp, description,
-                cc, typeOfBody, noOfCylinders, fuel, wheelBase, bookingCode,
-                seatCapacity, round(basicPrice), round(cgst), round(sgst), round(cess), round(purchaseCost), String(computedTotal), id]
+            [code || '', name || '', productClass || '', faWeight || '', raWeight || '', oaWeight || '', hsnCode || '',
+                taWeight || '', ulWeight || '', rWeight || '', hp || '', description || '',
+                cc || '', typeOfBody || '', noOfCylinders || '', fuel || '', wheelBase || '', bookingCode || '',
+                seatCapacity || '', round(basicPrice) || 0, String(round(cgst) || 0), String(round(sgst) || 0), String(round(cess) || 0), String(round(purchaseCost) || 0), String(computedTotal || 0),
+                idTaxSlab || 0,
+                id]
         );
         res.json({ success: true, message: 'Product updated successfully' });
     } catch (err) {
@@ -728,6 +737,42 @@ const uploadProductPrice = async (req, res) => {
             if (purchaseCost !== undefined) { updates.push('purchase_cost = ?'); values.push(round(purchaseCost)); }
             if (totalPrice !== undefined) { updates.push('total_price = ?'); values.push(String(round(totalPrice))); }
 
+            // Automatic Tax Slab Management
+            if (basicPrice && cgst !== undefined && sgst !== undefined) {
+                const bPrice = Number(basicPrice);
+                if (bPrice > 0) {
+                    const cgstAmt = Number(cgst) || 0;
+                    const sgstAmt = Number(sgst) || 0;
+                    const cessAmt = Number(cess) || 0;
+                    
+                    const cgstP = Number(((cgstAmt / bPrice) * 100).toFixed(2));
+                    const sgstP = Number(((sgstAmt / bPrice) * 100).toFixed(2));
+                    const cessP = Number(((cessAmt / bPrice) * 100).toFixed(2));
+                    const gstP = Number((cgstP + sgstP).toFixed(2));
+                    const igstP = gstP;
+
+                    // Search for existing slab
+                    const [slabs] = await conn.execute(
+                        'SELECT id_tax_slab FROM tbl_tax_slab WHERE GST=? AND CGST=? AND SGST=? AND IGST=? AND CESS=?',
+                        [gstP, cgstP, sgstP, igstP, cessP]
+                    );
+
+                    let idTaxSlab;
+                    if (slabs.length > 0) {
+                        idTaxSlab = slabs[0].id_tax_slab;
+                    } else {
+                        const [newSlab] = await conn.execute(
+                            'INSERT INTO tbl_tax_slab (GST, CGST, SGST, IGST, CESS) VALUES (?, ?, ?, ?, ?)',
+                            [gstP, cgstP, sgstP, igstP, cessP]
+                        );
+                        idTaxSlab = newSlab.insertId;
+                    }
+
+                    updates.push('id_tax_slab = ?');
+                    values.push(idTaxSlab);
+                }
+            }
+
             if (updates.length > 0) {
                 const query = `UPDATE tbl_labour_code SET ${updates.join(', ')} WHERE labour_code = ?`;
                 values.push(pcode);
@@ -751,6 +796,158 @@ const uploadProductPrice = async (req, res) => {
         if (conn) await conn.rollback();
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         res.status(500).json({ success: false, message: 'Failed to process file: ' + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+};
+
+const listTaxSlabs = async (req, res) => {
+    const pageInput = req.query.page;
+    const limitInput = req.query.limit;
+    const search = req.query.search || '';
+
+    const page = Math.max(1, parseInt(pageInput) || 1);
+    const isAll = limitInput === 'all';
+    const limit = isAll ? null : Math.max(1, parseInt(limitInput) || 10);
+    const offset = isAll ? 0 : (page - 1) * limit;
+
+    try {
+        let whereClause = '';
+        let params = [];
+        if (search) {
+            whereClause = ' WHERE GST LIKE ? OR CGST LIKE ? OR SGST LIKE ? OR IGST LIKE ? OR CESS LIKE ?';
+            const searchPattern = `%${search}%`;
+            params = [searchPattern, searchPattern, searchPattern, searchPattern, searchPattern];
+        }
+
+        let query = `SELECT * FROM tbl_tax_slab ${whereClause} ORDER BY GST ASC`;
+        if (!isAll) {
+            query += ` LIMIT ${limit} OFFSET ${offset}`;
+        }
+
+        const [rows] = await db.execute(query, params);
+        const [totalRows] = await db.execute(
+            `SELECT COUNT(*) as total FROM tbl_tax_slab ${whereClause}`,
+            params
+        );
+
+        res.json({
+            success: true,
+            data: rows,
+            total: totalRows[0].total,
+            page,
+            limit
+        });
+    } catch (err) {
+        console.error('List Tax Slabs Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch tax slabs' });
+    }
+};
+
+const addTaxSlab = async (req, res) => {
+    const { GST, CGST, SGST, IGST, CESS } = req.body;
+    if (GST === undefined || CGST === undefined || SGST === undefined) {
+        return res.status(400).json({ success: false, message: 'GST, CGST and SGST are required' });
+    }
+    const gst  = Number(Number(GST).toFixed(2));
+    const cgst = Number(Number(CGST).toFixed(2));
+    const sgst = Number(Number(SGST).toFixed(2));
+    const igst = Number(Number(IGST || gst).toFixed(2));
+    const cess = Number(Number(CESS || 0).toFixed(2));
+    try {
+        const [dup] = await db.execute(
+            'SELECT id_tax_slab FROM tbl_tax_slab WHERE CGST=? AND SGST=? AND CESS=?', [cgst, sgst, cess]
+        );
+        if (dup.length > 0) return res.status(400).json({ success: false, message: 'A slab with these rates already exists' });
+        const [result] = await db.execute(
+            'INSERT INTO tbl_tax_slab (GST, CGST, SGST, IGST, CESS) VALUES (?, ?, ?, ?, ?)',
+            [gst, cgst, sgst, igst, cess]
+        );
+        res.json({ success: true, message: 'Tax slab added successfully', id: result.insertId });
+    } catch (err) {
+        console.error('Add Tax Slab Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add tax slab: ' + err.message });
+    }
+};
+
+const updateTaxSlab = async (req, res) => {
+    const { id } = req.params;
+    const { GST, CGST, SGST, IGST, CESS } = req.body;
+    const gst  = Number(Number(GST).toFixed(2));
+    const cgst = Number(Number(CGST).toFixed(2));
+    const sgst = Number(Number(SGST).toFixed(2));
+    const igst = Number(Number(IGST || gst).toFixed(2));
+    const cess = Number(Number(CESS || 0).toFixed(2));
+    try {
+        const [dup] = await db.execute(
+            'SELECT id_tax_slab FROM tbl_tax_slab WHERE CGST=? AND SGST=? AND CESS=? AND id_tax_slab<>?',
+            [cgst, sgst, cess, id]
+        );
+        if (dup.length > 0) return res.status(400).json({ success: false, message: 'A slab with these rates already exists' });
+        await db.execute(
+            'UPDATE tbl_tax_slab SET GST=?, CGST=?, SGST=?, IGST=?, CESS=? WHERE id_tax_slab=?',
+            [gst, cgst, sgst, igst, cess, id]
+        );
+        res.json({ success: true, message: 'Tax slab updated successfully' });
+    } catch (err) {
+        console.error('Update Tax Slab Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update tax slab: ' + err.message });
+    }
+};
+
+const checkTaxSlabDependencies = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [labourCodes] = await db.execute(`
+            SELECT labour_id, labour_code, labour_title
+            FROM tbl_labour_code
+            WHERE id_tax_slab = ?
+        `, [id]);
+
+        const [vehicles] = await db.execute(`
+            SELECT DISTINCT 
+                p.chassis_no,
+                l.labour_code
+            FROM tbl_labour_code l
+            JOIN purchaseitem p 
+                ON p.materialsId = l.labour_code
+            WHERE l.id_tax_slab = ?
+              AND p.item_status = 'Available'
+              AND p.chassis_no IS NOT NULL
+              AND p.chassis_no != ''
+        `, [id]);
+
+        res.json({
+            success: true,
+            labourCodes,
+            vehicles
+        });
+    } catch (err) {
+        console.error('Check Tax Slab Dependencies Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to check dependencies: ' + err.message });
+    }
+};
+
+const deleteTaxSlab = async (req, res) => {
+    const { id } = req.params;
+    const force = req.query.force === 'true';
+    let conn;
+    try {
+        if (force) {
+            conn = await db.getConnection();
+            await conn.beginTransaction();
+            await conn.execute('UPDATE tbl_labour_code SET id_tax_slab = NULL WHERE id_tax_slab = ?', [id]);
+            await conn.execute('DELETE FROM tbl_tax_slab WHERE id_tax_slab = ?', [id]);
+            await conn.commit();
+            res.json({ success: true, message: 'Tax slab deleted successfully (forced)' });
+        } else {
+            await db.execute('DELETE FROM tbl_tax_slab WHERE id_tax_slab=?', [id]);
+            res.json({ success: true, message: 'Tax slab deleted successfully' });
+        }
+    } catch (err) {
+        if (conn) { await conn.rollback(); }
+        console.error('Delete Tax Slab Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete tax slab: ' + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -782,6 +979,11 @@ module.exports = {
     updateColor,
     deleteColor,
     listDesignations,
-    uploadProductPrice
+    uploadProductPrice,
+    listTaxSlabs,
+    addTaxSlab,
+    updateTaxSlab,
+    deleteTaxSlab,
+    checkTaxSlabDependencies
 };
 

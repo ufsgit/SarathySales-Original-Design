@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { TaxService } from '../services/tax.service';
 import { UppercaseDirective } from '../uppercase.directive';
 
 
@@ -95,28 +96,34 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
 
   searchableBranchOptionsList = computed(() => {
     const term = this.branchSearchTerm().toLowerCase();
-    return this.branchOptions().filter(b =>
-      (b.branch_name || '').toLowerCase().includes(term)
-    );
+    const list = this.branchOptions();
+    if (!term) return list;
+    return list.filter(b => (b.branch_name || '').toLowerCase().includes(term));
   });
 
+  taxInfo = computed(() => {
+    const labour = this.selectedLabourData();
+    return this.taxService.calculateAutoPercentages(labour, this.taxSlabs());
+  });
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private api: ApiService
+    private api: ApiService,
+    private taxService: TaxService
   ) {
     const user = this.api.getCurrentUser();
     this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
   }
 
-  ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      const id = params['id'];
-      if (id) {
-        this.invoiceId.set(Number(id));
-        this.loadInvoice(Number(id));
-        this.loadHypothecationOptions();
-        this.loadBranches();
+  taxSlabs = signal<any[]>([]);
+  selectedLabourData = signal<any>(null);
+
+  loadTaxSlabs() {
+    this.api.getTaxSlabs(1, 'all').subscribe({
+      next: (res) => {
+        if (res.success && Array.isArray(res.data)) {
+          this.taxSlabs.set(res.data);
+        }
       }
     });
   }
@@ -212,6 +219,9 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
           this.cgst.set(Number(d.inv_cgst) || 0);
           this.cess.set(Number(d.inv_cess) || 0);
           this.totalAmount.set(Number(d.inv_total) || 0);
+
+          // After loading invoice, fetch labour details for Auto mode if needed
+          this.fetchLabourAndRecalculate(false); // don't force recalculate immediately on load
         } else {
           this.errorMsg.set(res.message || 'Failed to load invoice');
         }
@@ -233,17 +243,44 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
   recalculateTotalAmount() {
     const basic = Number(this.basicAmount()) || 0;
     const disc = Number(this.discountAmount()) || 0;
-    const taxable = basic - disc;
+    const taxable = Math.max(0, basic - disc);
     this.taxableAmount.set(taxable);
     
-    // Assuming 9% SGST and 9% CGST based on patterns seen in other files
-    const sgstVal = parseFloat((taxable * 0.09).toFixed(2));
-    const cgstVal = parseFloat((taxable * 0.09).toFixed(2));
-    this.sgst.set(sgstVal);
-    this.cgst.set(cgstVal);
-    
-    const total = taxable + sgstVal + cgstVal + Number(this.cess());
-    this.totalAmount.set(parseFloat(total.toFixed(2)));
+    const info = this.taxInfo();
+    const result = this.taxService.calculateTax({
+      taxableAmount: taxable,
+      cgstPer: info.cgstPer,
+      sgstPer: info.sgstPer,
+      cessPer: info.cessPer
+    });
+
+    this.sgst.set(result.sgst);
+    this.cgst.set(result.cgst);
+    this.cess.set(result.cess);
+    this.totalAmount.set(result.grandTotal);
+  }
+
+  fetchLabourAndRecalculate(triggerRecalc = true): void {
+    const code = this.pCode();
+    if (!code) {
+        this.selectedLabourData.set(null);
+        if (triggerRecalc) this.recalculateTotalAmount();
+        return;
+    }
+    this.api.getLabourByCode(code).subscribe({
+        next: (res: any) => {
+            if (res?.success) {
+                this.selectedLabourData.set(res.data);
+            } else {
+                this.selectedLabourData.set(null);
+            }
+            if (triggerRecalc) this.recalculateTotalAmount();
+        },
+        error: () => {
+            this.selectedLabourData.set(null);
+            if (triggerRecalc) this.recalculateTotalAmount();
+        }
+    });
   }
 
   onSave() {
@@ -407,6 +444,19 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
     }
   }
 
+  ngOnInit(): void {
+    this.route.params.subscribe(params => {
+      const id = params['id'];
+      if (id) {
+        this.invoiceId.set(Number(id));
+        this.loadInvoice(Number(id));
+        this.loadHypothecationOptions();
+        this.loadBranches();
+        this.loadTaxSlabs();
+      }
+    });
+  }
+
   toggleBranchDropdown() {
     this.isBranchDropdownOpen.update(v => !v);
     if (this.isBranchDropdownOpen()) {
@@ -439,16 +489,16 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
         invNo: invNo,
         returnDate: new Date().toISOString().split('T')[0]
       }).subscribe({
-        next: (res) => {
+        next: (res: any) => {
           this.isLoading.set(false);
-          if (res.success) {
+          if (res?.success) {
             alert('Sales return processed successfully.');
             this.router.navigate(['/previous-sales-invoice']);
           } else {
-            this.errorMsg.set(res.message || 'Failed to process return.');
+            this.errorMsg.set(res?.message || 'Failed to process return.');
           }
         },
-        error: (err) => {
+        error: (err: any) => {
           this.isLoading.set(false);
           this.errorMsg.set(err?.error?.message || 'Server error.');
         }

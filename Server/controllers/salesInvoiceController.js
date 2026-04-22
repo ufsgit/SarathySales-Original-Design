@@ -93,7 +93,7 @@ const getNextInvoiceNo = async (req, res) => {
 
 const getAllLabourCodes = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT labour_id, labour_title, labour_code, sale_price, cgst, sgst, cess FROM tbl_labour_code ORDER BY labour_title');
+        const [rows] = await db.execute('SELECT labour_id, labour_title, labour_code, sale_price, cgst, sgst, cess, total_price FROM tbl_labour_code ORDER BY labour_title');
         res.json({ success: true, data: rows });
     } catch (err) {
         console.error(err);
@@ -109,6 +109,17 @@ const getLabourDetails = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: 'Failed to fetch labour details' });
+    }
+};
+
+const getLabourByCode = async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT * FROM tbl_labour_code WHERE labour_code = ?', [req.params.code]);
+        if (!rows.length) return res.status(404).json({ success: false, message: 'Labour code not found' });
+        res.json({ success: true, data: rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to fetch labour details by code' });
     }
 };
 
@@ -130,18 +141,20 @@ const getChassisRecords = async (req, res) => {
                 pi.product_id AS product_id,
                 tm.mod_code AS inv_color_code,
                 tlc.labour_id AS inv_product_id,
+                tlc.labour_code AS labour_code,
                 pi.item_hsn_code AS inv_hsncode,
                 tlc.sale_price AS basic_amount,
                 0 AS discount_amount,
                 0 AS taxable_amount,
-                0 AS sgst,
-                0 AS cgst,
-                0 AS cess,
+                tlc.sgst AS labour_sgst,
+                tlc.cgst AS labour_cgst,
+                tlc.cess AS labour_cess,
                 0 AS inv_total,
                 pb.purch_branchId AS inv_branch,
                 pb.pucha_vendorName AS inv_cus,
                 til.inv_no,
-                til.inv_id
+                til.inv_id,
+                tlc.id_tax_slab AS id_tax_slab
             FROM purchaseitem pi
             LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
             LEFT JOIN tbl_labour_code tlc ON pi.product_id = tlc.labour_id
@@ -194,7 +207,14 @@ const getChassisRecords = async (req, res) => {
             inv_total_amount: r.inv_total_amount ?? r.inv_total ?? 0,
             inv_gstin: r.inv_gstin || '',
             inv_advisername: r.inv_advisername || '',
-            inv_cus: r.inv_cus || ''
+            inv_cus: r.inv_cus || '',
+            // Labour tax data from tbl_labour_code (for Auto tax calculation)
+            labour_code: r.labour_code || '',
+            labour_sale_price: r.basic_amount ?? 0,
+            labour_cgst: r.labour_cgst ?? 0,
+            labour_sgst: r.labour_sgst ?? 0,
+            labour_cess: r.labour_cess ?? 0,
+            id_tax_slab: r.id_tax_slab
         }));
 
         res.json({ success: true, data });
@@ -1407,5 +1427,6 @@ module.exports = {
     createRtoBillPdfByNo,
     getSalesExecutives,
     saveInvoice,
-    updateInvoice
+    updateInvoice,
+    getLabourByCode
 };

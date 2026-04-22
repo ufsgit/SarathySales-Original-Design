@@ -244,15 +244,15 @@
                           <input type="number" class="form-control readonly" [value]="taxableAmount()" readonly>
                       </div>
                       <div class="form-group">
-                          <label>SGST(9%):</label>
+                          <label>SGST({{ taxInfo().sgstPer }}%):</label>
                           <input type="number" class="form-control readonly" [value]="sgst()" readonly>
                       </div>
                       <div class="form-group">
-                          <label>CGST(9%):</label>
+                          <label>CGST({{ taxInfo().cgstPer }}%):</label>
                           <input type="number" class="form-control readonly" [value]="cgst()" readonly>
                       </div>
                       <div class="form-group">
-                          <label>CESS:</label>
+                          <label>CESS({{ taxInfo().cessPer }}%):</label>
                           <input type="number" class="form-control readonly" [value]="cess()" name="cess" readonly>
                       </div>
                   </div>

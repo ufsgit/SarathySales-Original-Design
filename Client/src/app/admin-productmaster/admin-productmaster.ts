@@ -137,20 +137,41 @@ import { ApiService } from '../services/api.service';
                         <input type="number" class="form-control" name="basicPrice" [(ngModel)]="product.basicPrice" (ngModelChange)="calculateTotal()">
                     </div>
                     <div class="form-group row">
+                        <label>GST :</label>
+                        <div class="custom-select-wrap" (click)="$event.stopPropagation()">
+                            <div class="custom-select-trigger" (click)="isTaxDropdownOpen = !isTaxDropdownOpen">
+                                {{ selectedTaxLabel || '-- Select GST --' }}
+                                <span class="caret">&#9660;</span>
+                            </div>
+                            <div class="custom-select-dropdown" *ngIf="isTaxDropdownOpen">
+                                <input class="search-input" type="text" placeholder="Search GST..."
+                                    [(ngModel)]="taxSearchTerm" name="taxSearchTerm"
+                                    (click)="$event.stopPropagation()" autofocus>
+                                <div class="custom-option first-opt" (click)="clearTaxSelection()">-- Select GST --</div>
+                                <div class="custom-option"
+                                    *ngFor="let slab of filteredTaxSlabs()"
+                                    (click)="selectTaxSlab(slab)">
+                                    {{ gstLabel(slab) }}
+                                </div>
+                                <div class="custom-option no-result" *ngIf="filteredTaxSlabs().length === 0">pls add gst from tax master</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <label>CGST :</label>
-                        <input type="number" class="form-control" name="cgst" [(ngModel)]="product.cgst" (ngModelChange)="calculateTotal()">
+                        <input type="number" class="form-control readonly" name="cgst" [(ngModel)]="product.cgst" readonly>
                     </div>
                     <div class="form-group row">
                         <label>SGST :</label>
-                        <input type="number" class="form-control" name="sgst" [(ngModel)]="product.sgst" (ngModelChange)="calculateTotal()">
+                        <input type="number" class="form-control readonly" name="sgst" [(ngModel)]="product.sgst" readonly>
                     </div>
                     <div class="form-group row">
                         <label>CESS :</label>
-                        <input type="number" class="form-control" name="cess" [(ngModel)]="product.cess" (ngModelChange)="calculateTotal()">
+                        <input type="number" class="form-control readonly" name="cess" [(ngModel)]="product.cess" readonly>
                     </div>
                     <div class="form-group row">
                         <label>Total :</label>
-                        <input type="number" class="form-control" name="total" [(ngModel)]="totalPrice">
+                        <input type="number" class="form-control readonly" name="total" [(ngModel)]="totalPrice" readonly>
                     </div>
                     <div class="form-group row">
                         <label>Purchase Cost :</label>
@@ -178,7 +199,7 @@ import { ApiService } from '../services/api.service';
     .breadcrumb-bar .active { color: #333; }
     .separator { color: #999; }
 
-    .theme-card { background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
+    .theme-card { background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: visible; }
     
     .blue-header-strip { background: #1a62bf; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; color: white; }
     .header-left { display: flex; align-items: center; gap: 15px; }
@@ -191,7 +212,7 @@ import { ApiService } from '../services/api.service';
     
     .page-card-content { padding: 30px 20px; background: #f4f4f4; }
     
-    .form-grid-4-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: start; }
+    .form-grid-4-cols { display: grid; grid-template-columns: 1fr 1fr 1fr 1.85fr; gap: 20px; align-items: start; }
     
     .form-column { display: flex; flex-direction: column; gap: 10px; }
     
@@ -205,12 +226,25 @@ import { ApiService } from '../services/api.service';
     .form-control::placeholder { color: #aaa; }
     .gray-bg { background-color: #f7f7f7 !important; }
 
+    /* Custom GST Dropdown */
+    .custom-select-wrap { position: relative; flex: 1; }
+    .custom-select-trigger { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 12px; border: 1px solid #ccc; border-radius: 2px; background: #fff; cursor: pointer; height: 28px; box-shadow: inset 0 1px 1px rgba(0,0,0,0.075); user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .custom-select-trigger:hover { border-color: #1a62bf; }
+    .caret { font-size: 10px; color: #666; flex-shrink: 0; margin-left: 4px; }
+    .custom-select-dropdown { position: absolute; top: 100%; right: 0; min-width: 400px; background: #fff; border: 1px solid #ccc; border-top: none; border-radius: 0 0 3px 3px; z-index: 9999; max-height: 260px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+    .search-input { width: 100%; padding: 6px 10px; font-size: 12px; border: none; border-bottom: 1px solid #eee; outline: none; box-sizing: border-box; }
+    .custom-option { padding: 7px 12px; font-size: 12px; cursor: pointer; color: #333; white-space: nowrap; }
+    .custom-option:hover { background: #e8f0fe; }
+    .custom-option.first-opt { color: #888; font-style: italic; }
+    .custom-option.no-result { color: #c92127; cursor: default; font-weight: 500; }
+
     @media (max-width: 1200px) { .form-grid-4-cols { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .form-grid-4-cols { grid-template-columns: 1fr; } .form-group label { min-width: 100px; text-align: left; } }
   `]
 })
 export class AdminProductmaster implements OnInit {
   products: any[] = [];
+  taxSlabs: any[] = [];
 
   product = {
     code: '',
@@ -236,7 +270,8 @@ export class AdminProductmaster implements OnInit {
     cgst: 0,
     sgst: 0,
     cess: 0,
-    purchaseCost: 0
+    purchaseCost: 0,
+    idTaxSlab: 0
   };
 
   totalPrice: number = 0;
@@ -245,6 +280,66 @@ export class AdminProductmaster implements OnInit {
 
   ngOnInit(): void {
     this.loadProducts();
+    this.loadTaxSlabs();
+  }
+
+  loadTaxSlabs() {
+    this.apiService.getTaxSlabs(1, 'all').subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.taxSlabs = res.data || [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading tax slabs', err);
+      }
+    });
+  }
+
+  // Custom GST dropdown state
+  isTaxDropdownOpen = false;
+  taxSearchTerm = '';
+  selectedTaxLabel = '';
+
+  gstLabel(slab: any): string {
+    const g = Number(slab.GST) || 0;
+    const c = Number(slab.CGST) || 0;
+    const s = Number(slab.SGST) || 0;
+    const ce = Number(slab.CESS) || 0;
+    return `GST ${g.toFixed(2)}% (CGST ${c.toFixed(2)}% + SGST ${s.toFixed(2)}% + CESS ${ce.toFixed(2)})%`;
+  }
+
+  filteredTaxSlabs(): any[] {
+    const term = this.taxSearchTerm.toLowerCase();
+    if (!term) return this.taxSlabs;
+    return this.taxSlabs.filter(s => this.gstLabel(s).toLowerCase().includes(term));
+  }
+
+  selectTaxSlab(slab: any) {
+    const basicPrice = Number(this.product.basicPrice) || 0;
+    this.product.idTaxSlab = slab.id_tax_slab;
+    this.product.cgst = Number(((basicPrice * (Number(slab.CGST) || 0)) / 100).toFixed(2));
+    this.product.sgst = Number(((basicPrice * (Number(slab.SGST) || 0)) / 100).toFixed(2));
+    this.product.cess = Number(((basicPrice * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+    this.selectedTaxLabel = this.gstLabel(slab);
+    this.isTaxDropdownOpen = false;
+    this.taxSearchTerm = '';
+    this.calculateTotal();
+  }
+
+  clearTaxSelection() {
+    this.product.idTaxSlab = 0;
+    this.product.cgst = 0;
+    this.product.sgst = 0;
+    this.product.cess = 0;
+    this.selectedTaxLabel = '';
+    this.isTaxDropdownOpen = false;
+    this.taxSearchTerm = '';
+    this.calculateTotal();
+  }
+
+  closeTaxDropdown() {
+    this.isTaxDropdownOpen = false;
   }
 
   loadProducts() {
@@ -260,12 +355,22 @@ export class AdminProductmaster implements OnInit {
     });
   }
 
+  onTaxSlabChange(event: any) {
+    const slabId = event.target.value;
+    if (!slabId) return;
+    const slab = this.taxSlabs.find(s => s.id_tax_slab == slabId);
+    if (slab) this.selectTaxSlab(slab);
+  }
+
   calculateTotal() {
     const basic = Number(this.product.basicPrice) || 0;
-    const cgst = Number(this.product.cgst) || 0;
-    const sgst = Number(this.product.sgst) || 0;
-    const cess = Number(this.product.cess) || 0;
-    this.totalPrice = basic + cgst + sgst + cess;
+    const slab = this.taxSlabs.find(s => s.id_tax_slab == this.product.idTaxSlab);
+    if (slab) {
+      this.product.cgst = Number(((basic * (Number(slab.CGST) || 0)) / 100).toFixed(2));
+      this.product.sgst = Number(((basic * (Number(slab.SGST) || 0)) / 100).toFixed(2));
+      this.product.cess = Number(((basic * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+    }
+    this.totalPrice = Number((basic + this.product.cgst + this.product.sgst + this.product.cess).toFixed(2));
   }
 
   private isProductCodeDuplicate(code: string): boolean {
@@ -280,6 +385,11 @@ export class AdminProductmaster implements OnInit {
 
     if (!this.product.name) {
       alert('Product Name is required');
+      return;
+    }
+
+    if (!this.product.idTaxSlab) {
+      alert('Please select a GST (Tax Slab)');
       return;
     }
 
@@ -333,8 +443,11 @@ export class AdminProductmaster implements OnInit {
         cgst: 0,
         sgst: 0,
         cess: 0,
-        purchaseCost: 0
+        purchaseCost: 0,
+        idTaxSlab: 0
     };
     this.totalPrice = 0;
+    this.selectedTaxLabel = '';
+    this.taxSearchTerm = '';
   }
 }

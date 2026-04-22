@@ -163,12 +163,12 @@ const saveProforma = async (req, res) => {
         const finalProformaNo = nextNoFromLast(lastNo, year, effectiveBranchId);
 
         const [result] = await conn.execute(
-            `INSERT INTO tbl_proforma (pro_quot_no, pro_branch, pro_date, pro_cus_name, pro_cus_address, pro_contact, pro_ref, pro_type_loan, pro_executive, pro_vehi_tax_total, pro_vehi_sgst_total, pro_vehi_cgst_total, pro_vehi_cess_total, pro_vehicle_total, pro_missal1, pro_missal1_amt, pro_missal2, pro_missal2_amt, pro_less, pro_grand_total, pro_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO tbl_proforma (pro_quot_no, pro_branch, pro_date, pro_cus_name, pro_cus_address, pro_contact, pro_ref, pro_type_loan, pro_executive, pro_vehi_tax_total, pro_vehi_sgst_total, pro_vehi_cgst_total, pro_vehi_cess_total, pro_vehicle_total, pro_missal1, pro_missal1_amt, pro_missal2, pro_missal2_amt, pro_missal3, pro_missal3_amt, pro_less, pro_grand_total, pro_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 finalProformaNo, effectiveBranchId, proformaDate || new Date(), customerName, address || '', phone || '', reference || '', paymentMode || 'Cash', executive || '',
                 totals?.taxable || 0, totals?.sgst || 0, totals?.cgst || 0, totals?.cess || 0, totals?.amount || 0,
-                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, lessAmount || 0, totalAmount || totals?.grandTotal || 0,
+                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, missell3 || '', missell3Amount || 0, lessAmount || 0, totalAmount || totals?.grandTotal || 0,
                 Number.isFinite(parseInt(proStatus, 10)) ? parseInt(proStatus, 10) : 1
             ]
         );
@@ -194,11 +194,11 @@ const updateProforma = async (req, res) => {
     try {
         await conn.beginTransaction();
         await conn.execute(
-            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_less=?, pro_grand_total=? WHERE pro_id=?`,
+            `UPDATE tbl_proforma SET pro_date=?, pro_cus_name=?, pro_cus_address=?, pro_contact=?, pro_ref=?, pro_type_loan=?, pro_executive=?, pro_vehi_tax_total=?, pro_vehi_sgst_total=?, pro_vehi_cgst_total=?, pro_vehi_cess_total=?, pro_vehicle_total=?, pro_missal1=?, pro_missal1_amt=?, pro_missal2=?, pro_missal2_amt=?, pro_missal3=?, pro_missal3_amt=?, pro_less=?, pro_grand_total=? WHERE pro_id=?`,
             [
                 proformaDate || new Date(), customerName || '', address || '', phone || '', reference || '', paymentMode || 'Cash', executive || '',
                 totals?.taxable || 0, totals?.sgst || 0, totals?.cgst || 0, totals?.cess || 0, totals?.amount || 0,
-                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, lessAmount || 0,
+                missell1 || '', missell1Amount || 0, missell2 || '', missell2Amount || 0, missell3 || '', missell3Amount || 0, lessAmount || 0,
                 totalAmount || totals?.grandTotal || 0, req.params.id
             ]
         );

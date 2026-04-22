@@ -677,6 +677,7 @@ export class EditProformaInvoiceComponent implements OnInit {
         sgstValue: number;
         cgstValue: number;
         cessValue: number;
+        totalPriceValue: number;
     }> = [];
 
     get searchableBranchOptions() {
@@ -880,7 +881,8 @@ export class EditProformaInvoiceComponent implements OnInit {
                         salePrice: this.toNumber(r.sale_price),
                         sgstValue: this.toNumber(r.sgst),
                         cgstValue: this.toNumber(r.cgst),
-                        cessValue: this.toNumber(r.cess)
+                        cessValue: this.toNumber(r.cess),
+                        totalPriceValue: this.toNumber(r.total_price)
                     })).filter((x: any) => x.code);
                     this.cdr.detectChanges();
                 }
@@ -919,8 +921,8 @@ export class EditProformaInvoiceComponent implements OnInit {
 
     onCodeChange(index: number): void {
         const row = this.items[index];
-        const code = (row.productCode || '').toString().trim();
-        const selected = this.productOptions.find(p => p.code === code);
+        const code = (row.productCode || '').toString().trim().toLowerCase();
+        const selected = this.productOptions.find(p => p.code.toLowerCase() === code);
         if (!selected) {
             if (!code) {
                 row.productId = 0;
@@ -943,14 +945,24 @@ export class EditProformaInvoiceComponent implements OnInit {
         const taxable = this.round2(basic * qty);
         item.qty = qty;
         item.taxable = taxable;
-        const selected = this.productOptions.find(p => p.code === item.productCode);
+        const selected = this.productOptions.find(p => 
+            (item.productId && p.productId === item.productId) || 
+            (p.code.toLowerCase() === (item.productCode || '').toString().toLowerCase())
+        );
         const sgstRate = selected ? this.taxRateFromDbValue(selected.sgstValue, selected.salePrice) : 0;
         const cgstRate = selected ? this.taxRateFromDbValue(selected.cgstValue, selected.salePrice) : 0;
-        const cessRate = selected ? this.taxRateFromDbValue(selected.cessValue, selected.salePrice) : 0;
+        const cessAmount = selected ? this.toNumber(selected.cessValue) : 0;
+        const totalAmount = selected ? this.toNumber(selected.totalPriceValue) : 0;
+
         item.sgst = this.round2(taxable * sgstRate);
         item.cgst = this.round2(taxable * cgstRate);
-        item.cess = this.round2(taxable * cessRate);
-        item.amount = this.round2(item.taxable + item.sgst + item.cgst + item.cess);
+        item.cess = this.round2(cessAmount * qty);
+        
+        if (totalAmount > 0) {
+            item.amount = this.round2(totalAmount * qty);
+        } else {
+            item.amount = this.round2(item.taxable + item.sgst + item.cgst + item.cess);
+        }
     }
 
     addRow(): void {

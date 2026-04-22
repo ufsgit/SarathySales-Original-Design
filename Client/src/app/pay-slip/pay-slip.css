@@ -378,6 +378,19 @@ input[type="number"].amount-right::-webkit-outer-spin-button {
     color: white;
 }
 
+.dropdown-option .v-main {
+    font-weight: 600;
+}
+
+.dropdown-option .v-sub {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.dropdown-option:hover .v-sub {
+    opacity: 1;
+}
+
 .no-results {
     color: #999;
     text-align: center;

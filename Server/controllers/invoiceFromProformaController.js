@@ -14,17 +14,19 @@ const getAvailableChassisRecords = async (req, res) => {
                 pi.product_id AS inv_vehicle_code,
                 pi.color_name AS inv_color,
                 pi.item_hsn_code AS inv_hsncode,
+                tlc.labour_code AS labour_code,
                 tlc.sale_price AS basic_amount,
                 0 AS discount_amount,
                 0 AS taxable_amount,
-                0 AS sgst,
-                0 AS cgst,
-                0 AS cess,
+                tlc.sgst AS labour_sgst,
+                tlc.cgst AS labour_cgst,
+                tlc.cess AS labour_cess,
                 0 AS inv_total,
                 pb.purch_branchId AS inv_branch,
                 pb.pucha_vendorName AS inv_cus,
                 til.inv_no,
-                til.inv_id
+                til.inv_id,
+                tlc.id_tax_slab AS id_tax_slab
             FROM purchaseitem pi
             LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
             LEFT JOIN tbl_labour_code tlc ON pi.product_id = tlc.labour_id
@@ -43,7 +45,17 @@ const getAvailableChassisRecords = async (req, res) => {
         sql += ' ORDER BY pi.purchaseItemId DESC';
         const [rows] = params.length ? await db.execute(sql, params) : await db.execute(sql);
 
-        res.json({ success: true, data: rows });
+        // Attach labour data fields directly so frontend can do Auto tax without extra API call
+        const data = rows.map(r => ({
+            ...r,
+            labour_sale_price: r.basic_amount ?? 0,
+            labour_cgst: r.labour_cgst ?? 0,
+            labour_sgst: r.labour_sgst ?? 0,
+            labour_cess: r.labour_cess ?? 0,
+            id_tax_slab: r.id_tax_slab
+        }));
+
+        res.json({ success: true, data });
     } catch (err) {
         console.error('getAvailableChassisRecords error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch available chassis records' });

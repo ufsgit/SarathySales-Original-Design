@@ -4,6 +4,7 @@ const {
     getNextInvoiceNo,
     getAllLabourCodes,
     getLabourDetails,
+    getLabourByCode,
     getHypothecationOptions,
     getChassisRecords,
     listInvoices,
@@ -23,6 +24,7 @@ const {
 
 router.get('/next-no', getNextInvoiceNo);
 router.get('/labour-codes', getAllLabourCodes);
+router.get('/labour-by-code/:code', getLabourByCode);
 router.get('/labour-details/:labourId', getLabourDetails);
 router.get('/hypothecation-options', getHypothecationOptions);
 router.get('/chassis-records', getChassisRecords);

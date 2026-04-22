@@ -95,15 +95,32 @@
                                 </div>
                                 <div class="form-col-vertical">
                                     <label>Vehicle Name:</label>
-                                    <input type="text" class="form-control" [ngModel]="vehicleName()"
-                                        (ngModelChange)="onVehicleInput($event)" name="vehicleName" list="vehicle-list"
-                                        placeholder="Search vehicle name/code">
-                                    <datalist id="vehicle-list">
-                                        <option *ngFor="let l of labourCodes()" [value]="l.labour_title">
-                                            {{l.labour_code}}</option>
-                                        <option *ngFor="let l of labourCodes()" [value]="l.labour_code">
-                                            {{l.labour_title}}</option>
-                                    </datalist>
+                                    <div class="custom-dropdown" #vehicleDropdownRef>
+                                        <div class="dropdown-toggle" (click)="toggleVehicleDropdown()">
+                                            {{ vehicleName() || 'SEARCH VEHICLE NAME/CODE' }}
+                                            <i class="fas fa-caret-down"></i>
+                                        </div>
+                                        <div class="dropdown-menu" *ngIf="isVehicleDropdownOpen()">
+                                            <div class="dropdown-search">
+                                                <input type="text" placeholder="Search vehicle..."
+                                                    [ngModel]="vehicleSearchTerm()"
+                                                    (ngModelChange)="vehicleSearchTerm.set($event)"
+                                                    name="vehicleSearch" #vehicleSearchInput
+                                                    (click)="$event.stopPropagation()">
+                                            </div>
+                                            <div class="dropdown-options-list">
+                                                <div class="dropdown-option" *ngFor="let v of searchableVehicleList()"
+                                                    (click)="selectVehicle(v)">
+                                                    <div class="v-main">{{ v.labour_title }}</div>
+                                                    <div class="v-sub">{{ v.labour_code }}</div>
+                                                </div>
+                                                <div class="dropdown-option no-results"
+                                                    *ngIf="searchableVehicleList().length === 0">
+                                                    No vehicles found
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-col-vertical">
                                     <label>Executive:</label>

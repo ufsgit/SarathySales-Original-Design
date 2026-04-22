@@ -716,7 +716,7 @@ export class PurchaseInvoiceComponent implements OnInit {
   gstin = signal('');
 
   institutionOptions = signal<Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin: string }>>([]);
-  productOptions = signal<Array<{ productId: number; prodCode: string; description: string; salePrice: number; colors: Array<{ colorCode: string; colorName: string }> }>>([]);
+  productOptions = signal<Array<{ productId: number; prodCode: string; description: string; salePrice: number; purchaseCost: number; hsnCode: string; colors: Array<{ colorCode: string; colorName: string }> }>>([]);
 
   isSaving = signal(false);
   successMessage = signal('');
@@ -735,6 +735,9 @@ export class PurchaseInvoiceComponent implements OnInit {
     saleType: string;
     productId: number;
     amount: number;
+    lc_rate: number;
+    item_hsn_code: string;
+    overall_age: string;
   }>>([this.createEmptyItem()]);
 
   totalPayableAmount = computed(() => {
@@ -809,7 +812,10 @@ export class PurchaseInvoiceComponent implements OnInit {
                   mfgDate:        d.item.mfgDate || '',
                   saleType:       d.item.saleType || '',
                   productId:      0,
-                  amount:         d.item.amount || 0
+                  amount:         d.item.amount || 0,
+                  lc_rate:        d.item.lc_rate || d.item.amount || 0,
+                  item_hsn_code:  d.item.item_hsn_code || '',
+                  overall_age:    d.item.overall_age || d.item.saleType || ''
                 }]);
               }
             }
@@ -883,7 +889,10 @@ export class PurchaseInvoiceComponent implements OnInit {
       mfgDate: '',
       saleType: '',
       productId: 0,
-      amount: 0
+      amount: 0,
+      lc_rate: 0,
+      item_hsn_code: '',
+      overall_age: ''
     };
   }
 
@@ -932,6 +941,8 @@ export class PurchaseInvoiceComponent implements OnInit {
             prodCode: (p.prodCode || '').toString().trim(),
             description: (p.description || '').toString().trim(),
             salePrice: this.toNumber(p.salePrice),
+            purchaseCost: this.toNumber(p.purchaseCost),
+            hsnCode: (p.hsnCode || '').toString().trim(),
             colors: Array.isArray(p.colors) ? p.colors.map((c: any) => ({
               colorCode: (c.colorCode || '').toString().trim(),
               colorName: (c.colorName || '').toString().trim()
@@ -957,13 +968,17 @@ export class PurchaseInvoiceComponent implements OnInit {
         item.productId = selected.productId;
         item.prodCode = selected.prodCode;
         item.description = selected.description;
-        item.amount = this.toNumber(selected.salePrice);
+        item.lc_rate = selected.purchaseCost;
+        item.amount = selected.purchaseCost; // Default amount to purchase cost as requested
+        item.item_hsn_code = selected.hsnCode;
         item.availableColors = selected.colors || [];
       } else if (!value) {
         item.productId = 0;
         item.prodCode = '';
         item.description = '';
         item.amount = 0;
+        item.lc_rate = 0;
+        item.item_hsn_code = '';
         item.availableColors = [];
       }
     }
@@ -1078,8 +1093,11 @@ export class PurchaseInvoiceComponent implements OnInit {
 
   private proceedWithSave(): void {
 
-    // FIX: Format time to HH:mm:ss to avoid length issues in DB
-    const formattedTime = new Date().toTimeString().split(' ')[0];
+    // FIX: Format time to HH:mm:ssam/pm
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0];
+    const ampm = now.getHours() >= 12 ? 'pm' : 'am';
+    const formattedTime = `${timeStr}${ampm}`;
     const upper = (v: any) => (v ?? '').toString().trim().toUpperCase();
 
     const payload = {
@@ -1096,6 +1114,7 @@ export class PurchaseInvoiceComponent implements OnInit {
       basicTotal: this.toNumber(this.basicTotal()),
       taxTotal: this.toNumber(this.taxTotal()),
       grandTotal: this.toNumber(this.grandTotal()),
+      total_bill_amount: Number(this.items().reduce((sum, item) => sum + this.toNumber(item.amount), 0).toFixed(2)),
       items: this.items().map((i: any) => ({
         productId: this.toNumber(i.productId),
         prodCode: upper(i.prodCode),
@@ -1106,6 +1125,9 @@ export class PurchaseInvoiceComponent implements OnInit {
         colorName: upper(i.colorName),
         mfgDate: i.mfgDate || '',
         saleType: upper(i.saleType),
+        overall_age: upper(i.saleType), // Mapping same as saleType as per user feedback
+        lc_rate: this.toNumber(i.lc_rate || i.amount),
+        item_hsn_code: upper(i.item_hsn_code),
         amount: this.toNumber(i.amount)
       })).filter((i: any) => i.prodCode || i.description || i.chassisNo || i.engineNo || i.amount > 0)
     };

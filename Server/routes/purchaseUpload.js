@@ -59,96 +59,81 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
         }
 
         conn = await db.getConnection();
+        await conn.beginTransaction();
 
-        // --- PHASE 1: PRE-VALIDATION ---
-        // Validate ALL rows before doing any database modifications
-
+        // --- PHASE 1: PRE-VALIDATION & COST FETCHING ---
+        
         // 1. Get Selected Branch Name
         const [branchResults] = await conn.execute('SELECT branch_name FROM tbl_branch WHERE b_id = ?', [effectiveBranchId]);
         if (branchResults.length === 0) {
+            await conn.rollback();
             return res.status(400).json({ success: false, message: 'Selected branch not found in database.' });
         }
         const selectedBranchName = String(branchResults[0].branch_name || '').trim().toLowerCase();
 
-        // Helper to parse dates like DD-MM-YYYY, Excel serial numbers, and return YYYY-MM-DD string
+        // Helpers
         const parseExcelDate = (dateVal) => {
             let d;
-            if (!dateVal) {
-                d = new Date();
-            } else if (dateVal instanceof Date) {
-                d = dateVal;
-            } else if (typeof dateVal === 'number' || (!isNaN(dateVal) && !isNaN(parseFloat(dateVal)))) {
-                // Handle Excel serial date (number of days since Jan 1, 1900)
+            if (!dateVal) return null;
+            if (dateVal instanceof Date) d = dateVal;
+            else if (typeof dateVal === 'number' || (!isNaN(dateVal) && !isNaN(parseFloat(dateVal)))) {
                 const serial = parseFloat(dateVal);
-                // Excel's 1900 leap year bug means we subtract 25569 days to reach 1970-01-01
                 d = new Date((serial - 25569) * 86400 * 1000);
             } else {
                 const s = String(dateVal).trim();
-                if (!s) {
-                    d = new Date();
-                } else {
-                    const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-                    if (m) {
-                        // Assume DD-MM-YYYY
-                        d = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
-                    } else {
-                        d = new Date(s);
-                    }
-                }
+                if (!s) return null;
+                const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+                if (m) d = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+                else d = new Date(s);
             }
-            if (!d || isNaN(d.getTime())) {
-                d = new Date();
-            }
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            if (!d || isNaN(d.getTime())) return null;
+            return d.toISOString().split('T')[0];
         };
 
-        // Helper to get now time in format: HH:mm:ssam/pm
         const formatNowTime = () => {
             const now = new Date();
             let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
             const ampm = hours >= 12 ? 'pm' : 'am';
-            return `${String(hours).padStart(2, '0')}:${minutes}:${seconds}${ampm}`;
+            hours = hours % 12 || 12;
+            return `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}${ampm}`;
         };
 
         const chassisInFile = new Set();
         const invoicesInFile = new Set();
         let calculatedTotal = 0;
+        
+        // Store pre-fetched model info to reuse in Phase 2
+        const modelCache = new Map();
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const rowNum = i + 2; 
             const uiInvNo = String(req.body.invNo || '').trim();
 
-            // Prioritize UI Invoice No if provided, else use Excel
             const invoiceNo = uiInvNo || String(row['Supplier Invoice No'] || row['Document Name'] || row['Invoice No'] || '').trim();
             const branchNameExcel = String(row['Branch'] || '').trim();
             const chassisNo = String(row['Chassis No'] || '').trim();
             const engineNo = String(row['Engine No'] || '').trim();
             const modelCode = String(row['Model Code'] || '').trim();
-            const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
 
             if (!invoiceNo || !branchNameExcel || !chassisNo || !engineNo || !modelCode) {
+                await conn.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Required data (Invoice No, Branch, Chassis, Engine, OR Model Code) missing at row ${rowNum}.`
                 });
             }
 
-            // 2. Strict Branch Check
             if (branchNameExcel.toLowerCase() !== selectedBranchName) {
+                await conn.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Row ${rowNum} has branch '${branchNameExcel}', but you selected '${branchResults[0].branch_name}'.`
                 });
             }
 
-            // 3. Intra-Excel Duplicate Chassis Check
             if (chassisInFile.has(chassisNo)) {
+                await conn.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Chassis number '${chassisNo}' appears multiple times in the Excel file (found again at row ${rowNum}).`
@@ -156,55 +141,66 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             }
             chassisInFile.add(chassisNo);
 
-            // 4. Database Duplicate Chassis Check
             const [dupChasis] = await conn.execute('SELECT chassis_no FROM purchaseitem WHERE chassis_no = ?', [chassisNo]);
             if (dupChasis.length > 0) {
+                await conn.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Chassis number '${chassisNo}' (Row ${rowNum}) already exists in the system.`
                 });
             }
 
-            // 5. Duplicate Invoice Check (Database)
             if (!invoicesInFile.has(invoiceNo)) {
                 const [dupInvoice] = await conn.execute(
-                    'SELECT invoiceNo FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?',
-                    [invoiceNo, effectiveBranchId]
+                    'SELECT invoiceNo FROM purchaseitembill WHERE invoiceNo = ?',
+                    [invoiceNo]
                 );
                 if (dupInvoice.length > 0) {
+                    await conn.rollback();
                     return res.status(400).json({
                         success: false,
-                        message: `Supplier Invoice No '${invoiceNo}' (found at row ${rowNum}) already exists for this branch. Upload cancelled.`
+                        message: `Supplier Invoice No '${invoiceNo}' (found at row ${rowNum}) already exists.`
                     });
                 }
                 invoicesInFile.add(invoiceNo);
             }
 
-            // Accumulate total
-            calculatedTotal += amount;
+            // Fetch model cost from DB
+            if (!modelCache.has(modelCode)) {
+                const [models] = await conn.execute(
+                    'SELECT labour_id, purchase_cost, labour_title, hsn_code FROM tbl_labour_code WHERE labour_code = ?',
+                    [modelCode]
+                );
+                modelCache.set(modelCode, models.length > 0 ? models[0] : null);
+            }
+            
+            const modelInfo = modelCache.get(modelCode);
+            const itemCost = modelInfo ? parseFloat(modelInfo.purchase_cost) || 0 : 0;
+            calculatedTotal += itemCost;
         }
 
         // --- PHASE 2: ATOMIC EXECUTION ---
-        await conn.beginTransaction();
-
         let successCount = 0;
+        const invoicesProcessed = new Set();
+
+        const uiBasic = Number(req.body.basicTotal || 0);
+        const uiTax   = Number(req.body.taxTotal || 0);
+        const uiGrand = Number(req.body.grandTotal || 0);
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const uiInvNo = String(req.body.invNo || '').trim();
             const uiInvDate = String(req.body.invoiceDate || '').trim();
 
-            // UI Fields for the Bill (Override Excel)
-            const vendorName = String(req.body.vendorName || '').trim();
+            const supplierName = String(req.body.vendorName || '').trim();
             const vendorAddress = String(req.body.address || '').trim();
             const hsnCode = String(req.body.hsnCode || '').trim();
             const gstin = String(req.body.gstin || '').trim();
             const rcNo = String(req.body.rcNo || '').trim();
             const rcDate = req.body.rcDate ? parseExcelDate(req.body.rcDate) : null;
 
-            // Invoice No & Date Conditional Override
             const invoiceNo = uiInvNo || String(row['Supplier Invoice No'] || row['Document Name'] || row['Invoice No'] || '').trim();
-            let invoiceDate = uiInvDate ? parseExcelDate(uiInvDate) : parseExcelDate(row['Supplier Invoice Date'] || row['Document Date'] || row['Date']);
+            const invoiceDate = uiInvDate ? parseExcelDate(uiInvDate) : (parseExcelDate(row['Supplier Invoice Date'] || row['Document Date'] || row['Date']) || new Date().toISOString().split('T')[0]);
             const invoiceTime = formatNowTime();
 
             const modelCode = String(row['Model Code'] || '').trim();
@@ -213,7 +209,6 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             const engineNo = String(row['Engine No'] || '').trim();
             const colorCode = String(row['CCODE'] || '').trim();
             const colorName = String(row['Color'] || '').trim();
-            const amount = parseFloat(row['Cost'] || row['Amount']) || 0;
             const saleType = String(row['Sale Type'] || 'Stock').trim();
 
             const modelFamily = String(row['Model Family'] || '').trim();
@@ -223,58 +218,60 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             // 1. Handle Purchase Bill
             let billId;
             const [existingBill] = await conn.execute(
-                'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?',
-                [invoiceNo, effectiveBranchId]
+                'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?',
+                [invoiceNo]
             );
 
             if (existingBill.length > 0) {
                 billId = existingBill[0].purchaseItemBillId;
-                // Update total for this bill IF it's shared across rows (common for bulk upload)
-                // Note: In bulk, we might be inserting many rows for the SAME bill.
-                // We should ensure the bill total reflects the sum of its items.
-                // Simple approach: Update the bill with the final calculated total if it exists.
-                await conn.execute(
-                    'UPDATE purchaseitembill SET total_bill_amount = ?, purc_grand_total = ? WHERE purchaseItemBillId = ?',
-                    [calculatedTotal, calculatedTotal, billId]
-                );
+                // Update totals for this bill once per upload run
+                if (!invoicesProcessed.has(invoiceNo)) {
+                    await conn.execute(
+                        `UPDATE purchaseitembill SET 
+                            total_bill_amount = ?, purc_basic_total = ?, 
+                            purc_tax_total = ?, purc_grand_total = ? 
+                         WHERE purchaseItemBillId = ?`,
+                        [calculatedTotal, uiBasic, uiTax, uiGrand, billId]
+                    );
+                    invoicesProcessed.add(invoiceNo);
+                }
             } else {
                 const [billResult] = await conn.execute(
-                    `INSERT INTO purchaseitembill 
-                        (invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName, purcha_vend_addrs, hsn_code, purc_gstin, rc_no, rac_date, total_bill_amount, purc_grand_total) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [invoiceNo, effectiveBranchId, invoiceDate, invoiceTime, vendorName, vendorAddress, hsnCode, gstin, rcNo, rcDate, calculatedTotal, calculatedTotal]
+                    `INSERT INTO purchaseitembill (
+                        invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName, purcha_vend_addrs,
+                        rc_no, rac_date, hsn_code, purc_gstin, bill_status, 
+                        purc_basic_total, purc_tax_total, purc_grand_total, total_bill_amount
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+                    [
+                        invoiceNo, effectiveBranchId, invoiceDate, invoiceTime, supplierName, vendorAddress,
+                        rcNo, rcDate, hsnCode, gstin,
+                        uiBasic, uiTax, uiGrand, calculatedTotal
+                    ]
                 );
                 billId = billResult.insertId;
+                invoicesProcessed.add(invoiceNo);
             }
 
             // 2. Get or Auto-add Product (Model)
             let productId = null;
-            const [modelRows] = await conn.execute(
-                'SELECT labour_id FROM tbl_labour_code WHERE labour_code = ?',
-                [modelCode]
-            );
+            const modelInfo = modelCache.get(modelCode);
 
-            const rowCgst = (amount * 9) / 100;
-            const rowSgst = (amount * 9) / 100;
-            const rowTotalPrice = amount + rowCgst + rowSgst;
-
-            if (modelRows.length > 0) {
-                productId = modelRows[0].labour_id;
-                // Update existing product with latest cost as sale_price and calculated GST & Total
-                await conn.execute(
-                    `UPDATE tbl_labour_code SET sale_price = ?, cgst = ?, sgst = ?, total_price = ? WHERE labour_id = ?`,
-                    [amount, rowCgst.toFixed(2), rowSgst.toFixed(2), rowTotalPrice.toFixed(2), productId]
-                );
+            if (modelInfo) {
+                productId = modelInfo.labour_id;
+                // NO UPDATE for existing models as per requirement
             } else {
+                // New Model: Insert with 0 price/gst and default empty values for mandatory metadata
                 const [insModel] = await conn.execute(
                     `INSERT INTO tbl_labour_code 
-                    (labour_code, labour_title, discription, repair_type, fa_weight, ra_weight, oa_weight, 
-                    ta_weight, ul_weight, r_weight, hp, cc, tbody, no_of_cylider, fuel, wheel_base, 
-                    booking_code, seat_capacity, sale_price, cgst, sgst, total_price, cess) 
-                    VALUES (?, ?, ?, 'Major', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ?, ?, ?, ?, '0.00')`,
-                    [modelCode, modelName || modelCode, modelName || modelCode, amount, rowCgst.toFixed(2), rowSgst.toFixed(2), rowTotalPrice.toFixed(2)]
+                    (labour_code, labour_title, discription, repair_type, hsn_code,
+                    fa_weight, ra_weight, oa_weight, ta_weight, ul_weight, r_weight, hp, cc, tbody, no_of_cylider, fuel, wheel_base, booking_code, seat_capacity,
+                    sale_price, purchase_cost, cgst, sgst, total_price, cess) 
+                    VALUES (?, ?, ?, 'Major', ?, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00')`,
+                    [modelCode, modelName || modelCode, modelName || modelCode, String(row['HSN Code'] || '').trim()]
                 );
                 productId = insModel.insertId;
+                // Re-fetch to satisfy cache for subsequent rows of same new model
+                modelCache.set(modelCode, { labour_id: productId, purchase_cost: 0 });
             }
 
             // 3. Get or Auto-add Color
@@ -285,7 +282,8 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 }
             }
 
-            const itemHsnCode = String(row['HSN Code'] || '').trim();
+            const itemHsnCode = String(row['HSN Code'] || modelInfo?.hsn_code || '').trim();
+            const itemCost = modelInfo ? parseFloat(modelInfo.purchase_cost) || 0 : 0;
 
             // 4. Insert Purchase Item
             await conn.execute(
@@ -294,26 +292,24 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 lc_rate, engine_no, color_name, color_id, p_date, sale_type, model_family, item_hsn_code, overall_age, branch_transfer, item_status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
                 [billId, productId, modelCode, modelName, chassisNo,
-                amount, engineNo, colorName, colorCode, mfgDate, saleType, modelFamily, itemHsnCode, overallAge, effectiveBranchId]
+                itemCost, engineNo, colorName, colorCode, mfgDate, saleType, modelFamily, itemHsnCode, overallAge, effectiveBranchId]
             );
 
             // 5. Update Stock
-            if (productId) {
-                const [stockCheck] = await conn.execute(
-                    'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
-                    [productId, effectiveBranchId]
+            const [stockCheck] = await conn.execute(
+                'SELECT stock_id FROM tbl_stock WHERE stock_item_id = ? AND stock_item_branch = ?',
+                [productId, effectiveBranchId]
+            );
+            if (stockCheck.length > 0) {
+                await conn.execute(
+                    'UPDATE tbl_stock SET stock_qty = CAST(CAST(COALESCE(NULLIF(stock_qty, ""), "0") AS SIGNED) + 1 AS CHAR) WHERE stock_id = ?',
+                    [stockCheck[0].stock_id]
                 );
-                if (stockCheck.length > 0) {
-                    await conn.execute(
-                        'UPDATE tbl_stock SET stock_qty = CAST(CAST(COALESCE(NULLIF(stock_qty, ""), "0") AS SIGNED) + 1 AS CHAR) WHERE stock_id = ?',
-                        [stockCheck[0].stock_id]
-                    );
-                } else {
-                    await conn.execute(
-                        'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, "1", "0")',
-                        [productId, modelCode, modelName, effectiveBranchId]
-                    );
-                }
+            } else {
+                await conn.execute(
+                    'INSERT INTO tbl_stock (stock_item_id, stock_item_code, stock_item_name, stock_item_branch, stock_qty, opening_stock) VALUES (?, ?, ?, ?, "1", "0")',
+                    [productId, modelCode, modelName, effectiveBranchId]
+                );
             }
 
             successCount++;
@@ -322,7 +318,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
         await conn.commit();
         res.json({
             success: true,
-            message: `Upload successful. ${successCount} records imported. Total Bill: ${calculatedTotal.toFixed(2)}`,
+            message: `Upload successful. ${successCount} records imported. Bill Total: ${calculatedTotal.toFixed(2)}`,
             successCount,
             total: calculatedTotal
         });

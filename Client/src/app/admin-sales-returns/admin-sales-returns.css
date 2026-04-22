@@ -183,51 +183,75 @@
     text-align: right;
 }
 
+/* Footer / Pagination Standardization */
 .table-footer {
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-top: 1px solid #dee2e6;
+    background-color: #fff;
     margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #eee;
 }
 
 .showing-text {
-    font-size: 13px;
-    color: #666;
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 400;
 }
 
 .dt-pagination {
     display: flex;
     gap: 5px;
+    align-items: center;
 }
 
 .dt-page-btn {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
+    padding: 6px 14px;
+    font-size: 13px;
     background: #fff;
+    border: 1px solid #dee2e6;
     color: #333;
     cursor: pointer;
-    font-size: 13px;
-    border-radius: 4px;
     transition: all 0.2s;
+    border-radius: 4px;
+    min-width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.dt-page-btn:hover:not(:disabled) {
-    background: #f0f0f0;
-    border-color: #ccc;
+.dt-page-btn.nav-btn {
+    min-width: 80px;
+}
+
+.dt-page-btn:hover:not(:disabled):not(.active) {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #0d6efd;
 }
 
 .dt-page-btn.active {
-    background: #0b5ed7;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
     color: #fff;
-    border-color: #0b5ed7;
+    font-weight: 600;
 }
 
 .dt-page-btn:disabled {
-    color: #ccc;
+    color: #adb5bd;
     cursor: not-allowed;
-    opacity: 0.6;
+    background-color: #fff;
+    border-color: #eee;
+}
+
+.dt-page-btn.ellipsis {
+    cursor: default;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    min-width: 20px;
+    padding: 0 5px;
 }
 
 @media (max-width: 768px) {

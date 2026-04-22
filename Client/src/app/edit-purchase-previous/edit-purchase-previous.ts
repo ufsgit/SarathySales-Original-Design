@@ -130,20 +130,32 @@ export class EditPurchasePrevious implements OnInit {
           this.grandTotal.set(Number(d.grandTotal) || 0);
           
           if (Array.isArray(d.items)) {
-            const mappedItems = d.items.map((item: any) => ({
-                prodCode: item.prodCode || '',
-                description: item.description || '',
-                chassisNo: item.chassisNo || '',
-                engineNo: item.engineNo || '',
-                colorCode: item.colorCode || '',
-                colorName: item.colorName || '',
-                availableColors: this.getColorsForProduct(item.prodCode),
-                mfgDate: this.formatDateForInput(item.mfgDate),
-                saleType: item.saleType || '',
-                productId: item.productId || 0,
-                amount: Number(item.amount) || 0,
-                purchaseItemId: item.purchaseItemId
-            }));
+            const mappedItems = d.items.map((item: any) => {
+                const baseColors = this.getColorsForProduct(item.prodCode);
+                const colorCode = (item.colorCode || '').toString().trim();
+                const colorName = (item.colorName || '').toString().trim();
+
+                // Ensure the saved color is available in the dropdown
+                const hasColor = baseColors.some(c => (c.colorCode || '').trim() === colorCode);
+                if (!hasColor && colorCode) {
+                    baseColors.push({ colorCode, colorName });
+                }
+
+                return {
+                    prodCode: item.prodCode || '',
+                    description: item.description || '',
+                    chassisNo: item.chassisNo || '',
+                    engineNo: item.engineNo || '',
+                    colorCode: colorCode,
+                    colorName: colorName,
+                    availableColors: baseColors,
+                    mfgDate: this.formatDateForInput(item.mfgDate),
+                    saleType: item.saleType || '',
+                    productId: item.productId || 0,
+                    amount: Number(item.amount) || 0,
+                    purchaseItemId: item.purchaseItemId
+                };
+            });
             this.items.set(mappedItems);
           }
         } else {
@@ -197,7 +209,15 @@ export class EditPurchasePrevious implements OnInit {
           // After products are loaded, update available colors for existing items
           const currentItems = this.items();
           currentItems.forEach(item => {
-            item.availableColors = this.getColorsForProduct(item.prodCode);
+            const baseColors = this.getColorsForProduct(item.prodCode);
+            const colorCode = (item.colorCode || '').toString().trim();
+            const colorName = (item.colorName || '').toString().trim();
+
+            const hasColor = baseColors.some(c => (c.colorCode || '').trim() === colorCode);
+            if (!hasColor && colorCode) {
+               baseColors.push({ colorCode, colorName });
+            }
+            item.availableColors = baseColors;
           });
           this.items.set([...currentItems]);
         }
@@ -206,8 +226,9 @@ export class EditPurchasePrevious implements OnInit {
   }
 
   getColorsForProduct(prodCode: string): any[] {
-    const prod = this.productOptions().find(p => p.prodCode === prodCode);
-    return prod ? prod.colors : [];
+    const query = (prodCode || '').toString().trim().toLowerCase();
+    const prod = this.productOptions().find(p => (p.prodCode || '').trim().toLowerCase() === query);
+    return prod ? [...prod.colors] : [];
   }
 
   onSave() {
@@ -297,11 +318,12 @@ export class EditPurchasePrevious implements OnInit {
     (item as any)[field] = value;
 
     if (field === 'prodCode') {
-      const prod = this.productOptions().find(p => p.prodCode === value);
+      const query = (value || '').toString().trim().toLowerCase();
+      const prod = this.productOptions().find(p => (p.prodCode || '').trim().toLowerCase() === query);
       if (prod) {
         item.description = prod.description;
         item.productId = prod.productId;
-        item.availableColors = prod.colors;
+        item.availableColors = [...prod.colors];
         item.amount = prod.salePrice;
       }
     } else if (field === 'colorCode') {
@@ -326,7 +348,12 @@ export class EditPurchasePrevious implements OnInit {
   }
 
   private toNumber(val: any): number { let n = parseFloat(val); return isNaN(n) ? 0 : n; }
-  formatColorOption(code: string, name: string): string { return `${name} [${code}]`; }
+  formatColorOption(code: string, name: string): string {
+    const c = (code || '').toString().trim();
+    const n = (name || '').toString().trim();
+    if (c && n) return `${c}[ ${n}]`;
+    return c || n || '';
+  }
   navigate(path: string) { this.router.navigate([path]); }
   trackByFn(index: number) { return index; }
 }

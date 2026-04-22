@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { TaxService } from '../services/tax.service';
 import { NumericOnlyDirective } from '../numeric-only.directive';
 import { UppercaseDirective } from '../uppercase.directive';
 
@@ -223,15 +224,15 @@ import { UppercaseDirective } from '../uppercase.directive';
                         <input type="number" class="form-control readonly" [(ngModel)]="taxableAmount" name="taxableAmount" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>SGST(9%):</label>
+                        <label>SGST({{ currentTaxInfo.sgstPer }}%):</label>
                         <input type="number" class="form-control readonly" [(ngModel)]="sgst" name="sgst" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>CGST(9%):</label>
+                        <label>CGST({{ currentTaxInfo.cgstPer }}%):</label>
                         <input type="number" class="form-control readonly" [(ngModel)]="cgst" name="cgst" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>CESS:</label>
+                        <label>CESS({{ currentTaxInfo.cessPer }}%):</label>
                         <input type="number" class="form-control readonly" [(ngModel)]="cess" name="cess" value="00.00" readonly>
                     </div>
                 </div>
@@ -681,9 +682,18 @@ export class InvoiceFromProformaComponent implements OnInit {
     isSaved = false;
     defaultBranchId = '';
     selectedBranchId = '';
+    
+    taxSlabs: any[] = [];
+    selectedLabourData: any = null;
+
+    get currentTaxInfo() {
+        const labour = this.selectedLabourData;
+        return this.taxService.calculateAutoPercentages(labour, this.taxSlabs);
+    }
+
     private chassisIndex = new Map<string, any>();
 
-    constructor(private router: Router, private route: ActivatedRoute, private api: ApiService, private cdr: ChangeDetectorRef) { }
+    constructor(private router: Router, private route: ActivatedRoute, private api: ApiService, private cdr: ChangeDetectorRef, private taxService: TaxService) { }
 
     ngOnInit(): void {
         this.route.params.subscribe((params: any) => {
@@ -694,6 +704,7 @@ export class InvoiceFromProformaComponent implements OnInit {
 
         this.invoiceDate = this.formatTodayDate();
         this.loadHypothecationOptions();
+        this.loadTaxSlabs();
         const user = this.api.getCurrentUser();
         this.isAdmin.set(user?.role == 1 || user?.role_des === 'admin');
         const loginBranchName = user?.branch_name || '';
@@ -867,12 +878,30 @@ export class InvoiceFromProformaComponent implements OnInit {
                         this.hsnCode = firstItem.pro_hsn_code || '';
 
                         this.basicAmount = this.toAmount(firstItem.pro_prduct_bas_amt);
+                        this.discountAmount = this.toAmount(firstItem.pro_discount_amt ?? 0);
                         this.taxableAmount = this.toAmount(firstItem.product_taxable_amt);
                         this.sgst = this.toAmount(firstItem.pro_product_sgst);
                         this.cgst = this.toAmount(firstItem.pro_product_cgst);
                         this.cess = this.toAmount(firstItem.product_cess_amt);
                         this.selectedInvTotal = this.toAmount(firstItem.pro_total);
                         this.totalAmountDisplay = this.selectedInvTotal.toFixed(2);
+
+                        // Build selectedLabourData from the proforma's stored tax amounts.
+                        // This allows recalculateTotalAmount() to correctly re-derive tax
+                        // percentages (via calculateAutoPercentages) when discount changes,
+                        // even if no chassis has been selected yet.
+                        const proBasicAmt = this.basicAmount;
+                        const proCgst = this.cgst;
+                        const proSgst = this.sgst;
+                        const proCess = this.cess;
+                        if (proBasicAmt > 0) {
+                            this.selectedLabourData = {
+                                sale_price: proBasicAmt,
+                                cgst: proCgst,
+                                sgst: proSgst,
+                                cess: proCess
+                            };
+                        }
                     }
 
                     this.cdr.detectChanges();
@@ -1063,10 +1092,48 @@ export class InvoiceFromProformaComponent implements OnInit {
         // Initial taxable amount calculation
         this.taxableAmount = this.basicAmount - this.discountAmount;
 
-        // Reset totals to force recalculation if selecting from stock (status='Available')
+        // Reset selectedInvTotal to force local calculation for 'Available' stock
         this.selectedInvTotal = 0;
 
-        this.recalculateTotalAmount();
+        // Build labour data directly from chassis record (labour_* fields embedded by backend)
+        // This avoids a separate API call and fixes mismatch between pCode and labour_code
+        const salePrice = this.toAmount(selected.labour_sale_price ?? selected.basic_amount ?? 0);
+        if (salePrice > 0 || selected.labour_cgst != null) {
+            this.selectedLabourData = {
+                sale_price: salePrice,
+                cgst: this.toAmount(selected.labour_cgst),
+                sgst: this.toAmount(selected.labour_sgst),
+                cess: this.toAmount(selected.labour_cess)
+            };
+            this.recalculateTotalAmount();
+        } else {
+            // Fallback: try API lookup by pCode
+            this.fetchLabourAndRecalculate();
+        }
+    }
+
+    fetchLabourAndRecalculate(triggerRecalc = true): void {
+        const code = this.pCode;
+        if (!code) {
+            this.selectedLabourData = null;
+            if (triggerRecalc) this.recalculateTotalAmount();
+            return;
+        }
+        this.api.getLabourByCode(code).subscribe({
+            next: (res: any) => {
+                if (res?.success) {
+                    this.selectedLabourData = res.data;
+                } else {
+                    this.selectedLabourData = null;
+                }
+                if (triggerRecalc) this.recalculateTotalAmount();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.selectedLabourData = null;
+                if (triggerRecalc) this.recalculateTotalAmount();
+            }
+        });
     }
 
     private buildChassisIndex(): void {
@@ -1282,18 +1349,24 @@ export class InvoiceFromProformaComponent implements OnInit {
         const basic = this.toAmount(this.basicAmount);
         const disc = this.toAmount(this.discountAmount);
 
-        this.taxableAmount = Math.max(0, basic - disc);
+        const taxable = Math.max(0, basic - disc);
+        this.taxableAmount = taxable;
 
-        // Formula: sgst = taxable amt * 9 / 100
-        // Formula: cgst = taxable amt * 9 / 100
-        // Formula: cess = 0
-        this.sgst = Number((this.taxableAmount * 0.09).toFixed(2));
-        this.cgst = Number((this.taxableAmount * 0.09).toFixed(2));
-        this.cess = 0;
+        const info = this.currentTaxInfo;
+        const result = this.taxService.calculateTax({
+            taxableAmount: taxable,
+            cgstPer: info.cgstPer,
+            sgstPer: info.sgstPer,
+            cessPer: info.cessPer
+        });
 
-        const total = this.taxableAmount + this.sgst + this.cgst + this.cess;
-        this.totalAmountDisplay = total.toFixed(2);
+        this.cgst = result.cgst;
+        this.sgst = result.sgst;
+        this.cess = result.cess;
+        this.totalAmountDisplay = result.grandTotal.toFixed(2);
+        this.cdr.detectChanges();
     }
+
 
     private toAmount(value: any): number {
         if (value === null || value === undefined) return 0;
@@ -1308,5 +1381,15 @@ export class InvoiceFromProformaComponent implements OnInit {
         const total = this.toAmount(row?.inv_total);
         if (total > 0) return total;
         return 0;
+    }
+
+    loadTaxSlabs(): void {
+        this.api.getTaxSlabs(1, 'all').subscribe({
+            next: (res: any) => {
+                if (res?.success && Array.isArray(res.data)) {
+                    this.taxSlabs = res.data;
+                }
+            }
+        });
     }
 }

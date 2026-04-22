@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { TaxService } from '../services/tax.service';
 import { NumericOnlyDirective } from '../numeric-only.directive';
 import { UppercaseDirective } from '../uppercase.directive';
 
@@ -300,15 +301,15 @@ import { UppercaseDirective } from '../uppercase.directive';
                         <input type="number" class="form-control readonly" [ngModel]="taxableAmount()" name="taxableAmount" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>SGST(9%):</label>
+                        <label>SGST({{ taxInfo().sgstPer }}%):</label>
                         <input type="number" class="form-control readonly" [ngModel]="sgst()" name="sgst" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>CGST(9%):</label>
+                        <label>CGST({{ taxInfo().cgstPer }}%):</label>
                         <input type="number" class="form-control readonly" [ngModel]="cgst()" name="cgst" value="00.00" readonly>
                     </div>
                     <div class="form-group">
-                        <label>CESS:</label>
+                        <label>CESS({{ taxInfo().cessPer }}%):</label>
                         <input type="number" class="form-control readonly" [ngModel]="cess()" name="cess" value="00.00" readonly>
                     </div>
                 </div>
@@ -675,6 +676,12 @@ export class SalesInvoiceComponent implements OnInit {
     @ViewChild('executiveDropdownRef') executiveDropdownRef!: ElementRef;
     @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
 
+    taxSlabs = signal<any[]>([]);
+    taxInfo = computed(() => {
+        const labour = this.selectedLabourData();
+        return this.taxService.calculateAutoPercentages(labour, this.taxSlabs());
+    });
+
     toggleDropdown() {
         this.isDropdownOpen.update(v => !v);
         if (this.isDropdownOpen()) {
@@ -835,6 +842,7 @@ export class SalesInvoiceComponent implements OnInit {
     defaultBranchId = signal('');
     invProductId = signal('');
     invColorCode = signal('');
+    selectedLabourData = signal<any>(null);
     private chassisIndex = new Map<string, any>();
 
     totalAmountDisplay = computed(() => {
@@ -853,7 +861,7 @@ export class SalesInvoiceComponent implements OnInit {
         return Math.max(0, total).toFixed(2);
     });
 
-    constructor(private router: Router, private api: ApiService) { }
+    constructor(private router: Router, private api: ApiService, private taxService: TaxService) { }
 
     ngOnInit(): void {
         this.invoiceDate.set(this.formatTodayDate());
@@ -925,6 +933,17 @@ export class SalesInvoiceComponent implements OnInit {
         });
 
         this.loadExecutives(this.branchName());
+        this.loadTaxSlabs();
+    }
+
+    private loadTaxSlabs(): void {
+        this.api.getTaxSlabs('all', 'all').subscribe({
+            next: (res: any) => {
+                if (res?.success && Array.isArray(res.data)) {
+                    this.taxSlabs.set(res.data);
+                }
+            }
+        });
     }
 
     private loadExecutives(branchName: string): void {
@@ -1131,7 +1150,46 @@ export class SalesInvoiceComponent implements OnInit {
 
         // Reset selectedInvTotal to force local calculation for 'Available' stock
         this.selectedInvTotal.set(0);
+
+        // Build labour data directly from chassis record (labour_* fields embedded by backend)
+        // This avoids a separate API call and fixes mismatch between pCode and labour_code
+        const salePrice = this.toAmount(selected.labour_sale_price ?? selected.basic_amount ?? 0);
+        if (salePrice > 0 || selected.labour_cgst != null) {
+            this.selectedLabourData.set({
+                sale_price: salePrice,
+                cgst: this.toAmount(selected.labour_cgst),
+                sgst: this.toAmount(selected.labour_sgst),
+                cess: this.toAmount(selected.labour_cess)
+            });
+        } else {
+            // Fallback: try API lookup by pCode
+            this.fetchLabourAndRecalculate();
+            return;
+        }
         this.recalculateTotalAmount();
+    }
+
+    fetchLabourAndRecalculate(): void {
+        const code = this.pCode();
+        if (!code) {
+            this.selectedLabourData.set(null);
+            this.recalculateTotalAmount();
+            return;
+        }
+        this.api.getLabourByCode(code).subscribe({
+            next: (res: any) => {
+                if (res?.success) {
+                    this.selectedLabourData.set(res.data);
+                } else {
+                    this.selectedLabourData.set(null);
+                }
+                this.recalculateTotalAmount();
+            },
+            error: () => {
+                this.selectedLabourData.set(null);
+                this.recalculateTotalAmount();
+            }
+        });
     }
 
     private buildChassisIndex(): void {
@@ -1358,12 +1416,17 @@ export class SalesInvoiceComponent implements OnInit {
         const taxable = Math.max(0, basic - disc);
         this.taxableAmount.set(taxable);
 
-        // sgst = taxable amt * 9 / 100
-        // cgst = taxable amt * 9 / 100
-        // cess = 0
-        this.sgst.set(Number((taxable * 0.09).toFixed(2)));
-        this.cgst.set(Number((taxable * 0.09).toFixed(2)));
-        this.cess.set(0);
+        const info = this.taxInfo();
+        const result = this.taxService.calculateTax({
+            taxableAmount: taxable,
+            cgstPer: info.cgstPer,
+            sgstPer: info.sgstPer,
+            cessPer: info.cessPer
+        });
+
+        this.cgst.set(result.cgst);
+        this.sgst.set(result.sgst);
+        this.cess.set(result.cess);
     }
 
     private toAmount(value: any): number {

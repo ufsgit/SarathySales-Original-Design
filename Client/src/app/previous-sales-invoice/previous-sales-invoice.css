@@ -153,44 +153,74 @@
     color: #333;
 }
 
-/* Footer / Pagination */
+/* Footer / Pagination Standardization */
 .table-footer {
-    padding: 10px 15px;
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid #dee2e6;
     background-color: #fff;
 }
 
 .showing-text {
-    font-size: 13px;
-    color: #ff0000;
-    /* Red text */
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 400;
 }
 
-.pagination-buttons {
+.dt-pagination {
     display: flex;
     gap: 5px;
+    align-items: center;
 }
 
-.nav-btn {
-    background: transparent;
-    border: none;
+.dt-page-btn {
+    padding: 6px 14px;
     font-size: 13px;
-    color: #666;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.nav-btn:disabled {
-    color: #ccc;
-    cursor: default;
-}
-
-.nav-btn:not(:disabled):hover {
+    background: #fff;
+    border: 1px solid #dee2e6;
     color: #333;
-    text-decoration: underline;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 4px;
+    min-width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dt-page-btn.nav-btn {
+    min-width: 80px;
+}
+
+.dt-page-btn:hover:not(:disabled):not(.active) {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #0d6efd;
+}
+
+.dt-page-btn.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+    font-weight: 600;
+}
+
+.dt-page-btn:disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+    background-color: #fff;
+    border-color: #eee;
+}
+
+.dt-page-btn.ellipsis {
+    cursor: default;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    min-width: 20px;
+    padding: 0 5px;
 }
 
 /* Responsive */

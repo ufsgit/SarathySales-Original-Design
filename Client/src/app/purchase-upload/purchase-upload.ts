@@ -713,7 +713,10 @@ export class PurchaseUploadComponent implements OnInit {
             hsnCode: this.hsnCode(),
             gstin: this.gstin(),
             rcDate: this.rcDate(),
-            rcNo: this.rcNo()
+            rcNo: this.rcNo(),
+            basicTotal: this.basicTotal(),
+            taxTotal: this.taxTotal(),
+            grandTotal: this.grandTotal()
         };
         this.api.uploadPurchaseExcel(this.selectedFile, this.branchId(), uiFields).subscribe({
             next: (res: any) => {

@@ -124,6 +124,24 @@ const savePurchaseInvoice = async (req, res) => {
             }
         }
 
+        // 1. Calculate and map totals
+        let totalMasterCost = 0;
+        const productIds = (items || []).map(i => i.productId).filter(id => !!id);
+        const productCosts = new Map();
+
+        if (productIds.length > 0) {
+            const [rows] = await conn.execute(
+                `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
+            );
+            rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
+        }
+
+        (items || []).forEach(item => {
+            const cost = productCosts.get(item.productId) || 0;
+            item.masterCost = cost;
+            totalMasterCost += cost;
+        });
+
         const [result] = await conn.execute(
             `INSERT INTO purchaseitembill (
                 invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName,
@@ -140,12 +158,12 @@ const savePurchaseInvoice = async (req, res) => {
                 rcNo || '',
                 rcDate || invoiceDate || new Date(),
                 0,
-                grandTotal || totalAmount || 0,
+                totalMasterCost, // <--- calculated from master costs
                 hsnCode || '',
                 gstin || '',
                 basicTotal || 0,
                 taxTotal || 0,
-                grandTotal || totalAmount || 0
+                grandTotal || 0
             ]
         );
         const invId = result.insertId;
@@ -153,13 +171,15 @@ const savePurchaseInvoice = async (req, res) => {
             await conn.execute(
                 `INSERT INTO purchaseitem
                  (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
                 [
                     invId, item.productId || null, item.prodCode || '', item.description || '',
                     item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
                     item.mfgDate || invoiceDate || new Date(), item.saleType || '',
-                    item.amount || item.rate || 0, req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId)
+                    item.masterCost || 0, // <--- use master cost for lc_rate
+                    req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
+                    item.overall_age || '', item.item_hsn_code || ''
                 ]
             );
 
@@ -520,36 +540,51 @@ const updatePurchaseInvoice = async (req, res) => {
             }
         }
 
+        // 1. Calculate and map totals
+        let totalMasterCost = 0;
+        const productIds = (items || []).map(i => i.productId).filter(id => !!id);
+        const productCosts = new Map();
+
+        if (productIds.length > 0) {
+            const [rows] = await conn.execute(
+                `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
+            );
+            rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
+        }
+
+        (items || []).forEach(item => {
+            const cost = productCosts.get(item.productId) || 0;
+            item.masterCost = cost;
+            totalMasterCost += cost;
+        });
+
         // 2. Update main bill
         await conn.execute(
             `UPDATE purchaseitembill SET 
                 purch_branchId = ?, invoiceDate = ?, pucha_vendorName = ?, purcha_vend_addrs = ?,
                 rc_no = ?, rac_date = ?, purc_basic_total = ?, purc_tax_total = ?,
-                purc_grand_total = ?, purc_gstin = ?, hsn_code = ?
+                purc_grand_total = ?, total_bill_amount = ?, purc_gstin = ?, hsn_code = ?
              WHERE purchaseItemBillId = ?`,
             [
                 branchId, invoiceDate, supplierName, address, rcNo, rcDate,
-                basicTotal, taxTotal, grandTotal, gstin, hsnCode, billId
+                basicTotal || 0, taxTotal || 0, grandTotal || 0, totalMasterCost, gstin, hsnCode, billId
             ]
         );
 
         // 3. Simplistic update for items: Delete existing and re-insert 
-        // Note: Real production code should carefully handle stock updates.
-        // For this task, I'll follow the pattern of re-inserting if it's easier.
-
         await conn.execute('DELETE FROM purchaseitem WHERE purchaseItemBillId = ?', [billId]);
 
         for (const item of (items || [])) {
             await conn.execute(
                 `INSERT INTO purchaseitem
                  (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
                 [
                     billId, item.productId || null, item.prodCode || '', item.description || '',
                     item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
                     item.mfgDate || invoiceDate || new Date(), item.saleType || '',
-                    item.amount || 0, branchId
+                    item.masterCost || 0, branchId, item.overall_age || '', item.item_hsn_code || ''
                 ]
             );
         }

@@ -172,10 +172,31 @@ import { ApiService } from '../services/api.service';
         <div class="edit-row"><label>Booking Code</label><input class="edit-input" [(ngModel)]="editData.bookingCode"></div>
         <div class="edit-row"><label>Seat Capacity</label><input class="edit-input" [(ngModel)]="editData.seatCapacity"></div>
         <div class="edit-row"><label>Basic Price</label><input class="edit-input" type="number" [(ngModel)]="editData.basicPrice" (ngModelChange)="calcEditTotal()"></div>
-        <div class="edit-row"><label>CGST</label><input class="edit-input" type="number" [(ngModel)]="editData.cgst" (ngModelChange)="calcEditTotal()"></div>
-        <div class="edit-row"><label>SGST</label><input class="edit-input" type="number" [(ngModel)]="editData.sgst" (ngModelChange)="calcEditTotal()"></div>
-        <div class="edit-row"><label>CESS</label><input class="edit-input" type="number" [(ngModel)]="editData.cess" (ngModelChange)="calcEditTotal()"></div>
-        <div class="edit-row"><label>Total</label><input class="edit-input" type="number" [(ngModel)]="editData.totalPrice"></div>
+        <div class="edit-row">
+          <label>GST</label>
+          <div class="custom-select-wrap" (click)="$event.stopPropagation()">
+            <div class="custom-select-trigger" (click)="isTaxDropdownOpen = !isTaxDropdownOpen">
+              {{ selectedTaxLabel || '-- Select GST --' }}
+              <span class="caret">&#9660;</span>
+            </div>
+            <div class="custom-select-dropdown" *ngIf="isTaxDropdownOpen">
+              <input class="search-input" type="text" placeholder="Search GST..."
+                [(ngModel)]="taxSearchTerm" name="editTaxSearchTerm"
+                (click)="$event.stopPropagation()" autofocus>
+              <div class="custom-option first-opt" (click)="clearEditTaxSlab()">-- Select GST --</div>
+              <div class="custom-option"
+                *ngFor="let slab of filteredTaxSlabs()"
+                (click)="selectEditTaxSlab(slab)">
+                {{ gstLabel(slab) }}
+              </div>
+              <div class="custom-option no-result" *ngIf="filteredTaxSlabs().length === 0">pls add gst from tax master</div>
+            </div>
+          </div>
+        </div>
+        <div class="edit-row"><label>CGST</label><input class="edit-input readonly" type="number" [(ngModel)]="editData.cgst" readonly></div>
+        <div class="edit-row"><label>SGST</label><input class="edit-input readonly" type="number" [(ngModel)]="editData.sgst" readonly></div>
+        <div class="edit-row"><label>CESS</label><input class="edit-input readonly" type="number" [(ngModel)]="editData.cess" readonly></div>
+        <div class="edit-row"><label>Total</label><input class="edit-input readonly" type="number" [(ngModel)]="editData.totalPrice" readonly></div>
         <div class="edit-row"><label>Purchase Cost</label><input class="edit-input" type="number" [(ngModel)]="editData.purchaseCost"></div>
       </div>
     </div>
@@ -263,10 +284,23 @@ import { ApiService } from '../services/api.service';
     .edit-row label { font-size: 12px; color: #555; font-weight: 500; }
     .edit-input { padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; outline: none; }
     .edit-input:focus { border-color: #0b5ed7; }
+
+    /* Custom GST Dropdown */
+    .custom-select-wrap { position: relative; }
+    .custom-select-trigger { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; min-height: 34px; user-select: none; }
+    .custom-select-trigger:hover { border-color: #0b5ed7; }
+    .caret { font-size: 10px; color: #666; margin-left: 4px; }
+    .custom-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-top: none; border-radius: 0 0 3px 3px; z-index: 9999; max-height: 220px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .search-input { width: 100%; padding: 6px 10px; font-size: 13px; border: none; border-bottom: 1px solid #eee; outline: none; box-sizing: border-box; }
+    .custom-option { padding: 7px 12px; font-size: 13px; cursor: pointer; color: #333; }
+    .custom-option:hover { background: #e8f0fe; }
+    .custom-option.first-opt { color: #888; font-style: italic; }
+    .custom-option.no-result { color: #c92127; cursor: default; font-weight: 500; }
   `]
 })
 export class AdminProductmasterlist implements OnInit {
   products = signal<any[]>([]);
+  taxSlabs: any[] = [];
   total = signal(0);
   page = signal(1);
   limit = signal(25);
@@ -313,6 +347,18 @@ export class AdminProductmasterlist implements OnInit {
 
   ngOnInit(): void {
     this.loadProducts();
+    this.loadTaxSlabs();
+  }
+
+  loadTaxSlabs() {
+    this.apiService.getTaxSlabs(1, 'all').subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.taxSlabs = res.data || [];
+        }
+      },
+      error: (err: any) => console.error('Error loading tax slabs', err)
+    });
   }
 
   loadProducts() {
@@ -408,6 +454,7 @@ export class AdminProductmasterlist implements OnInit {
 
         if (res.success) { 
           this.loadProducts(); 
+          this.loadTaxSlabs();
           setTimeout(() => { 
             this.showUploadModal = false;
             this.uploadStatus = '';
@@ -424,6 +471,7 @@ export class AdminProductmasterlist implements OnInit {
 
   // ---- Edit Modal ----
   openEditModal(product: any) {
+    console.log('Opening Edit Modal for product:', product);
     this.openDropdownIndex = null;
     this.editProductId = product.labour_id;
     this.editData = {
@@ -451,21 +499,105 @@ export class AdminProductmasterlist implements OnInit {
       sgst: product.sgst,
       cess: product.cess,
       totalPrice: product.total_price,
-      purchaseCost: product.purchase_cost
+      purchaseCost: product.purchase_cost,
+      idTaxSlab: product.id_tax_slab || 0
     };
+    // Restore the label for the currently selected slab
+    const existingSlab = this.taxSlabs.find(s => s.id_tax_slab == product.id_tax_slab);
+    this.selectedTaxLabel = existingSlab ? this.gstLabel(existingSlab) : '';
+    this.isTaxDropdownOpen = false;
+    this.taxSearchTerm = '';
     this.showEditModal = true;
+  }
+
+  // Custom GST dropdown
+  isTaxDropdownOpen = false;
+  taxSearchTerm = '';
+  selectedTaxLabel = '';
+
+  gstLabel(slab: any): string {
+    const g = Number(slab.GST) || 0;
+    const c = Number(slab.CGST) || 0;
+    const s = Number(slab.SGST) || 0;
+    const ce = Number(slab.CESS) || 0;
+    return `GST ${g.toFixed(2)}% (CGST ${c.toFixed(2)}% + SGST ${s.toFixed(2)}% + CESS ${ce.toFixed(2)}%)`;
+  }
+
+  filteredTaxSlabs(): any[] {
+    const term = this.taxSearchTerm.toLowerCase();
+    if (!term) return this.taxSlabs;
+    return this.taxSlabs.filter(s => this.gstLabel(s).toLowerCase().includes(term));
+  }
+
+  selectEditTaxSlab(slab: any) {
+    const basicPrice = Number(this.editData.basicPrice) || 0;
+    this.editData.idTaxSlab = slab.id_tax_slab;
+    this.editData.cgst = Number(((basicPrice * (Number(slab.CGST)||0)) / 100).toFixed(2));
+    this.editData.sgst = Number(((basicPrice * (Number(slab.SGST)||0)) / 100).toFixed(2));
+    this.editData.cess = Number(((basicPrice * (Number(slab.CESS)||0)) / 100).toFixed(2));
+    this.selectedTaxLabel = this.gstLabel(slab);
+    this.isTaxDropdownOpen = false;
+    this.taxSearchTerm = '';
+    this.calcEditTotal();
+  }
+
+  clearEditTaxSlab() {
+    this.editData.idTaxSlab = 0;
+    this.editData.cgst = 0;
+    this.editData.sgst = 0;
+    this.editData.cess = 0;
+    this.selectedTaxLabel = '';
+    this.isTaxDropdownOpen = false;
+    this.taxSearchTerm = '';
+    this.calcEditTotal();
   }
 
   calcEditTotal() {
     const b = Number(this.editData.basicPrice) || 0;
-    const c = Number(this.editData.cgst) || 0;
-    const s = Number(this.editData.sgst) || 0;
-    const ce = Number(this.editData.cess) || 0;
-    this.editData.totalPrice = b + c + s + ce;
+    const slab = this.taxSlabs.find(s => s.id_tax_slab == this.editData.idTaxSlab);
+    if (slab) {
+      this.editData.cgst = Number(((b * (Number(slab.CGST) || 0)) / 100).toFixed(2));
+      this.editData.sgst = Number(((b * (Number(slab.SGST) || 0)) / 100).toFixed(2));
+      this.editData.cess = Number(((b * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+    }
+    this.editData.totalPrice = Number((b + this.editData.cgst + this.editData.sgst + this.editData.cess).toFixed(2));
+  }
+
+  onTaxSlabChange(event: any) {
+    const slabId = event.target.value;
+    if (!slabId || slabId == "0") {
+      this.editData.idTaxSlab = 0;
+      return;
+    }
+
+    const slab = this.taxSlabs.find(s => s.id_tax_slab == slabId);
+    if (slab) {
+      const basicPrice = Number(this.editData.basicPrice) || 0;
+      this.editData.idTaxSlab = slab.id_tax_slab;
+
+      this.editData.cgst = Number(((basicPrice * (Number(slab.CGST) || 0)) / 100).toFixed(2));
+      this.editData.sgst = Number(((basicPrice * (Number(slab.SGST) || 0)) / 100).toFixed(2));
+      this.editData.cess = Number(((basicPrice * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+      this.calcEditTotal();
+    }
   }
 
   saveEdit() {
     if (!this.editProductId) return;
+    
+    if (!this.editData.code) {
+      alert('Product Code is required');
+      return;
+    }
+    if (!this.editData.name) {
+      alert('Product Name is required');
+      return;
+    }
+    if (!this.editData.idTaxSlab) {
+      alert('Please select a GST (Tax Slab)');
+      return;
+    }
+
     this.saving = true;
 
     this.apiService.updateProductMaster(this.editProductId, this.editData).subscribe({

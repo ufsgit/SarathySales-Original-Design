@@ -45,7 +45,9 @@ import { AdminCompanymasterlist } from './admin-companymaster/admin-companymaste
 import { AdminInstitutionmaster } from './admin-institutionmaster/admin-institutionmaster';
 import { AdminInstitutionmasterlist } from './admin-institutionmaster/admin-institutionmasterlist';
 import { AdminProductmaster } from './admin-productmaster/admin-productmaster';
+import { AdminTaxmaster } from './admin-taxmaster/admin-taxmaster';
 import { AdminHypothicationmaster } from './admin-hypothicationmaster/admin-hypothicationmaster';
+
 import { AdminHypothicationmasterlist } from './admin-hypothicationmasterlist/admin-hypothicationmasterlist';
 import { AdminColor } from './admin-color/admin-color';
 import { AdminColorlist } from './admin-colorlist/admin-colorlist';
@@ -65,7 +67,9 @@ export const routes: Routes = [
     { path: 'admin-institutionmaster', component: AdminInstitutionmaster, canActivate: [authGuard] },
     { path: 'admin-institutionmasterlist', component: AdminInstitutionmasterlist, canActivate: [authGuard] },
     { path: 'admin-productmaster', component: AdminProductmaster, canActivate: [authGuard] },
+    { path: 'admin-taxmaster', component: AdminTaxmaster, canActivate: [authGuard] },
     { path: 'admin-hypothicationmaster', component: AdminHypothicationmaster, canActivate: [authGuard] },
+
     { path: 'admin-hypothicationmasterlist', component: AdminHypothicationmasterlist, canActivate: [authGuard] },
     { path: 'admin-color', component: AdminColor, canActivate: [authGuard] },
     { path: 'admin-colorlist', component: AdminColorlist, canActivate: [authGuard] },

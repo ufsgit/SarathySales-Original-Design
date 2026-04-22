@@ -695,8 +695,8 @@ const updateBranchTransfer = async (req, res) => {
             // Delete destination records for old transfer
             // We identify them by invoiceNo matching the old debit_note_no
             const [oldBills] = await conn.execute(
-                `SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ? AND purch_branchId = ?`,
-                [oldData.debit_note_no, oldToBranchId]
+                `SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?`,
+                [oldData.debit_note_no]
             );
             if (oldBills.length) {
                 const billId = oldBills[0].purchaseItemBillId;
@@ -737,8 +737,8 @@ const updateBranchTransfer = async (req, res) => {
             // If only metadata changed, update the destination bill amount/date if it exists
             await conn.execute(
                 `UPDATE purchaseitembill SET invoiceDate = ?, total_bill_amount = ? 
-                 WHERE invoiceNo = ? AND purch_branchId = ?`,
-                [transferDate || oldData.debit_note_date, Number(firstItem.amount || 0), oldData.debit_note_no, toBranchId]
+                 WHERE invoiceNo = ?`,
+                [transferDate || oldData.debit_note_date, Number(firstItem.amount || 0), oldData.debit_note_no]
             );
         }
 

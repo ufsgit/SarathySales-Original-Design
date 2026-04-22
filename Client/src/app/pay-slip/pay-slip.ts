@@ -33,6 +33,8 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
     @ViewChild('financeDropdownRef') financeDropdownRef!: ElementRef;
     @ViewChild('financeSearchInput') financeSearchInput!: ElementRef;
+    @ViewChild('vehicleDropdownRef') vehicleDropdownRef!: ElementRef;
+    @ViewChild('vehicleSearchInput') vehicleSearchInput!: ElementRef;
 
     searchableBranchList = computed(() => {
         const term = this.branchSearchTerm().toLowerCase();
@@ -59,6 +61,16 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         const base = this.insuranceCompanies().map(f => ({ name: f.icompany_name }));
         const list = [{ name: 'By Cash' }, ...base];
         return list.filter(f => f.name.toLowerCase().includes(term));
+    });
+
+    vehicleSearchTerm = signal('');
+    isVehicleDropdownOpen = signal(false);
+    searchableVehicleList = computed(() => {
+        const term = this.vehicleSearchTerm().toLowerCase();
+        return this.labourCodes().filter(v =>
+            (v.labour_title || '').toLowerCase().includes(term) ||
+            (v.labour_code || '').toLowerCase().includes(term)
+        );
     });
 
     paySlipNo = signal('');
@@ -197,6 +209,9 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         if (this.financeDropdownRef && !this.financeDropdownRef.nativeElement.contains(event.target)) {
             this.isFinanceDropdownOpen.set(false);
         }
+        if (this.vehicleDropdownRef && !this.vehicleDropdownRef.nativeElement.contains(event.target)) {
+            this.isVehicleDropdownOpen.set(false);
+        }
     }
 
     toggleBranchDropdown() {
@@ -249,6 +264,20 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     onFinanceSelect(f: any) {
         this.financeCash.set(f.name);
         this.isFinanceDropdownOpen.set(false);
+    }
+
+    toggleVehicleDropdown() {
+        this.isVehicleDropdownOpen.update(v => !v);
+        if (this.isVehicleDropdownOpen()) {
+            this.vehicleSearchTerm.set('');
+            setTimeout(() => this.vehicleSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    selectVehicle(v: any) {
+        this.vehicleName.set(v.labour_title || v.labour_code || '');
+        this.onVehicleSelect();
+        this.isVehicleDropdownOpen.set(false);
     }
 
     loadBranches() {
@@ -356,11 +385,13 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 const data = res?.data || {};
 
                 const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
-                this.labourCodes.set(vehicles.map((v: any) => ({
-                    ...v,
-                    labour_title: (v.stock_item_name || '').toString().trim(),
-                    labour_code: (v.stock_item_code || '').toString().trim()
-                })));
+                this.labourCodes.set(vehicles
+                    .filter((v: any) => (v.stock_item_name || '').trim() !== '' || (v.stock_item_code || '').trim() !== '')
+                    .map((v: any) => ({
+                        ...v,
+                        labour_title: (v.stock_item_name || '').toString().trim(),
+                        labour_code: (v.stock_item_code || '').toString().trim()
+                    })));
 
                 const executives = Array.isArray(data.executives) ? data.executives : [];
                 this.advisers.set(executives.map((a: any) => ({
@@ -484,7 +515,10 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.api.getAllLabourCodes().subscribe({
             next: (res: any) => {
                 if (res.success) {
-                    this.labourCodes.set(res.data || []);
+                    const filtered = (res.data || []).filter((v: any) =>
+                        (v.labour_title || '').trim() !== '' || (v.labour_code || '').trim() !== ''
+                    );
+                    this.labourCodes.set(filtered);
                     if (this.vehicleName()) {
                         this.onVehicleSelect();
                     }

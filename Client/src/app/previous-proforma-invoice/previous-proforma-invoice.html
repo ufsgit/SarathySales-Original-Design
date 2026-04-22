@@ -106,18 +106,16 @@
             <div class="table-footer">
                 <div class="showing-text">Showing {{ fromEntry() }} to {{ toEntry() }} of {{ total() }} entries</div>
                 <div class="dt-pagination">
-                    <button class="dt-page-btn" [disabled]="!hasPrev() || isLoading()" (click)="prevPage()"
-                        [class.disabled]="!hasPrev()">Previous</button>
+                    <button class="dt-page-btn nav-btn" [disabled]="!hasPrev()" (click)="prevPage()">Previous</button>
 
                     @for (p of visiblePages(); track $index) {
-                    <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
-                        [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
-                        {{ p }}
-                    </button>
+                        <button class="dt-page-btn" [class.active]="p === page()" [class.ellipsis]="p === '...'"
+                            [disabled]="p === '...' || isLoading()" (click)="goToPage(p)">
+                            {{ p }}
+                        </button>
                     }
 
-                    <button class="dt-page-btn" [disabled]="!hasNext() || isLoading()" (click)="nextPage()"
-                        [class.disabled]="!hasNext()">Next</button>
+                    <button class="dt-page-btn nav-btn" [disabled]="!hasNext()" (click)="nextPage()">Next</button>
                 </div>
             </div>
 

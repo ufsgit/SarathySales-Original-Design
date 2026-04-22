@@ -105,6 +105,38 @@ export class ApiService {
         return this.getBranches();
     }
 
+    getTaxSlabs(page: number | string = 1, limit: number | string = 10, search = ''): Observable<ApiResponse> {
+        const params = new HttpParams().set('page', page.toString()).set('limit', limit.toString()).set('search', search);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/tax-slabs/list`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    addTaxSlab(data: any): Observable<ApiResponse> {
+        return this.http.post<ApiResponse>(`${this.BASE_URL}/admin/tax-slabs/add`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    updateTaxSlab(id: number, data: any): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/tax-slabs/update/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deleteTaxSlab(id: number, force: boolean = false): Observable<ApiResponse> {
+        const url = force ? `${this.BASE_URL}/admin/tax-slabs/delete/${id}?force=true` : `${this.BASE_URL}/admin/tax-slabs/delete/${id}`;
+        return this.http.delete<ApiResponse>(url)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    checkTaxSlabDependencies(id: number): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/tax-slabs/check-dependencies/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getAllLabourCodes(): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list?limit=1000`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     // ─── Customer ─────────────────────────────────────────────────────────────────
 
     searchCustomer(query: string): Observable<ApiResponse> {
@@ -341,8 +373,13 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    getAllLabourCodes(): Observable<ApiResponse> {
-        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-invoice/labour-codes`)
+    getLabourByCode(code: string): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-invoice/labour-by-code/${encodeURIComponent(code)}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getLabourDetails(id: string | number): Observable<ApiResponse> {
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/sales-invoice/labour-details/${id}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -364,6 +401,8 @@ export class ApiService {
                     prodCode: (r.labour_code || '').toString().trim(),
                     description: (r.labour_title || '').toString().trim(),
                     salePrice: Number(r.sale_price) || 0,
+                    purchaseCost: Number(r.purchase_cost) || 0,
+                    hsnCode: (r.hsn_code || '').toString().trim(),
                     colors: mappedColors
                 }));
                 return { success: !!products?.success, data };
