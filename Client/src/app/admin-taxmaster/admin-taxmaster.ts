@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -41,26 +41,26 @@ import { ApiService } from '../services/api.service';
             <div class="add-form">
               <div class="field-group">
                 <label>CGST (%)</label>
-                <input type="number" class="form-input" placeholder="e.g. 9" [(ngModel)]="newSlab.CGST" (ngModelChange)="autoCalcNew()" min="0" step="0.01">
+                <input type="number" class="form-input" placeholder="e.g. 9" [ngModel]="cgstNew()" (ngModelChange)="cgstNew.set($event)" min="0" step="0.01">
               </div>
               <div class="field-group">
                 <label>SGST (%)</label>
-                <input type="number" class="form-input" placeholder="e.g. 9" [(ngModel)]="newSlab.SGST" (ngModelChange)="autoCalcNew()" min="0" step="0.01">
+                <input type="number" class="form-input" placeholder="e.g. 9" [ngModel]="sgstNew()" (ngModelChange)="sgstNew.set($event)" min="0" step="0.01">
               </div>
               <div class="field-group">
                 <label>CESS (%)</label>
-                <input type="number" class="form-input" placeholder="e.g. 0" [(ngModel)]="newSlab.CESS" min="0" step="0.01">
+                <input type="number" class="form-input" placeholder="e.g. 0" [ngModel]="cessNew()" (ngModelChange)="cessNew.set($event)" min="0" step="0.01">
               </div>
               <div class="field-group">
                 <label>GST (auto)</label>
-                <input type="number" class="form-input readonly" [value]="computedGST" readonly>
+                <input type="number" class="form-input readonly" [value]="computedGST()" readonly>
               </div>
               <div class="field-group">
                 <label>IGST (auto)</label>
-                <input type="number" class="form-input readonly" [value]="computedGST" readonly>
+                <input type="number" class="form-input readonly" [value]="computedGST()" readonly>
               </div>
-              <button class="btn-add" (click)="addSlab()" [disabled]="saving">
-                <i class="fas fa-plus"></i> {{ saving ? 'Adding...' : 'Add Slab' }}
+              <button class="btn-add" (click)="addSlab()" [disabled]="saving()">
+                <i class="fas fa-plus"></i> {{ saving() ? 'Adding...' : 'Add Slab' }}
               </button>
             </div>
           </div>
@@ -100,7 +100,7 @@ import { ApiService } from '../services/api.service';
                 </tr>
                 <ng-container *ngFor="let slab of slabs(); let i = index">
                   <!-- View row -->
-                  <tr *ngIf="editingId !== slab.id_tax_slab">
+                  <tr *ngIf="editingId() !== slab.id_tax_slab">
                     <td>{{ (currentPage - 1) * pageSize + i + 1 }}</td>
                     <td><span class="badge">{{ slab.GST | number:'1.2-2' }}%</span></td>
                     <td>{{ slab.CGST | number:'1.2-2' }}%</td>
@@ -113,15 +113,15 @@ import { ApiService } from '../services/api.service';
                     </td>
                   </tr>
                   <!-- Inline Edit row -->
-                  <tr *ngIf="editingId === slab.id_tax_slab" class="edit-row">
+                  <tr *ngIf="editingId() === slab.id_tax_slab" class="edit-row">
                     <td>{{ (currentPage - 1) * pageSize + i + 1 }}</td>
-                    <td><span class="badge">{{ editComputedGST | number:'1.2-2' }}%</span></td>
-                    <td><input type="number" class="inline-input" [(ngModel)]="editSlab.CGST" (ngModelChange)="autoCalcEdit()" min="0" step="0.01"></td>
-                    <td><input type="number" class="inline-input" [(ngModel)]="editSlab.SGST" (ngModelChange)="autoCalcEdit()" min="0" step="0.01"></td>
-                    <td><input type="number" class="inline-input readonly" [value]="editComputedGST" readonly></td>
-                    <td><input type="number" class="inline-input" [(ngModel)]="editSlab.CESS" min="0" step="0.01"></td>
+                    <td><span class="badge">{{ editComputedGST() | number:'1.2-2' }}%</span></td>
+                    <td><input type="number" class="inline-input" [ngModel]="editCGST()" (ngModelChange)="editCGST.set($event)" min="0" step="0.01"></td>
+                    <td><input type="number" class="inline-input" [ngModel]="editSGST()" (ngModelChange)="editSGST.set($event)" min="0" step="0.01"></td>
+                    <td><input type="number" class="inline-input readonly" [value]="editComputedGST()" readonly></td>
+                    <td><input type="number" class="inline-input" [ngModel]="editCESS()" (ngModelChange)="editCESS.set($event)" min="0" step="0.01"></td>
                     <td class="action-cell">
-                      <button class="btn-save" (click)="saveEdit()" [disabled]="saving">{{ saving ? '...' : 'Save' }}</button>
+                      <button class="btn-save" (click)="saveEdit()" [disabled]="saving()">{{ saving() ? '...' : 'Save' }}</button>
                       <button class="btn-cancel" (click)="cancelEdit()">Cancel</button>
                     </td>
                   </tr>
@@ -148,44 +148,44 @@ import { ApiService } from '../services/api.service';
       </div>
       
           <!-- Dependency Warning Modal -->
-          <div class="modal-overlay" *ngIf="showDependencyModal">
+          <div class="modal-overlay" *ngIf="showDependencyModal()">
             <div class="modal-content warning-modal">
               <header class="modal-header warning">
                 <h3>⚠️ Tax Slab In Use</h3>
                 <button class="close-btn" (click)="closeDependencyModal()"><i class="fas fa-times"></i></button>
               </header>
               <div class="modal-body">
-                <p class="warning-text" *ngIf="pendingAction === 'edit'">Editing this tax slab will affect existing labour codes and vehicles.</p>
+                <p class="warning-text" *ngIf="pendingAction() === 'edit'">Editing this tax slab will affect existing labour codes and vehicles.</p>
                 <div class="summary-stats">
                   <div class="stat-box">
                     <i class="fas fa-tools"></i> 
-                    <span>{{ affectedLabourCodes.length }} Labour Codes affected</span>
+                    <span>{{ affectedLabourCodes().length }} Labour Codes affected</span>
                   </div>
                   <div class="stat-box">
                     <i class="fas fa-car"></i> 
-                    <span>{{ affectedVehicles.length }} Available Vehicles affected</span>
+                    <span>{{ affectedVehicles().length }} Available Vehicles affected</span>
                   </div>
                 </div>
 
                 <div class="dependency-lists">
-                  <div class="list-section" *ngIf="affectedLabourCodes.length > 0">
+                  <div class="list-section" *ngIf="affectedLabourCodes().length > 0">
                     <h4>Labour Codes</h4>
                     <div class="table-wrap">
                       <table class="dep-table">
                         <thead><tr><th>Sl No.</th><th>Labour Code</th><th>Labour Title</th></tr></thead>
                         <tbody>
-                          <tr *ngFor="let l of affectedLabourCodes; let i = index"><td>{{ i + 1 }}</td><td>{{ l.labour_code }}</td><td>{{ l.labour_title }}</td></tr>
+                          <tr *ngFor="let l of affectedLabourCodes(); let i = index"><td>{{ i + 1 }}</td><td>{{ l.labour_code }}</td><td>{{ l.labour_title }}</td></tr>
                         </tbody>
                       </table>
                     </div>
                   </div>
-                  <div class="list-section" *ngIf="affectedVehicles.length > 0">
+                  <div class="list-section" *ngIf="affectedVehicles().length > 0">
                     <h4>Vehicles</h4>
                     <div class="table-wrap">
                       <table class="dep-table">
                         <thead><tr><th>Sl No.</th><th>Chassis No</th><th>Labour Code</th></tr></thead>
                         <tbody>
-                          <tr *ngFor="let v of affectedVehicles; let i = index"><td>{{ i + 1 }}</td><td>{{ v.chassis_no }}</td><td>{{ v.labour_code }}</td></tr>
+                          <tr *ngFor="let v of affectedVehicles(); let i = index"><td>{{ i + 1 }}</td><td>{{ v.chassis_no }}</td><td>{{ v.labour_code }}</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -195,7 +195,7 @@ import { ApiService } from '../services/api.service';
               <footer class="modal-footer">
                 <button class="btn-cancel" style="padding: 8px 16px; font-size: 13px;" (click)="closeDependencyModal()">Cancel ❌</button>
                 <button class="btn-danger" (click)="confirmForceAction()">
-                  {{ pendingAction === 'edit' ? 'Continue Edit' : 'Delete Anyway ⚠️' }}
+                  {{ pendingAction() === 'edit' ? 'Continue Edit' : 'Delete Anyway ⚠️' }}
                 </button>
               </footer>
             </div>
@@ -308,7 +308,7 @@ import { ApiService } from '../services/api.service';
 })
 export class AdminTaxmaster implements OnInit {
     slabs = signal<any[]>([]);
-    saving = false;
+    saving = signal(false);
     Math = Math;
 
     // Pagination & Search
@@ -318,27 +318,31 @@ export class AdminTaxmaster implements OnInit {
     searchQuery = '';
     pageSizeOptions = [5, 10, 25, 50, 100];
 
-    // Add new form
-    newSlab = { CGST: null as number | null, SGST: null as number | null, CESS: null as number | null };
-    get computedGST(): number {
-        return Number(((Number(this.newSlab.CGST) || 0) + (Number(this.newSlab.SGST) || 0)).toFixed(2));
-    }
+    // Add new form signals
+    cgstNew = signal<number | null>(null);
+    sgstNew = signal<number | null>(null);
+    cessNew = signal<number | null>(null);
+    computedGST = computed(() => {
+        return Number(((Number(this.cgstNew()) || 0) + (Number(this.sgstNew()) || 0)).toFixed(2));
+    });
 
-    // Edit form
-    editingId: number | null = null;
-    editSlab: any = {};
-    get editComputedGST(): number {
-        return Number(((Number(this.editSlab.CGST) || 0) + (Number(this.editSlab.SGST) || 0)).toFixed(2));
-    }
+    // Edit form signals
+    editingId = signal<number | null>(null);
+    editCGST = signal<number | null>(null);
+    editSGST = signal<number | null>(null);
+    editCESS = signal<number | null>(null);
+    editComputedGST = computed(() => {
+        return Number(((Number(this.editCGST()) || 0) + (Number(this.editSGST()) || 0)).toFixed(2));
+    });
 
     // Modal State
-    showDependencyModal = false;
-    pendingAction: 'edit' | 'delete' | null = null;
-    pendingSlab: any = null;
-    affectedLabourCodes: any[] = [];
-    affectedVehicles: any[] = [];
+    showDependencyModal = signal(false);
+    pendingAction = signal<'edit' | 'delete' | null>(null);
+    pendingSlab = signal<any>(null);
+    affectedLabourCodes = signal<any[]>([]);
+    affectedVehicles = signal<any[]>([]);
 
-    constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
+    constructor(private api: ApiService) {}
 
     ngOnInit(): void {
         this.loadSlabs();
@@ -382,24 +386,26 @@ export class AdminTaxmaster implements OnInit {
         return Array.from({ length: total }, (_, i) => i + 1);
     }
 
-    autoCalcNew() { /* GST auto-computed via getter */ }
-    autoCalcEdit() { /* GST auto-computed via getter */ }
+    autoCalcNew() { /* Auto-computed via signal */ }
+    autoCalcEdit() { /* Auto-computed via signal */ }
 
     addSlab() {
-        const cgst = Number(this.newSlab.CGST) || 0;
-        const sgst = Number(this.newSlab.SGST) || 0;
-        const cess = Number(this.newSlab.CESS) || 0;
+        const cgst = Number(this.cgstNew()) || 0;
+        const sgst = Number(this.sgstNew()) || 0;
+        const cess = Number(this.cessNew()) || 0;
         if (cgst <= 0 && sgst <= 0) {
             alert('At least CGST or SGST must be greater than 0.');
             return;
         }
         const gst = cgst + sgst;
-        this.saving = true;
+        this.saving.set(true);
         this.api.addTaxSlab({ GST: gst, CGST: cgst, SGST: sgst, IGST: gst, CESS: cess }).subscribe({
             next: (res: any) => {
-                this.saving = false;
+                this.saving.set(false);
                 if (res.success) {
-                    this.newSlab = { CGST: null, SGST: null, CESS: null };
+                    this.cgstNew.set(null);
+                    this.sgstNew.set(null);
+                    this.cessNew.set(null);
                     this.currentPage = 1;
                     this.loadSlabs();
                 } else {
@@ -407,7 +413,7 @@ export class AdminTaxmaster implements OnInit {
                 }
             },
             error: (err: any) => {
-                this.saving = false;
+                this.saving.set(false);
                 alert('❌ ' + (err.error?.message || 'Failed to add slab'));
             }
         });
@@ -417,12 +423,11 @@ export class AdminTaxmaster implements OnInit {
         this.api.checkTaxSlabDependencies(slab.id_tax_slab).subscribe({
             next: (res: any) => {
                 if (res.success && (res.labourCodes?.length > 0 || res.vehicles?.length > 0)) {
-                    this.pendingAction = 'edit';
-                    this.pendingSlab = slab;
-                    this.affectedLabourCodes = res.labourCodes || [];
-                    this.affectedVehicles = res.vehicles || [];
-                    this.showDependencyModal = true;
-                    this.cdr.detectChanges();
+                    this.pendingAction.set('edit');
+                    this.pendingSlab.set(slab);
+                    this.affectedLabourCodes.set(res.labourCodes || []);
+                    this.affectedVehicles.set(res.vehicles || []);
+                    this.showDependencyModal.set(true);
                 } else {
                     this.enterEditMode(slab);
                 }
@@ -432,29 +437,31 @@ export class AdminTaxmaster implements OnInit {
     }
 
     private enterEditMode(slab: any) {
-        this.editingId = slab.id_tax_slab;
-        this.editSlab = { CGST: Number(slab.CGST), SGST: Number(slab.SGST), CESS: Number(slab.CESS) };
-        this.cdr.detectChanges();
+        this.editingId.set(slab.id_tax_slab);
+        this.editCGST.set(Number(slab.CGST));
+        this.editSGST.set(Number(slab.SGST));
+        this.editCESS.set(Number(slab.CESS));
     }
 
     cancelEdit() {
-        this.editingId = null;
-        this.editSlab = {};
-        this.cdr.detectChanges();
+        this.editingId.set(null);
+        this.editCGST.set(null);
+        this.editSGST.set(null);
+        this.editCESS.set(null);
     }
 
     saveEdit() {
         if (!confirm('Are you sure you want to update this tax slab? This will affect all associated products.')) {
             return;
         }
-        const cgst = Number(this.editSlab.CGST) || 0;
-        const sgst = Number(this.editSlab.SGST) || 0;
-        const cess = Number(this.editSlab.CESS) || 0;
+        const cgst = Number(this.editCGST()) || 0;
+        const sgst = Number(this.editSGST()) || 0;
+        const cess = Number(this.editCESS()) || 0;
         const gst = cgst + sgst;
-        this.saving = true;
-        this.api.updateTaxSlab(this.editingId!, { GST: gst, CGST: cgst, SGST: sgst, IGST: gst, CESS: cess }).subscribe({
+        this.saving.set(true);
+        this.api.updateTaxSlab(this.editingId()!, { GST: gst, CGST: cgst, SGST: sgst, IGST: gst, CESS: cess }).subscribe({
             next: (res: any) => {
-                this.saving = false;
+                this.saving.set(false);
                 if (res.success) {
                     this.cancelEdit();
                     this.loadSlabs();
@@ -463,7 +470,7 @@ export class AdminTaxmaster implements OnInit {
                 }
             },
             error: (err: any) => {
-                this.saving = false;
+                this.saving.set(false);
                 alert('❌ ' + (err.error?.message || 'Failed to update slab'));
             }
         });
@@ -473,17 +480,22 @@ export class AdminTaxmaster implements OnInit {
         this.api.checkTaxSlabDependencies(slab.id_tax_slab).subscribe({
             next: (res: any) => {
                 if (res.success && (res.labourCodes?.length > 0 || res.vehicles?.length > 0)) {
-                    this.pendingAction = 'delete';
-                    this.pendingSlab = slab;
-                    this.affectedLabourCodes = res.labourCodes || [];
-                    this.affectedVehicles = res.vehicles || [];
-                    this.showDependencyModal = true;
-                    this.cdr.detectChanges();
+                    this.pendingAction.set('delete');
+                    this.pendingSlab.set(slab);
+                    this.affectedLabourCodes.set(res.labourCodes || []);
+                    this.affectedVehicles.set(res.vehicles || []);
+                    this.showDependencyModal.set(true);
                 } else {
-                    this.executeDelete(slab.id_tax_slab, false);
+                    if (confirm('Are you sure you want to delete this tax slab?')) {
+                        this.executeDelete(slab.id_tax_slab, false);
+                    }
                 }
             },
-            error: () => this.executeDelete(slab.id_tax_slab, false)
+            error: () => {
+                if (confirm('Are you sure you want to delete this tax slab?')) {
+                    this.executeDelete(slab.id_tax_slab, false);
+                }
+            }
         });
     }
 
@@ -501,23 +513,23 @@ export class AdminTaxmaster implements OnInit {
     }
 
     confirmForceAction() {
-        if (this.pendingAction === 'edit') {
-            this.enterEditMode(this.pendingSlab);
+        if (this.pendingAction() === 'edit') {
+            this.enterEditMode(this.pendingSlab());
             this.closeDependencyModal();
-        } else if (this.pendingAction === 'delete') {
+        } else if (this.pendingAction() === 'delete') {
+            const slab = this.pendingSlab();
             if (confirm('Are you sure you want to delete this tax slab? This action cannot be undone.')) {
-                this.executeDelete(this.pendingSlab.id_tax_slab, true);
+                this.executeDelete(slab.id_tax_slab, true);
                 this.closeDependencyModal();
             }
         }
     }
 
     closeDependencyModal() {
-        this.showDependencyModal = false;
-        this.pendingAction = null;
-        this.pendingSlab = null;
-        this.affectedLabourCodes = [];
-        this.affectedVehicles = [];
-        this.cdr.detectChanges();
+        this.showDependencyModal.set(false);
+        this.pendingAction.set(null);
+        this.pendingSlab.set(null);
+        this.affectedLabourCodes.set([]);
+        this.affectedVehicles.set([]);
     }
 }
