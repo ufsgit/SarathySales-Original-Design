@@ -829,12 +829,12 @@ export class SalesInvoiceComponent implements OnInit {
     color = signal('');
     pCode = signal('');
     hsnCode = signal('');
-    basicAmount = signal(0);
-    discountAmount = signal(0);
-    taxableAmount = signal(0);
-    sgst = signal(0);
-    cgst = signal(0);
-    cess = signal(0);
+    basicAmount = signal<number | null>(null);
+    discountAmount = signal<number | null>(null);
+    taxableAmount = signal<number | null>(null);
+    sgst = signal<number | null>(null);
+    cgst = signal<number | null>(null);
+    cess = signal<number | null>(null);
     selectedInvTotal = signal(0);
     chassisOptions = signal<any[]>([]);
     filteredChassisOptions = signal<any[]>([]);
@@ -1125,12 +1125,12 @@ export class SalesInvoiceComponent implements OnInit {
             this.hsnCode.set('');
             this.invProductId.set('');
             this.invColorCode.set('');
-            this.basicAmount.set(0);
-            this.discountAmount.set(0);
-            this.taxableAmount.set(0);
-            this.sgst.set(0);
-            this.cgst.set(0);
-            this.cess.set(0);
+            this.basicAmount.set(null);
+            this.discountAmount.set(null);
+            this.taxableAmount.set(null);
+            this.sgst.set(null);
+            this.cgst.set(null);
+            this.cess.set(null);
             return;
         }
 
@@ -1146,7 +1146,8 @@ export class SalesInvoiceComponent implements OnInit {
         this.invColorCode.set((selected.inv_color_code || '').toString());
 
         this.basicAmount.set(this.toAmount(selected.basic_amount ?? selected.inv_basic_amt ?? 0));
-        this.discountAmount.set(this.toAmount(selected.discount_amount ?? selected.inv_discount_amt ?? 0));
+        const discAmt = this.toAmount(selected.discount_amount ?? selected.inv_discount_amt);
+        this.discountAmount.set(discAmt > 0 ? discAmt : null);
 
         // Reset selectedInvTotal to force local calculation for 'Available' stock
         this.selectedInvTotal.set(0);
@@ -1290,7 +1291,7 @@ export class SalesInvoiceComponent implements OnInit {
                 pCode: this.invProductId() || this.pCode(), // Send product ID if available
                 hsnCode: this.hsnCode(),
                 basicAmount: this.basicAmount(),
-                discountAmount: this.discountAmount(),
+                discountAmount: this.discountAmount() ?? 0,
                 taxableAmount: this.taxableAmount(),
                 sgst: this.sgst(),
                 cgst: this.cgst(),
@@ -1367,12 +1368,12 @@ export class SalesInvoiceComponent implements OnInit {
         this.hsnCode.set('');
         this.invProductId.set('');
         this.invColorCode.set('');
-        this.basicAmount.set(0);
-        this.discountAmount.set(0);
-        this.taxableAmount.set(0);
-        this.sgst.set(0);
-        this.cgst.set(0);
-        this.cess.set(0);
+        this.basicAmount.set(null);
+        this.discountAmount.set(null);
+        this.taxableAmount.set(null);
+        this.sgst.set(null);
+        this.cgst.set(null);
+        this.cess.set(null);
         this.selectedInvTotal.set(0);
         this.executiveOptions.set([]);
         this.chassisOptions.set([]);

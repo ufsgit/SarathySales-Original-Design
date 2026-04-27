@@ -668,7 +668,7 @@ export class InvoiceFromProformaComponent implements OnInit {
     pCode = '';
     hsnCode = '';
     basicAmount = 0;
-    discountAmount = 0;
+    discountAmount: number | null = null;
     taxableAmount = 0;
     sgst = 0;
     cgst = 0;
@@ -878,7 +878,8 @@ export class InvoiceFromProformaComponent implements OnInit {
                         this.hsnCode = firstItem.pro_hsn_code || '';
 
                         this.basicAmount = this.toAmount(firstItem.pro_prduct_bas_amt);
-                        this.discountAmount = this.toAmount(firstItem.pro_discount_amt ?? 0);
+                        const proDisc = this.toAmount(firstItem.pro_discount_amt);
+                        this.discountAmount = proDisc > 0 ? proDisc : null;
                         this.taxableAmount = this.toAmount(firstItem.product_taxable_amt);
                         this.sgst = this.toAmount(firstItem.pro_product_sgst);
                         this.cgst = this.toAmount(firstItem.pro_product_cgst);
@@ -1087,10 +1088,11 @@ export class InvoiceFromProformaComponent implements OnInit {
         this.hsnCode = (selected.inv_hsncode || selected.hsn_code || '').toString();
 
         this.basicAmount = this.toAmount(selected.basic_amount ?? selected.inv_basic_amt ?? 0);
-        this.discountAmount = this.toAmount(selected.discount_amount ?? selected.inv_discount_amt ?? 0);
+        const discAmt = this.toAmount(selected.discount_amount ?? selected.inv_discount_amt);
+        this.discountAmount = discAmt > 0 ? discAmt : null;
 
         // Initial taxable amount calculation
-        this.taxableAmount = this.basicAmount - this.discountAmount;
+        this.taxableAmount = this.basicAmount - (this.discountAmount ?? 0);
 
         // Reset selectedInvTotal to force local calculation for 'Available' stock
         this.selectedInvTotal = 0;
@@ -1250,7 +1252,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                 color: (this.color || '').toString().trim(),
                 gstin: (this.gstin || '').toString().trim(),
                 basicAmount: this.toAmount(this.basicAmount),
-                discountAmount: this.toAmount(this.discountAmount),
+                discountAmount: this.discountAmount ?? 0,
                 hsnCode: (this.hsnCode || '').toString().trim(),
                 taxableAmount: this.toAmount(this.taxableAmount),
                 sgst: this.toAmount(this.sgst),

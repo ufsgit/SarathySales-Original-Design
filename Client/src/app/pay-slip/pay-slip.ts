@@ -86,33 +86,33 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     payStatus = signal<any>(1);
 
     // numeric signals left column
-    vehicleAmount = signal<number>(0);
-    roadTax = signal<number>(0);
-    insurance = signal<number>(0);
-    regnFee = signal<number>(0);
-    vpCharges = signal<number>(0);
-    extendedWarranty = signal<number>(0);
-    serviceStamp = signal<number>(0);
-    fittingsAmt = signal<number>(0);
-    bflInsOthers = signal<number>(0);
-    advanceEMI = signal<number>(0);
-    rsaAmount = signal<number>(0);
-    ownershipAmt = signal<number>(0);
+    vehicleAmount = signal<number | null>(null);
+    roadTax = signal<number | null>(null);
+    insurance = signal<number | null>(null);
+    regnFee = signal<number | null>(null);
+    vpCharges = signal<number | null>(null);
+    extendedWarranty = signal<number | null>(null);
+    serviceStamp = signal<number | null>(null);
+    fittingsAmt = signal<number | null>(null);
+    bflInsOthers = signal<number | null>(null);
+    advanceEMI = signal<number | null>(null);
+    rsaAmount = signal<number | null>(null);
+    ownershipAmt = signal<number | null>(null);
 
     // numeric signals right column
-    financeAmount = signal<number>(0);
-    advanceCash = signal<number>(0);
-    bankTransfer = signal<number>(0);
-    swipe = signal<number>(0);
-    exchange = signal<number>(0);
-    discount = signal<number>(0);
-    bflDiscount = signal<number>(0);
-    specialDiscount = signal<number>(0);
-    duesAmt = signal<number>(0);
-    gpay = signal<number>(0);
-    others1 = signal<number>(0);
-    others2 = signal<number>(0);
-    others3 = signal<number>(0);
+    financeAmount = signal<number | null>(null);
+    advanceCash = signal<number | null>(null);
+    bankTransfer = signal<number | null>(null);
+    swipe = signal<number | null>(null);
+    exchange = signal<number | null>(null);
+    discount = signal<number | null>(null);
+    bflDiscount = signal<number | null>(null);
+    specialDiscount = signal<number | null>(null);
+    duesAmt = signal<number | null>(null);
+    gpay = signal<number | null>(null);
+    others1 = signal<number | null>(null);
+    others2 = signal<number | null>(null);
+    others3 = signal<number | null>(null);
 
     // ── Computed Totals ─────────────────────────────────────────
     leftTotal = computed(() => {
@@ -129,7 +129,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             this.advanceEMI(),
             this.rsaAmount(),
             this.ownershipAmt()
-        ].reduce((acc, v) => acc + this.toNumber(v), 0);
+        ].reduce<number>((acc, v) => acc + this.toNumber(v), 0);
     });
 
     rightTotal = computed(() => {
@@ -147,7 +147,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             this.others1(),
             this.others2(),
             this.others3()
-        ].reduce((acc, v) => acc + this.toNumber(v), 0);
+        ].reduce<number>((acc, v) => acc + this.toNumber(v), 0);
     });
 
     balanceAmount = computed(() => this.leftTotal() - this.rightTotal());
@@ -630,64 +630,64 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             executiveId: this.adviserId(),
             remarks: this.remarks(),
             financeType: this.financeCash(),
-            vehicleAmount: this.vehicleAmount().toString(),
-            roadTax: this.roadTax().toString(),
-            insuranceAmount: this.insurance().toString(),
-            regnFee: this.regnFee().toString(),
-            vpCharges: this.vpCharges().toString(),
-            extendedWarranty: this.extendedWarranty().toString(),
-            serviceStampCharges: this.serviceStamp().toString(),
-            fittingsAmt: this.fittingsAmt().toString(),
-            bflInsOthers: this.bflInsOthers().toString(),
-            advanceEmi: this.advanceEMI().toString(),
-            rsaAmount: this.rsaAmount().toString(),
-            ownershipAmt: this.ownershipAmt().toString(),
-            financeAmount: this.financeAmount().toString(),
-            advanceCash: this.advanceCash().toString(),
-            bankTransfer: this.bankTransfer().toString(),
-            swipe: this.swipe().toString(),
-            exchange: this.exchange().toString(),
-            discount: this.discount().toString(),
-            bflDiscount: this.bflDiscount().toString(),
-            specialDiscount: this.specialDiscount().toString(),
-            duesAmt: this.duesAmt().toString(),
-            gpay: this.gpay().toString(),
-            others1: this.others1().toString(),
-            others2: this.others2().toString(),
-            others3: this.others3().toString(),
+            vehicleAmount: (this.vehicleAmount() ?? 0).toString(),
+            roadTax: (this.roadTax() ?? 0).toString(),
+            insuranceAmount: (this.insurance() ?? 0).toString(),
+            regnFee: (this.regnFee() ?? 0).toString(),
+            vpCharges: (this.vpCharges() ?? 0).toString(),
+            extendedWarranty: (this.extendedWarranty() ?? 0).toString(),
+            serviceStampCharges: (this.serviceStamp() ?? 0).toString(),
+            fittingsAmt: (this.fittingsAmt() ?? 0).toString(),
+            bflInsOthers: (this.bflInsOthers() ?? 0).toString(),
+            advanceEmi: (this.advanceEMI() ?? 0).toString(),
+            rsaAmount: (this.rsaAmount() ?? 0).toString(),
+            ownershipAmt: (this.ownershipAmt() ?? 0).toString(),
+            financeAmount: (this.financeAmount() ?? 0).toString(),
+            advanceCash: (this.advanceCash() ?? 0).toString(),
+            bankTransfer: (this.bankTransfer() ?? 0).toString(),
+            swipe: (this.swipe() ?? 0).toString(),
+            exchange: (this.exchange() ?? 0).toString(),
+            discount: (this.discount() ?? 0).toString(),
+            bflDiscount: (this.bflDiscount() ?? 0).toString(),
+            specialDiscount: (this.specialDiscount() ?? 0).toString(),
+            duesAmt: (this.duesAmt() ?? 0).toString(),
+            gpay: (this.gpay() ?? 0).toString(),
+            others1: (this.others1() ?? 0).toString(),
+            others2: (this.others2() ?? 0).toString(),
+            others3: (this.others3() ?? 0).toString(),
             payStatus: this.payStatus(),
 
             pay_finance: this.financeCash(),
             pay_slip_reference: this.vehicleName(),
             pay_regn: this.adviserName(),
-            pay_regn_fee: this.regnFee().toString(),
+            pay_regn_fee: (this.regnFee() ?? 0).toString(),
             pay_cus_name: this.customerName(),
             pay_vehil_type: this.vehicleType(),
-            pay_vehile_amt: this.vehicleAmount().toString(),
+            pay_vehile_amt: (this.vehicleAmount() ?? 0).toString(),
             pay_remarks: this.remarks(),
-            pay_vp_charge: this.vpCharges().toString(),
-            pay_insurance: this.insurance().toString(),
-            pay_road_tax: this.roadTax().toString(),
-            pay_dcc: this.financeAmount().toString(),
-            pay_exchange: this.exchange().toString(),
-            pay_discount: this.discount().toString(),
-            pay_bfl: this.bflDiscount().toString(),
-            pay_advance: this.advanceCash().toString(),
-            pay_dues: this.duesAmt().toString(),
-            pay_exted_wanty: this.extendedWarranty().toString(),
-            pay_service_chrge: this.serviceStamp().toString(),
-            pay_others: this.bflInsOthers().toString(),
-            pay_advan_install: this.advanceEMI().toString(),
-            pay_rsa_amt: this.rsaAmount().toString(),
-            pay_ownership_amt: this.ownershipAmt().toString(),
-            pay_bank_transfer: this.bankTransfer().toString(),
-            pay_swipe_amt: this.swipe().toString(),
-            pay_special_discnt: this.specialDiscount().toString(),
-            pay_fitting_amt: this.fittingsAmt().toString(),
-            pay_others1_amt: this.others1().toString(),
-            pay_others2_amt: this.others2().toString(),
-            pay_others3_amt: this.others3().toString(),
-            pay_gpay: this.gpay().toString(),
+            pay_vp_charge: (this.vpCharges() ?? 0).toString(),
+            pay_insurance: (this.insurance() ?? 0).toString(),
+            pay_road_tax: (this.roadTax() ?? 0).toString(),
+            pay_dcc: (this.financeAmount() ?? 0).toString(),
+            pay_exchange: (this.exchange() ?? 0).toString(),
+            pay_discount: (this.discount() ?? 0).toString(),
+            pay_bfl: (this.bflDiscount() ?? 0).toString(),
+            pay_advance: (this.advanceCash() ?? 0).toString(),
+            pay_dues: (this.duesAmt() ?? 0).toString(),
+            pay_exted_wanty: (this.extendedWarranty() ?? 0).toString(),
+            pay_service_chrge: (this.serviceStamp() ?? 0).toString(),
+            pay_others: (this.bflInsOthers() ?? 0).toString(),
+            pay_advan_install: (this.advanceEMI() ?? 0).toString(),
+            pay_rsa_amt: (this.rsaAmount() ?? 0).toString(),
+            pay_ownership_amt: (this.ownershipAmt() ?? 0).toString(),
+            pay_bank_transfer: (this.bankTransfer() ?? 0).toString(),
+            pay_swipe_amt: (this.swipe() ?? 0).toString(),
+            pay_special_discnt: (this.specialDiscount() ?? 0).toString(),
+            pay_fitting_amt: (this.fittingsAmt() ?? 0).toString(),
+            pay_others1_amt: (this.others1() ?? 0).toString(),
+            pay_others2_amt: (this.others2() ?? 0).toString(),
+            pay_others3_amt: (this.others3() ?? 0).toString(),
+            pay_gpay: (this.gpay() ?? 0).toString(),
             pay_add_total: this.leftTotal().toString(),
             pay_less_total: this.rightTotal().toString(),
             pay_grand_tot: (this.balanceAmount()).toString(),
@@ -769,32 +769,32 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.payStatus.set(1);
 
         // Reset numeric signals
-        this.vehicleAmount.set(0);
-        this.roadTax.set(0);
-        this.insurance.set(0);
-        this.regnFee.set(0);
-        this.vpCharges.set(0);
-        this.extendedWarranty.set(0);
-        this.serviceStamp.set(0);
-        this.fittingsAmt.set(0);
-        this.bflInsOthers.set(0);
-        this.advanceEMI.set(0);
-        this.rsaAmount.set(0);
-        this.ownershipAmt.set(0);
+        this.vehicleAmount.set(null);
+        this.roadTax.set(null);
+        this.insurance.set(null);
+        this.regnFee.set(null);
+        this.vpCharges.set(null);
+        this.extendedWarranty.set(null);
+        this.serviceStamp.set(null);
+        this.fittingsAmt.set(null);
+        this.bflInsOthers.set(null);
+        this.advanceEMI.set(null);
+        this.rsaAmount.set(null);
+        this.ownershipAmt.set(null);
 
-        this.financeAmount.set(0);
-        this.advanceCash.set(0);
-        this.bankTransfer.set(0);
-        this.swipe.set(0);
-        this.exchange.set(0);
-        this.discount.set(0);
-        this.bflDiscount.set(0);
-        this.specialDiscount.set(0);
-        this.duesAmt.set(0);
-        this.gpay.set(0);
-        this.others1.set(0);
-        this.others2.set(0);
-        this.others3.set(0);
+        this.financeAmount.set(null);
+        this.advanceCash.set(null);
+        this.bankTransfer.set(null);
+        this.swipe.set(null);
+        this.exchange.set(null);
+        this.discount.set(null);
+        this.bflDiscount.set(null);
+        this.specialDiscount.set(null);
+        this.duesAmt.set(null);
+        this.gpay.set(null);
+        this.others1.set(null);
+        this.others2.set(null);
+        this.others3.set(null);
 
         this.paySlipNo.set('');
         this.loadSlipNo();

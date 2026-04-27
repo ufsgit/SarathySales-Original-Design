@@ -744,9 +744,9 @@ export class PurchaseInvoiceComponent implements OnInit {
     return this.items().reduce((sum: number, row: any) => sum + this.toNumber(row.amount), 0);
   });
 
-  basicTotal = signal(0.00);
-  taxTotal = signal(0.00);
-  grandTotal = signal(0.00);
+  basicTotal = signal<number | null>(null);
+  taxTotal = signal<number | null>(null);
+  grandTotal = signal<number | null>(null);
 
   constructor(private router: Router, private api: ApiService, private route: ActivatedRoute) { }
 
@@ -797,9 +797,9 @@ export class PurchaseInvoiceComponent implements OnInit {
               this.gstin.set(d.gstin || '');
               this.address.set(d.address || '');
               this.institution.set(d.supplierName || '');
-              this.basicTotal.set(d.basicTotal || 0);
-              this.taxTotal.set(d.taxTotal || 0);
-              this.grandTotal.set(d.grandTotal || 0);
+              this.basicTotal.set(d.basicTotal != null ? Number(d.basicTotal) : null);
+              this.taxTotal.set(d.taxTotal != null ? Number(d.taxTotal) : null);
+              this.grandTotal.set(d.grandTotal != null ? Number(d.grandTotal) : null);
               if (d.item) {
                 this.items.set([{
                   prodCode:       d.item.prodCode || '',

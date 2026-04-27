@@ -593,9 +593,9 @@ export class PurchaseUploadComponent implements OnInit {
     gstin = signal('');
     institutionOptions = signal<Array<{ b_id: number; branch_name: string; branch_address: string; branch_gstin?: string }>>([]);
 
-    basicTotal = signal(0.00);
-    taxTotal = signal(0.00);
-    grandTotal = signal(0.00);
+    basicTotal = signal<number | null>(null);
+    taxTotal = signal<number | null>(null);
+    grandTotal = signal<number | null>(null);
     selectedFile: File | null = null;
     selectedFileName = signal('');
     isUploading = signal(false);

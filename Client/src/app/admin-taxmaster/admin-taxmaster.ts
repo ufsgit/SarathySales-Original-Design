@@ -319,7 +319,7 @@ export class AdminTaxmaster implements OnInit {
     pageSizeOptions = [5, 10, 25, 50, 100];
 
     // Add new form
-    newSlab = { CGST: null as number | null, SGST: null as number | null, CESS: 0 };
+    newSlab = { CGST: null as number | null, SGST: null as number | null, CESS: null as number | null };
     get computedGST(): number {
         return Number(((Number(this.newSlab.CGST) || 0) + (Number(this.newSlab.SGST) || 0)).toFixed(2));
     }
@@ -399,7 +399,7 @@ export class AdminTaxmaster implements OnInit {
             next: (res: any) => {
                 this.saving = false;
                 if (res.success) {
-                    this.newSlab = { CGST: null, SGST: null, CESS: 0 };
+                    this.newSlab = { CGST: null, SGST: null, CESS: null };
                     this.currentPage = 1;
                     this.loadSlabs();
                 } else {

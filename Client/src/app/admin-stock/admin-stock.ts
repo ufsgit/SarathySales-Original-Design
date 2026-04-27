@@ -161,7 +161,7 @@ export class AdminStock implements OnInit {
   // State Signals
   branchIdSignal = signal<string>('');
   productIdSignal = signal<string>('');
-  qtySignal = signal<number>(0);
+  qtySignal = signal<number | null>(null);
   
   isEdit = signal<boolean>(false);
   editId = signal<string | null>(null);
@@ -343,7 +343,7 @@ export class AdminStock implements OnInit {
   resetForm() {
     this.branchIdSignal.set('');
     this.productIdSignal.set('');
-    this.qtySignal.set(0);
+    this.qtySignal.set(null);
     this.branchSearch.set('');
     this.productSearch.set('');
     

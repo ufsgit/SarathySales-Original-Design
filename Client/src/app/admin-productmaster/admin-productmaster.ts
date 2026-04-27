@@ -266,15 +266,15 @@ export class AdminProductmaster implements OnInit {
     wheelBase: '',
     bookingCode: '',
     seatCapacity: '',
-    basicPrice: 0,
-    cgst: 0,
-    sgst: 0,
-    cess: 0,
-    purchaseCost: 0,
+    basicPrice: null as number | null,
+    cgst: null as number | null,
+    sgst: null as number | null,
+    cess: null as number | null,
+    purchaseCost: null as number | null,
     idTaxSlab: 0
   };
 
-  totalPrice: number = 0;
+  totalPrice: number | null = null;
 
   constructor(private apiService: ApiService, private router: Router) {}
 
@@ -329,9 +329,9 @@ export class AdminProductmaster implements OnInit {
 
   clearTaxSelection() {
     this.product.idTaxSlab = 0;
-    this.product.cgst = 0;
-    this.product.sgst = 0;
-    this.product.cess = 0;
+    this.product.cgst = null;
+    this.product.sgst = null;
+    this.product.cess = null;
     this.selectedTaxLabel = '';
     this.isTaxDropdownOpen = false;
     this.taxSearchTerm = '';
@@ -363,14 +363,29 @@ export class AdminProductmaster implements OnInit {
   }
 
   calculateTotal() {
+    if (this.product.basicPrice === null || this.product.basicPrice === undefined || String(this.product.basicPrice) === '') {
+      this.product.cgst = null;
+      this.product.sgst = null;
+      this.product.cess = null;
+      this.totalPrice = null;
+      return;
+    }
     const basic = Number(this.product.basicPrice) || 0;
     const slab = this.taxSlabs.find(s => s.id_tax_slab == this.product.idTaxSlab);
+    let cgst = 0, sgst = 0, cess = 0;
     if (slab) {
-      this.product.cgst = Number(((basic * (Number(slab.CGST) || 0)) / 100).toFixed(2));
-      this.product.sgst = Number(((basic * (Number(slab.SGST) || 0)) / 100).toFixed(2));
-      this.product.cess = Number(((basic * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+      cgst = Number(((basic * (Number(slab.CGST) || 0)) / 100).toFixed(2));
+      sgst = Number(((basic * (Number(slab.SGST) || 0)) / 100).toFixed(2));
+      cess = Number(((basic * (Number(slab.CESS) || 0)) / 100).toFixed(2));
+      this.product.cgst = cgst;
+      this.product.sgst = sgst;
+      this.product.cess = cess;
+    } else {
+      this.product.cgst = null;
+      this.product.sgst = null;
+      this.product.cess = null;
     }
-    this.totalPrice = Number((basic + this.product.cgst + this.product.sgst + this.product.cess).toFixed(2));
+    this.totalPrice = Number((basic + cgst + sgst + cess).toFixed(2));
   }
 
   private isProductCodeDuplicate(code: string): boolean {
@@ -439,14 +454,14 @@ export class AdminProductmaster implements OnInit {
         wheelBase: '',
         bookingCode: '',
         seatCapacity: '',
-        basicPrice: 0,
-        cgst: 0,
-        sgst: 0,
-        cess: 0,
-        purchaseCost: 0,
+        basicPrice: null as number | null,
+        cgst: null as number | null,
+        sgst: null as number | null,
+        cess: null as number | null,
+        purchaseCost: null as number | null,
         idTaxSlab: 0
     };
-    this.totalPrice = 0;
+    this.totalPrice = null;
     this.selectedTaxLabel = '';
     this.taxSearchTerm = '';
   }

@@ -53,13 +53,13 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
   pCode = signal('');
   hsnCode = signal('');
   
-  basicAmount = signal(0);
-  discountAmount = signal(0);
-  taxableAmount = signal(0);
-  sgst = signal(0);
-  cgst = signal(0);
-  cess = signal(0);
-  totalAmount = signal(0);
+  basicAmount = signal<number | null>(null);
+  discountAmount = signal<number | null>(null);
+  taxableAmount = signal<number | null>(null);
+  sgst = signal<number | null>(null);
+  cgst = signal<number | null>(null);
+  cess = signal<number | null>(null);
+  totalAmount = signal<number | null>(null);
 
   isAdmin = signal(false);
   originalData: any = null;

@@ -662,12 +662,12 @@ export class EditProformaInvoiceComponent implements OnInit {
     isSaving = false;
 
     missell1 = '';
-    missell1Amount = 0;
+    missell1Amount: number | null = null;
     missell2 = '';
-    missell2Amount = 0;
+    missell2Amount: number | null = null;
     missell3 = '';
-    missell3Amount = 0;
-    lessAmount = 0;
+    missell3Amount: number | null = null;
+    lessAmount: number | null = null;
 
     productOptions: Array<{
         productId: number;

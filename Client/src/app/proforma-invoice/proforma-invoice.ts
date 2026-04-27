@@ -752,12 +752,12 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
   @ViewChild('executiveSearchInput') executiveSearchInput!: ElementRef;
 
   missell1 = signal('');
-  missell1Amount = signal(0);
+  missell1Amount = signal<number | null>(null);
   missell2 = signal('');
-  missell2Amount = signal(0);
+  missell2Amount = signal<number | null>(null);
   missell3 = signal('');
-  missell3Amount = signal(0);
-  lessAmount = signal(0);
+  missell3Amount = signal<number | null>(null);
+  lessAmount = signal<number | null>(null);
 
   productOptions = signal<Array<{
     productId: number;
@@ -1276,12 +1276,12 @@ export class ProformaInvoiceComponent implements OnInit, AfterViewInit {
     this.executive.set('');
     this.paymentMode.set('Cash');
     this.missell1.set('');
-    this.missell1Amount.set(0);
+    this.missell1Amount.set(null);
     this.missell2.set('');
-    this.missell2Amount.set(0);
+    this.missell2Amount.set(null);
     this.missell3.set('');
-    this.missell3Amount.set(0);
-    this.lessAmount.set(0);
+    this.missell3Amount.set(null);
+    this.lessAmount.set(null);
     this.items.set([this.createEmptyItem()]);
 
     if (this.isAdmin()) {
