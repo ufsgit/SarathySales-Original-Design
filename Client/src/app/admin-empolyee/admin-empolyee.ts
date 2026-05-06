@@ -147,7 +147,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
             </div>
 
              <div class="form-footer-buttons">
-                <button type="submit" class="btn-submit" [disabled]="!isEdit() && !employee.isUser">
+                <button type="submit" class="btn-submit">
                     {{ isEdit() ? 'Update' : 'Submit' }}
                 </button>
                 <button type="button" class="btn-cancel" (click)="resetForm()">Cancel</button>
@@ -406,17 +406,10 @@ export class AdminEmpolyee implements OnInit {
       return;
     }
 
-    if (!this.isEdit() && !this.employee.isUser) {
-      alert('Please click on the Add as User checkbox to submit');
-      return;
-    }
-
     if (this.employee.isUser && (!this.employee.username || !this.employee.password)) {
       alert('Please enter username and password');
       return;
-    }
-
-    if (this.employee.isUser && this.employee.username && this.isUsernameDuplicate(this.employee.username)) {
+    }    if (this.employee.isUser && this.employee.username && this.isUsernameDuplicate(this.employee.username)) {
       alert('Username must be unique. This username already exists.');
       return;
     }

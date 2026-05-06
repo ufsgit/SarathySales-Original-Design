@@ -4,12 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
-import { NumericOnlyDirective } from '../numeric-only.directive';
-
 @Component({
   selector: 'app-admin-companymaster',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminNav, RouterLink, NumericOnlyDirective],
+  imports: [CommonModule, FormsModule, AdminNav, RouterLink],
   template: `
 <div class="app-container">
   <app-admin-nav></app-admin-nav>
@@ -56,7 +54,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                     </div>
                     <div class="form-group row">
                         <label>Phone Number :</label>
-                        <input type="tel" class="form-control" name="phone" numericOnly [(ngModel)]="company.phone" placeholder="contact no" maxlength="10" pattern="[0-9]*" inputmode="numeric" (input)="company.phone = $any($event.target).value.replace(/[^0-9]/g, '').slice(0,10)">
+                        <input type="tel" class="form-control" name="phone" [(ngModel)]="company.phone" placeholder="contact no" pattern="[0-9,]*" inputmode="numeric" (input)="onPhoneInput($event)">
                     </div>
                 </div>
 
@@ -158,8 +156,29 @@ export class AdminCompanymaster implements OnInit {
     email: ''
   };
 
+  onPhoneInput(event: any) {
+    const input = event.target as HTMLInputElement;
+    let val = input.value.replace(/[^0-9,]/g, '');
+    let digitCount = 0;
+    let result = '';
+    for (let char of val) {
+      if (char === ',') {
+        result += char;
+      } else if (digitCount < 14) {
+        result += char;
+        digitCount++;
+      }
+    }
+    this.company.phone = result;
+    input.value = result;
+  }
+
   private isPhoneValid(phone: string): boolean {
-    return /^\d{10}$/.test((phone || '').toString().trim());
+    if (!phone) return false;
+    const val = phone.toString().trim();
+    if (!/^[0-9,]+$/.test(val)) return false;
+    const digitsOnly = val.replace(/,/g, '');
+    return digitsOnly.length > 0 && digitsOnly.length <= 14;
   }
 
   constructor(
@@ -262,7 +281,7 @@ export class AdminCompanymaster implements OnInit {
     }
 
     if (this.company.phone && !this.isPhoneValid(this.company.phone)) {
-      alert('Phone number must contain exactly 10 digits');
+      alert('Phone number must contain only numbers and commas, up to 14 numbers');
       return;
     }
 

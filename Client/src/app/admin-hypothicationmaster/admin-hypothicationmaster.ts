@@ -46,12 +46,12 @@ import { ApiService } from '../services/api.service';
                 
                 <div class="form-group row align-start">
                     <label>Address:</label>
-                    <textarea class="form-control" name="address" [(ngModel)]="financier.address" placeholder="Address" rows="5" required></textarea>
+                    <textarea class="form-control" name="address" [(ngModel)]="financier.address" placeholder="Address" rows="5"></textarea>
                 </div>
 
                 <div class="form-group row">
                     <label>GSTIN:</label>
-                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="" maxlength="15" required (input)="financier.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
+                    <input type="text" class="form-control" name="gstin" [(ngModel)]="financier.gstin" placeholder="" maxlength="15" (input)="financier.gstin = $any($event.target).value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0,15)">
                 </div>
 
                 <div class="form-actions-centered">
@@ -155,17 +155,14 @@ export class AdminHypothicationmaster implements OnInit {
       return;
     }
 
-    if (!this.financier.address) {
+    const isNill = this.financier.name.trim().toLowerCase() === 'nill';
+
+    if (!isNill && !this.financier.address) {
       alert('Address is required');
       return;
     }
 
-    if (!this.financier.gstin) {
-      alert('GSTIN is required');
-      return;
-    }
-
-    if (!this.isGstinValid(this.financier.gstin)) {
+    if (this.financier.gstin && !this.isGstinValid(this.financier.gstin)) {
       alert('GSTIN must contain exactly 15 alphanumeric characters');
       return;
     }

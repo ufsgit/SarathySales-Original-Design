@@ -325,7 +325,19 @@ export class AdminHypothicationmasterlist implements OnInit {
   }
 
   saveEdit() {
-    if (!this.editId || !this.editData.name) return;
+    if (!this.editId) return;
+
+    if (!this.editData.name) {
+      alert('Finance company name is required');
+      return;
+    }
+
+    const isNill = this.editData.name.trim().toLowerCase() === 'nill';
+
+    if (!isNill && !this.editData.address) {
+      alert('Address is required');
+      return;
+    }
 
     const isGstinValid = (gstin: string) => /^[0-9A-Z]{15}$/.test((gstin || '').trim().toUpperCase());
     if (this.editData.gstin && !isGstinValid(this.editData.gstin)) {
