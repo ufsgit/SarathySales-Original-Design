@@ -65,6 +65,7 @@
             <div class="filter-row">
                 <label>Search Option</label>
                 <select class="form-control" [ngModel]="searchOption()" (ngModelChange)="onSearchOptionChange($event)">
+                    <option value="ALL">ALL</option>
                     <option value="Custom Date">Custom Date</option>
                     <option value="Month to Date">Month to Date</option>
                     <option value="Previous Month">Previous Month</option>
@@ -73,6 +74,7 @@
                 </select>
             </div>
 
+            @if (searchOption() !== 'ALL') {
             <div class="date-range-row">
                 <div class="date-group">
                     <label>Date From</label>
@@ -85,6 +87,7 @@
                         [disabled]="searchOption() !== 'Custom Date'">
                 </div>
             </div>
+            }
 
             <div class="filter-row">
                 <label>Chassis No</label>

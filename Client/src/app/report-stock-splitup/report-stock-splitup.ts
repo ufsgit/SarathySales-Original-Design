@@ -29,9 +29,9 @@ export class ReportStockSplitup {
     isVehicleDropdownOpen = signal<boolean>(false);
     labourCodes = signal<any[]>([]);
 
-    searchOption = signal<string>('Custom Date');
-    fromDate = signal<string>(new Date().toISOString().split('T')[0]);
-    toDate = signal<string>(new Date().toISOString().split('T')[0]);
+    searchOption = signal<string>('ALL');
+    fromDate = signal<string>('');
+    toDate = signal<string>('');
 
     // Admin Branch Selection
     branches = signal<any[]>([]);
@@ -83,16 +83,27 @@ export class ReportStockSplitup {
     loadData() {
         if (!this.branchId() && !this.isAdmin()) return;
         this.loading.set(true);
-        this.api.getStockSplitup(
-            this.branchId(),
-            this.fromDate(),
-            this.toDate(),
-            this.chassisNo(),
-            this.selectedVehicleCodes(),
-            this.page(),
-            this.limit(),
-            this.searchTerm()
-        ).subscribe({
+        const apiCall = this.searchOption() === 'ALL'
+            ? this.api.getStockSplitupAll(
+                this.branchId(),
+                this.chassisNo(),
+                this.selectedVehicleCodes(),
+                this.page(),
+                this.limit(),
+                this.searchTerm()
+            )
+            : this.api.getStockSplitup(
+                this.branchId(),
+                this.fromDate(),
+                this.toDate(),
+                this.chassisNo(),
+                this.selectedVehicleCodes(),
+                this.page(),
+                this.limit(),
+                this.searchTerm()
+            );
+
+        apiCall.subscribe({
             next: (res) => {
                 if (res.success) {
                     this.records.set(res.data || []);
@@ -187,13 +198,17 @@ export class ReportStockSplitup {
                 from = new Date(today.getFullYear() - 1, 0, 1);
                 to = new Date(today.getFullYear() - 1, 11, 31);
                 break;
+            case 'ALL':
+                from = null as any;
+                to = null as any;
+                break;
             case 'Custom Date':
             default:
                 return;
         }
 
-        this.fromDate.set(this.formatDate(from));
-        this.toDate.set(this.formatDate(to));
+        this.fromDate.set(from ? this.formatDate(from) : '');
+        this.toDate.set(to ? this.formatDate(to) : '');
     }
 
     private formatDate(date: Date): string {
@@ -250,7 +265,9 @@ export class ReportStockSplitup {
         const vehicleCode = this.selectedVehicleCodes().length > 0 ? this.selectedVehicleCodes() : undefined;
         const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupExcelUrl(branchId, from, to, chassisNo, vehicleCode, search);
+        const url = this.searchOption() === 'ALL'
+            ? this.api.getStockSplitupAllExcelUrl(branchId, chassisNo, vehicleCode, search)
+            : this.api.getStockSplitupExcelUrl(branchId, from, to, chassisNo, vehicleCode, search);
         window.open(url, '_blank');
     }
 
@@ -264,7 +281,9 @@ export class ReportStockSplitup {
         const limit = this.limit();
         const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupPagedExcelUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
+        const url = this.searchOption() === 'ALL'
+            ? this.api.getStockSplitupAllPagedExcelUrl(branchId, chassisNo, vehicleCode, page, limit, search)
+            : this.api.getStockSplitupPagedExcelUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
         window.open(url, '_blank');
     }
 
@@ -278,7 +297,9 @@ export class ReportStockSplitup {
         const limit = this.limit();
         const search = this.searchTerm() || undefined;
 
-        const url = this.api.getStockSplitupPagedCsvUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
+        const url = this.searchOption() === 'ALL'
+            ? this.api.getStockSplitupAllPagedCsvUrl(branchId, chassisNo, vehicleCode, page, limit, search)
+            : this.api.getStockSplitupPagedCsvUrl(branchId, from, to, chassisNo, vehicleCode, page, limit, search);
         window.open(url, '_blank');
     }
 }

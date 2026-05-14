@@ -893,6 +893,39 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getStockVerificationAll(branchId?: string, page = 1, limit = 25, search?: string, onlyInStock: boolean = false): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        if (branchId) params = params.set('branchId', branchId);
+        if (search) params = params.set('search', search);
+        if (onlyInStock) params = params.set('onlyInStock', 'true');
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/verification/all`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockVerificationAllExcelUrl(branchId?: string, search?: string, onlyInStock: boolean = false): string {
+        let q = `?all=true`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (onlyInStock) q += `&onlyInStock=true`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/all/excel${q}`);
+    }
+
+    getStockVerificationAllPagedExcelUrl(branchId?: string, page = 1, limit = 25, search?: string, onlyInStock: boolean = false): string {
+        let q = `?all=true&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (onlyInStock) q += `&onlyInStock=true`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/all/paged-excel${q}`);
+    }
+
+    getStockVerificationAllPagedCsvUrl(branchId?: string, page = 1, limit = 25, search?: string, onlyInStock: boolean = false): string {
+        let q = `?all=true&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (onlyInStock) q += `&onlyInStock=true`;
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/verification/all/paged-csv${q}`);
+    }
+
     getStockVerificationExcelUrl(branchId?: string, from?: string, to?: string, search?: string): string {
         let q = `?from=${from}&to=${to}`;
         if (branchId) q += `&branchId=${branchId}`;
@@ -928,6 +961,55 @@ export class ApiService {
         }
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup`, { params })
             .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockSplitupAll(branchId?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25, search?: string): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page).set('limit', limit);
+        if (branchId) params = params.set('branchId', branchId);
+        if (chassisNo) params = params.set('chassisNo', chassisNo);
+        if (search) params = params.set('search', search);
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) params = params.set('vehicleCode', codeStr);
+        }
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup/all`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockSplitupAllExcelUrl(branchId?: string, chassisNo?: string, vehicleCode?: string | string[], search?: string): string {
+        let q = `?all=true`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/all/excel${q}`);
+    }
+
+    getStockSplitupAllPagedExcelUrl(branchId?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25, search?: string): string {
+        let q = `?all=true&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/all/paged-excel${q}`);
+    }
+
+    getStockSplitupAllPagedCsvUrl(branchId?: string, chassisNo?: string, vehicleCode?: string | string[], page = 1, limit = 25, search?: string): string {
+        let q = `?all=true&page=${page}&limit=${limit}`;
+        if (branchId) q += `&branchId=${branchId}`;
+        if (chassisNo) q += `&chassisNo=${encodeURIComponent(chassisNo)}`;
+        if (search) q += `&search=${encodeURIComponent(search)}`;
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) q += `&vehicleCode=${encodeURIComponent(codeStr)}`;
+        }
+        return this.addTokenToUrl(`${this.BASE_URL}/stock/report/splitup/all/paged-csv${q}`);
     }
 
     getStockSplitupExcelUrl(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[], search?: string): string {

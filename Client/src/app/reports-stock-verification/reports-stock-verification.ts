@@ -25,10 +25,11 @@ export class ReportsStockVerification {
     branches = signal<any[]>([]);
 
     // Filter signals
-    searchOption = signal<string>('Custom Date');
+    searchOption = signal<string>('ALL');
     searchTerm = signal<string>('');
-    fromDate = signal<string>(new Date().toISOString().split('T')[0]);
-    toDate = signal<string>(new Date().toISOString().split('T')[0]);
+    showOnlyInStock = signal<boolean>(false);
+    fromDate = signal<string>('');
+    toDate = signal<string>('');
 
     branchName = signal<string>('Select Branch');
     isBranchDropdownOpen = signal<boolean>(false);
@@ -93,14 +94,12 @@ export class ReportsStockVerification {
     loadData() {
         if (!this.branchId() && !this.isAdmin()) return;
         this.loading.set(true);
-        this.api.getStockVerification(
-            this.branchId(),
-            this.fromDate(),
-            this.toDate(),
-            this.page(),
-            this.limit(),
-            this.searchTerm()
-        ).subscribe({
+
+        const obs = this.searchOption() === 'ALL'
+            ? this.api.getStockVerificationAll(this.branchId(), this.page(), this.limit(), this.searchTerm(), this.showOnlyInStock())
+            : this.api.getStockVerification(this.branchId(), this.fromDate(), this.toDate(), this.page(), this.limit(), this.searchTerm());
+
+        obs.subscribe({
             next: (res) => {
                 if (res.success) {
                     const sanitized = (res.data || []).map((r: any) => ({
@@ -223,10 +222,33 @@ export class ReportsStockVerification {
 
     exportExcel(whole: boolean = false) {
         let url = '';
-        if (whole) {
-            url = this.api.getStockVerificationExcelUrl(this.branchId(), this.fromDate(), this.toDate(), this.searchTerm());
+        if (this.searchOption() === 'ALL') {
+            if (whole) {
+                url = this.api.getStockVerificationAllExcelUrl(this.branchId(), this.searchTerm(), this.showOnlyInStock());
+            } else {
+                url = this.api.getStockVerificationAllPagedExcelUrl(this.branchId(), this.page(), this.limit(), this.searchTerm(), this.showOnlyInStock());
+            }
         } else {
-            url = this.api.getStockVerificationPagedExcelUrl(
+            if (whole) {
+                url = this.api.getStockVerificationExcelUrl(this.branchId(), this.fromDate(), this.toDate(), this.searchTerm());
+            } else {
+                url = this.api.getStockVerificationPagedExcelUrl(
+                    this.branchId(),
+                    this.fromDate(),
+                    this.toDate(),
+                    this.page(),
+                    this.limit(),
+                    this.searchTerm()
+                );
+            }
+        }
+        window.open(url, '_blank');
+    }
+
+    exportCsv() {
+        const url = this.searchOption() === 'ALL'
+            ? this.api.getStockVerificationAllPagedCsvUrl(this.branchId(), this.page(), this.limit(), this.searchTerm(), this.showOnlyInStock())
+            : this.api.getStockVerificationPagedCsvUrl(
                 this.branchId(),
                 this.fromDate(),
                 this.toDate(),
@@ -234,19 +256,6 @@ export class ReportsStockVerification {
                 this.limit(),
                 this.searchTerm()
             );
-        }
-        window.open(url, '_blank');
-    }
-
-    exportCsv() {
-        const url = this.api.getStockVerificationPagedCsvUrl(
-            this.branchId(),
-            this.fromDate(),
-            this.toDate(),
-            this.page(),
-            this.limit(),
-            this.searchTerm()
-        );
         window.open(url, '_blank');
     }
 }

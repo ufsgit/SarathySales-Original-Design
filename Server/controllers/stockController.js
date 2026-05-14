@@ -56,6 +56,88 @@ const getAvailableVehicles = async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch available items' }); }
 };
 
+const getStockVerificationAll = async (req, res) => {
+    let branchId = req.query.branchId;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
+
+    const fromDate = '2000-01-01'; // Very old date for "ALL"
+    const toDate = new Date().toISOString().split('T')[0];
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || '').trim();
+    const onlyInStock = req.query.onlyInStock === 'true';
+
+    try {
+        const sql = `
+            SELECT 
+                v.vehicle_name, v.vehicle_code, b.branch_name,
+                0 AS opening_stock,
+                COALESCE(p_all.pur_all,0) AS purchase,
+                COALESCE(s_all.sales_all,0) AS sales,
+                COALESCE(t_all.transfer_all,0) AS branch_transfer,
+                (COALESCE(p_all.pur_all,0) - COALESCE(s_all.sales_all,0) - COALESCE(t_all.transfer_all,0)) AS stock
+            FROM
+            (
+                SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id
+                FROM purchaseitem pi
+                GROUP BY pi.materialsId
+                ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}
+            ) v
+            CROSS JOIN tbl_branch b
+            LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_all FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p_all ON v.vehicle_code = p_all.materialsId AND b.b_id = p_all.purch_branchId
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
+            LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_all FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t_all ON v.vehicle_code = t_all.vehicle_code AND b.b_id = t_all.ic_branch
+            WHERE (? IS NULL OR b.b_id = ?)
+            ${onlyInStock ? 'HAVING stock > 0' : ''}
+            ORDER BY v.first_id, b.branch_name
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(branchId, branchId);
+        const [rows] = await db.execute(sql, params);
+
+        let countSql = '';
+        const countParams = [];
+        if (search) countParams.push(`%${search}%`, `%${search}%`);
+        countParams.push(branchId, branchId);
+
+        if (onlyInStock) {
+            countSql = `
+                SELECT COUNT(*) as total FROM (
+                    SELECT 
+                        (COALESCE(p.pur,0) - COALESCE(s.sales,0) - COALESCE(t.trans,0)) AS stock
+                    FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId ${search ? 'HAVING (MAX(materialName) LIKE ? OR materialsId LIKE ?)' : ''}) v
+                    CROSS JOIN tbl_branch b
+                    LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p ON v.materialsId = p.materialsId AND b.b_id = p.purch_branchId
+                    LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s ON v.materialsId = s.inv_vehicle_code AND b.b_id = s.inv_branch
+                    LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS trans FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t ON v.materialsId = t.vehicle_code AND b.b_id = t.ic_branch
+                    WHERE (? IS NULL OR b.b_id = ?)
+                    HAVING stock > 0
+                ) x
+            `;
+        } else {
+            const baseCountSql = search 
+                ? `SELECT materialsId FROM purchaseitem GROUP BY materialsId HAVING (MAX(materialName) LIKE ? OR materialsId LIKE ?)`
+                : `SELECT materialsId FROM purchaseitem GROUP BY materialsId`;
+            countSql = branchId
+                ? `SELECT COUNT(*) as total FROM (${baseCountSql}) x`
+                : `SELECT (SELECT COUNT(*) FROM (${baseCountSql}) x) * (SELECT COUNT(*) FROM tbl_branch) as total`;
+            // For simple count, we don't need branchId in params if not onlyInStock (actually we do if branchId is set)
+            // Wait, the original code used countParams differently.
+        }
+
+        const [countRows] = await db.execute(countSql, countParams);
+
+        res.json({ success: true, data: rows, total: countRows[0] ? countRows[0].total : 0, page, limit });
+    } catch (err) {
+        console.error('getStockVerificationAll error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock verification all: ' + err.message });
+    }
+};
+
 const getStockVerification = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') {
@@ -785,18 +867,388 @@ const exportStockSplitupPagedCsv = async (req, res) => {
     }
 };
 
+const getStockSplitupAll = async (req, res) => {
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) {
+        branchId = req.user.branch_id;
+    }
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const search = (req.query.search || '').trim();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const offset = (page - 1) * limit;
+
+    try {
+        let conditions = [
+            'si.inv_id IS NULL',
+            "stock_base.retn_status = 'Available'",
+            "stock_base.item_status = 'Available'"
+        ];
+        let params = [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]];
+
+        if (branchId && branchId !== 'ALL') {
+            conditions.push('stock_base.branch_id = ?');
+            params.push(branchId);
+        }
+
+        if (chassisNo) {
+            conditions.push('stock_base.chassis_no LIKE ?');
+            params.push(`%${chassisNo}%`);
+        }
+
+        if (search) {
+            conditions.push('(stock_base.invoice_no LIKE ? OR stock_base.product_code LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        const vehicleCodeStr = req.query.vehicleCode;
+        if (vehicleCodeStr) {
+            const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+            if (codes.length > 0) {
+                const placeholders = codes.map(() => '?').join(',');
+                conditions.push(`stock_base.product_code IN (${placeholders})`);
+                params.push(...codes);
+            }
+        }
+
+        const where = 'WHERE ' + conditions.join(' AND ');
+        const stockBaseSql = `
+            FROM (
+                SELECT
+                    pi.purchaseItemId,
+                    pb.invoiceNo AS invoice_no,
+                    pb.rac_date AS rc_date,
+                    pb.pucha_vendorName AS vendor_name,
+                    pi.materialName AS vehicle_code,
+                    pi.materialsId AS product_code,
+                    pb.invoiceDate AS invoice_date,
+                    pb.purch_branchId AS branch_id,
+                    pi.chassis_no,
+                    pi.engine_no,
+                    pi.color_name AS color,
+                    pb.rc_no AS rc_no,
+                    pi.p_date AS mfg_date,
+                    pi.lc_rate AS total_amount,
+                    pi.product_id,
+                    pi.item_status,
+                    pi.retn_status
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb
+                    ON pb.purchaseItemBillId = pi.purchaseItemBillId
+                INNER JOIN (
+                    SELECT
+                        pi2.chassis_no,
+                        MAX(pi2.purchaseItemId) AS latest_purchase_item_id
+                    FROM purchaseitem pi2
+                    JOIN purchaseitembill pb2
+                        ON pb2.purchaseItemBillId = pi2.purchaseItemBillId
+                    WHERE pb2.invoiceDate <= ?
+                    GROUP BY pi2.chassis_no
+                ) latest_pi
+                    ON latest_pi.latest_purchase_item_id = pi.purchaseItemId
+            ) stock_base
+            LEFT JOIN tbl_branch b
+                ON b.b_id = stock_base.branch_id
+            LEFT JOIN tbl_invoice_labour si
+                ON si.inv_chassis = stock_base.chassis_no
+                AND si.inv_inv_date <= ?
+        `;
+
+        const mainSql = `
+            SELECT 
+                stock_base.invoice_no,
+                stock_base.rc_date,
+                b.branch_name AS branch_name,
+                stock_base.vehicle_code,
+                stock_base.vendor_name,
+                stock_base.product_code,
+                stock_base.invoice_date,
+                stock_base.chassis_no,
+                stock_base.engine_no,
+                stock_base.color,
+                stock_base.rc_no,
+                stock_base.mfg_date,
+                stock_base.total_amount,
+                stock_base.product_id,
+                stock_base.item_status
+            ${stockBaseSql}
+            ${where} 
+            ORDER BY stock_base.invoice_date DESC, stock_base.purchaseItemId DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+
+        const countSql = `
+            SELECT COUNT(*) as total 
+            ${stockBaseSql}
+            ${where}
+        `;
+
+        const [rows] = await db.execute(mainSql, params);
+        const [countRows] = await db.execute(countSql, params);
+
+        res.json({ success: true, data: rows, total: countRows[0] ? countRows[0].total : 0, page, limit });
+    } catch (err) {
+        console.error('getStockSplitupAll Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup all: ' + err.message });
+    }
+};
+
+const getStockSplitupAllQuery = (req) => {
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const vehicleCodeStr = req.query.vehicleCode;
+    const search = (req.query.search || '').trim();
+
+    let conditions = [
+        'si.inv_id IS NULL',
+        'bt.lc_id IS NULL',
+        "pi.retn_status = 'Available'",
+        "pi.item_status = 'Available'"
+    ];
+    let params = [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]];
+
+    if (branchId && branchId !== 'ALL') {
+        conditions.push('pb.purch_branchId = ?');
+        params.push(branchId);
+    }
+    if (chassisNo) {
+        conditions.push('pi.chassis_no LIKE ?');
+        params.push(`%${chassisNo}%`);
+    }
+    if (search) {
+        conditions.push('(pb.invoiceNo LIKE ? OR pi.materialsId LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+    }
+    if (vehicleCodeStr) {
+        const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+        if (codes.length > 0) {
+            const placeholders = codes.map(() => '?').join(',');
+            conditions.push(`pi.materialsId IN (${placeholders})`);
+            params.push(...codes);
+        }
+    }
+    const where = 'WHERE ' + conditions.join(' AND ');
+    const sql = `
+        SELECT 
+            pb.invoiceNo AS invoice_no, pb.rac_date AS rc_date, b.branch_name AS branch_name,
+            pi.materialName AS vehicle_code, pb.pucha_vendorName AS vendor_name,
+            pi.materialsId AS product_code, pb.invoiceDate AS invoice_date,
+            pi.chassis_no AS chassis_no, pi.engine_no AS engine_no, pi.color_name AS color,
+            pb.rc_no AS rc_no, pi.p_date AS mfg_date, pi.lc_rate AS total_amount,
+            pi.product_id AS product_id, pi.item_status AS item_status
+        FROM purchaseitem pi
+        JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
+        LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
+        LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
+        ${where} ORDER BY pb.invoiceDate DESC 
+    `;
+    return { sql, params, page: Math.max(1, parseInt(req.query.page) || 1), limit: Math.max(1, parseInt(req.query.limit) || 25) };
+};
+
+const exportStockSplitupAllExcel = async (req, res) => {
+    try {
+        const { sql, params } = getStockSplitupAllQuery(req);
+        const [rows] = await db.execute(sql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup All Report');
+        worksheet.columns = [
+            { header: 'SI:NO', key: 'sino', width: 8 },
+            { header: 'INVOICE NO', key: 'invoice_no', width: 25 },
+            { header: 'RC DATE', key: 'rc_date', width: 15 },
+            { header: 'BRANCH', key: 'branch_name', width: 20 },
+            { header: 'VEHICLE CODE', key: 'vehicle_code', width: 25 },
+            { header: 'VENDOR DETAILS', key: 'vendor_name', width: 20 },
+            { header: 'PRODUCT CODE', key: 'product_code', width: 15 },
+            { header: 'INVOICE DATE', key: 'invoice_date', width: 15 },
+            { header: 'CHASSIS NO', key: 'chassis_no', width: 25 },
+            { header: 'ENGINE NO', key: 'engine_no', width: 20 },
+            { header: 'COLOR', key: 'color', width: 15 },
+            { header: 'RC NO', key: 'rc_no', width: 15 },
+            { header: 'MFG DATE', key: 'mfg_date', width: 15 },
+            { header: 'Cost', key: 'total_amount', width: 15 }
+        ];
+        worksheet.getRow(1).font = { bold: true };
+        rows.forEach((r, i) => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow({ sino: i + 1, ...r, rc_date: fmtDate(r.rc_date), invoice_date: fmtDate(r.invoice_date), mfg_date: fmtDate(r.mfg_date) });
+        });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitupAll.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
+const exportStockSplitupAllPagedExcel = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockSplitupAllQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup All Page');
+        worksheet.mergeCells('A1:O1');
+        worksheet.getRow(1).getCell(1).value = 'Stock Splitup All Statement';
+        worksheet.getRow(1).getCell(1).alignment = { horizontal: 'center' };
+        worksheet.getRow(1).getCell(1).font = { bold: true };
+        worksheet.getRow(2).values = ['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost'];
+        worksheet.getRow(2).font = { bold: true };
+        rows.forEach(r => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
+        });
+        worksheet.columns.forEach(col => { col.width = 18; });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitupAllPaged_${page}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
+const exportStockSplitupAllPagedCsv = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockSplitupAllQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Splitup All CSV');
+        worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost']);
+        rows.forEach(r => {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
+        });
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=StockSplitupAllPaged_${page}.csv`);
+        await workbook.csv.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
+const getStockVerificationAllQuery = (req) => {
+    let branchId = req.query.branchId;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
+    const search = (req.query.search || '').trim();
+    const onlyInStock = req.query.onlyInStock === 'true';
+
+    const sql = `
+        SELECT 
+            v.vehicle_name, v.vehicle_code, b.branch_name,
+            0 AS opening_stock,
+            COALESCE(p_all.pur_all,0) AS purchase,
+            COALESCE(s_all.sales_all,0) AS sales,
+            COALESCE(t_all.transfer_all,0) AS branch_transfer,
+            (COALESCE(p_all.pur_all,0) - COALESCE(s_all.sales_all,0) - COALESCE(t_all.transfer_all,0)) AS stock
+        FROM
+        (
+            SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id
+            FROM purchaseitem pi
+            GROUP BY pi.materialsId
+            ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}
+        ) v
+        CROSS JOIN tbl_branch b
+        LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_all FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p_all ON v.vehicle_code = p_all.materialsId AND b.b_id = p_all.purch_branchId
+        LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
+        LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_all FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t_all ON v.vehicle_code = t_all.vehicle_code AND b.b_id = t_all.ic_branch
+        WHERE (? IS NULL OR b.b_id = ?)
+        ${onlyInStock ? 'HAVING stock > 0' : ''}
+        ORDER BY v.first_id, b.branch_name
+    `;
+    const params = [];
+    if (search) params.push(`%${search}%`, `%${search}%`);
+    params.push(branchId, branchId);
+    return { sql, params, page: Math.max(1, parseInt(req.query.page) || 1), limit: Math.max(1, parseInt(req.query.limit) || 25) };
+};
+
+const exportStockVerificationAllExcel = async (req, res) => {
+    try {
+        const { sql, params } = getStockVerificationAllQuery(req);
+        const [rows] = await db.execute(sql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Verification All');
+        worksheet.columns = [
+            { header: 'SI:NO', key: 'sino', width: 8 },
+            { header: 'VEHICLE NAME', key: 'vehicle_name', width: 25 },
+            { header: 'VEHICLE CODE', key: 'vehicle_code', width: 15 },
+            { header: 'BRANCH', key: 'branch_name', width: 20 },
+            { header: 'OPENING STOCK', key: 'opening_stock', width: 15 },
+            { header: 'PURCHASE', key: 'purchase', width: 12 },
+            { header: 'SALES', key: 'sales', width: 12 },
+            { header: 'BRANCH TRANSFER', key: 'branch_transfer', width: 18 },
+            { header: 'STOCK', key: 'stock', width: 12 }
+        ];
+        worksheet.getRow(1).font = { bold: true };
+        rows.forEach((r, i) => worksheet.addRow({ sino: i + 1, ...r }));
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockVerificationAll.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
+const exportStockVerificationAllPagedExcel = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockVerificationAllQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Verification All Page');
+        worksheet.mergeCells('A1:I1');
+        worksheet.getRow(1).getCell(1).value = 'Stock Verification All Statement';
+        worksheet.getRow(1).getCell(1).alignment = { horizontal: 'center' };
+        worksheet.getRow(1).getCell(1).font = { bold: true };
+        worksheet.getRow(2).values = ['VEHICLE NAME', 'VEHICLE CODE', 'BRANCH', 'OPENING STOCK', 'PURCHASE', 'SALES', 'BRANCH TRANSFER', 'STOCK'];
+        worksheet.getRow(2).font = { bold: true };
+        rows.forEach(r => {
+            worksheet.addRow([r.vehicle_name, r.vehicle_code, r.branch_name, r.opening_stock, r.purchase, r.sales, r.branch_transfer, r.stock]);
+        });
+        worksheet.columns.forEach(col => { col.width = 20; });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=StockVerificationAllPaged_${page}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
+const exportStockVerificationAllPagedCsv = async (req, res) => {
+    try {
+        const { sql, params, page, limit } = getStockVerificationAllQuery(req);
+        const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+        const [rows] = await db.execute(pagedSql, params);
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Stock Verification All CSV');
+        worksheet.addRow(['VEHICLE NAME', 'VEHICLE CODE', 'BRANCH', 'OPENING STOCK', 'PURCHASE', 'SALES', 'BRANCH TRANSFER', 'STOCK']);
+        rows.forEach(r => {
+            worksheet.addRow([r.vehicle_name, r.vehicle_code, r.branch_name, r.opening_stock, r.purchase, r.sales, r.branch_transfer, r.stock]);
+        });
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=StockVerificationAllPaged_${page}.csv`);
+        await workbook.csv.write(res);
+        res.end();
+    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
+};
+
 module.exports = {
     getStockList,
     getAvailableVehicles,
     getStockVerification,
+    getStockVerificationAll,
     getStockSplitup,
+    getStockSplitupAll,
     updateStock,
     deleteStock,
     exportStockVerificationExcel,
+    exportStockVerificationAllExcel,
     exportStockVerificationPagedExcel,
+    exportStockVerificationAllPagedExcel,
     exportStockVerificationPagedCsv,
+    exportStockVerificationAllPagedCsv,
     exportStockSplitupExcel,
+    exportStockSplitupAllExcel,
     exportStockSplitupPagedExcel,
-    exportStockSplitupPagedCsv
+    exportStockSplitupAllPagedExcel,
+    exportStockSplitupPagedCsv,
+    exportStockSplitupAllPagedCsv
 };
-
