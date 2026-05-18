@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 function numberToWords(num) {
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
@@ -327,6 +329,9 @@ const createSalesPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
         const data = records[0];
 
+        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
         const items = [{
             model: data.inv_vehicle_code || '',
             desc: data.inv_vehicle || '',
@@ -364,15 +369,26 @@ const createSalesPdf = async (req, res) => {
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
                 currentY += 10;
 
-                doc.font('Times-Bold').fontSize(10).text('SARATHY BIKES PVT LTD', 240, 30, { width: 200, align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 240, 42, { width: 200, align: 'center' });
+                doc.font('Times-Bold').fontSize(10).text('SARATHY BIKES PVT LTD', 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
 
-                doc.fontSize(25).font('Times-Bold').text('KTM', 450, 30, { width: 125, align: 'right' });
+                // Render dynamic logo according to active brand
+                let logoFileName = 'KtmLogo.png';
+                if (activeBrand === 'bajaj') {
+                    logoFileName = 'BajajLogo.png';
+                }
+                const logoPath = path.join(__dirname, '../public', logoFileName);
+
+                if (fs.existsSync(logoPath)) {
+                    doc.image(logoPath, 460, 20, { width: 100 });
+                } else {
+                    doc.fontSize(25).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { width: 125, align: 'right' });
+                }
 
                 doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, 105);
                 doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '32ABECS8915L1Z0', 40, 116);
 
-                doc.fontSize(16).text('TAX INVOICE', 240, 105, { width: 200, align: 'center' });
+                doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, 105, { width: 535, align: 'center' });
 
                 doc.moveTo(40, 130).lineTo(575, 130).lineWidth(1).stroke();
 
@@ -787,6 +803,9 @@ const createRtoBillPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
         const data = records[0];
 
+        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
         const items = [{
             model: data.inv_vehicle_code || '',
             desc: data.inv_vehicle || '',
@@ -824,15 +843,26 @@ const createRtoBillPdf = async (req, res) => {
                 // doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
                 // currentY += 10;
 
-                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 240, 30, { width: 200, align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 240, 42, { width: 200, align: 'center' });
+                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
 
-                doc.fontSize(25).font('Times-Bold').text('KTM', 450, 30, { width: 125, align: 'right' });
+                // Render dynamic logo according to active brand
+                let logoFileName = 'KtmLogo.png';
+                if (activeBrand === 'bajaj') {
+                    logoFileName = 'BajajLogo.png';
+                }
+                const logoPath = path.join(__dirname, '../public', logoFileName);
+
+                if (fs.existsSync(logoPath)) {
+                    doc.image(logoPath, 460, 20, { width: 100 });
+                } else {
+                    doc.fontSize(25).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { width: 125, align: 'right' });
+                }
 
                 doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, 105);
                 doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '32ABECS8915L1Z0', 40, 116);
 
-                doc.fontSize(16).text('TAX INVOICE', 240, 105, { width: 200, align: 'center' });
+                doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, 105, { width: 535, align: 'center' });
 
                 doc.moveTo(40, 130).lineTo(575, 130).lineWidth(1).stroke();
 

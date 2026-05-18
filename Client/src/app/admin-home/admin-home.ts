@@ -67,7 +67,7 @@ import { AdminFooter } from '../admin-footer/admin-footer';
         font-size: 14px;
     }
 
-    .home-icon { color: #0b5ed7; }
+    .home-icon { color: var(--primary-brand-color); }
     .breadcrumb-text { color: #666; text-decoration: none; }
 
     .admin-welcome-area {
@@ -83,7 +83,7 @@ import { AdminFooter } from '../admin-footer/admin-footer';
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         text-align: center;
         margin-bottom: 2rem;
-        border-top: 4px solid #0b5ed7;
+        border-top: 4px solid var(--primary-brand-color);
     }
 
     .welcome-card h1 {
@@ -125,7 +125,7 @@ import { AdminFooter } from '../admin-footer/admin-footer';
         font-size: 2.5rem;
     }
 
-    .stat-card.blue i { color: #0b5ed7; }
+    .stat-card.blue i { color: var(--primary-brand-color); }
     .stat-card.green i { color: #28a745; }
     .stat-card.red i { color: #dc3545; }
 

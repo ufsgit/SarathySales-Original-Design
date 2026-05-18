@@ -7,16 +7,16 @@
       </div>
     </div>
     <div class="logo-right">
-      <img src="logo.png" alt="KTM Logo" style="height: 30px;">
+      <img [src]="getLogo()" [alt]="getBrandName()" style="height: 52px; width: auto; max-width: 180px;">
     </div>
   </header>
 
-  <!-- Orange/Blue Strip -->
+  <!-- Orange/Blue Dynamic Theme Strip -->
   <div class="theme-strip">
-    <div class="strip-orange">
-      <span>KTM SALES</span>
+    <div class="strip-orange" [style.background]="getBrandColor()">
+      <span style="color: white !important;">{{ getBrandName() }}</span>
     </div>
-    <div class="strip-blue"></div>
+    <div class="strip-blue" [style.background]="getBrandGradient()"></div>
   </div>
 
   <!-- Main Content -->
@@ -26,26 +26,19 @@
       <!-- Login Card -->
       <div class="login-card">
         <div class="avatar-header">
-          <div class="avatar-circle">
-            <!-- Placeholder for the female avatar in screenshot -->
-            <svg viewBox="0 0 100 100" width="60" height="60">
-              <circle cx="50" cy="50" r="50" fill="#b71c1c" />
-              <!-- Simple vector face approximation -->
-              <path d="M30 80 Q 50 100 70 80 V 100 H 30 Z" fill="#e57373" /> <!-- shirt -->
-              <circle cx="50" cy="45" r="20" fill="#ffccbc" /> <!-- face -->
-              <path d="M30 40 Q 50 10 70 40 Q 80 60 70 70 Q 50 60 30 70 Q 20 60 30 40" fill="#5d4037" /> <!-- hair -->
-            </svg>
+          <div class="avatar-circle" [style.box-shadow]="'0 0 0 4px ' + getBrandColor()">
+            <img src="avatar-woman.png" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
           </div>
         </div>
 
         <form (submit)="onLogin()">
           <div class="form-row-custom">
-            <label>Login Id</label>
+            <label [style.color]="getBrandColor()">Login Id</label>
             <input type="text" name="email" [(ngModel)]="email" placeholder="Enter Username">
           </div>
 
           <div class="form-row-custom">
-            <label>Password</label>
+            <label [style.color]="getBrandColor()">Password</label>
             <input type="password" name="password" [(ngModel)]="password" placeholder="Enter Password">
           </div>
 
@@ -56,7 +49,7 @@
           </div>
           }
 
-          <button type="submit" class="btn-login-red" [disabled]="isLoading()">
+          <button type="submit" class="btn-login-red" [disabled]="isLoading()" [style.background]="getBrandColor()">
             {{ isLoading() ? 'Logging in...' : 'LOGIN' }}
           </button>
         </form>
@@ -70,16 +63,17 @@
 
     </div>
   </main>
+  
   <footer class="login-footer">
     <div class="footer-links">
-      <a href="#">Terms & Conditions</a>
-      <a href="#">Terms Of Use</a>
-      <a href="#">FAQ on Sarathy motors</a>
-      <a href="#">Privacy Policy</a>
-      <a href="#">Customer Grievance Redresal Policy</a>
-      <a href="#">Operation Manual</a>
+      <a href="#" [style.color]="getBrandColor()">Terms & Conditions</a>
+      <a href="#" [style.color]="getBrandColor()">Terms Of Use</a>
+      <a href="#" [style.color]="getBrandColor()">FAQ on Sarathy motors</a>
+      <a href="#" [style.color]="getBrandColor()">Privacy Policy</a>
+      <a href="#" [style.color]="getBrandColor()">Customer Grievance Redresal Policy</a>
+      <a href="#" [style.color]="getBrandColor()">Operation Manual</a>
     </div>
-    <div class="copyright">
+    <div class="copyright" [style.color]="getBrandColor()">
       2026 © Sarathy Motors
     </div>
   </footer>

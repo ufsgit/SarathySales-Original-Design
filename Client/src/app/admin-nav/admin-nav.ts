@@ -174,7 +174,7 @@ import { ApiService } from '../services/api.service';
     }
 
     .main-blue-nav {
-        background: #0b5ed7;
+        background: var(--primary-brand-color);
         padding: 0;
     }
 
@@ -235,7 +235,7 @@ import { ApiService } from '../services/api.service';
 
     .dropdown-content a:hover {
         background-color: #f8f9fa;
-        color: #0b5ed7;
+        color: var(--primary-brand-color);
         padding-left: 20px;
     }
 

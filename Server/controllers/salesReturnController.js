@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 function numberToWords(num) {
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
@@ -32,6 +34,9 @@ const createSalesReturnPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Sales Return record not found' });
         const data = records[0];
 
+        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         let filename = `SalesReturn_${data.inv_no}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -54,21 +59,35 @@ const createSalesReturnPdf = async (req, res) => {
                 let currentY = 54 + doc.heightOfString(branchAddr, { width: 220, size: 7 }) + 2;
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
 
-                // Main Title Center
-                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 240, 30, { width: 200, align: 'center' });
+                // Main Title Center (Symmetrical centering across the page width)
+                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
                 
-                const centerAddrHeight = doc.heightOfString(branchAddr, { width: 200, size: 7.5 });
-                doc.font('Times-Roman').fontSize(7.5).text(branchAddr, 240, 42, { width: 200, align: 'center' });
+                const centerAddrHeight = doc.heightOfString(branchAddr, { width: 535, size: 7.5 });
+                doc.font('Times-Roman').fontSize(7.5).text(branchAddr, 30, 42, { width: 535, align: 'center' });
                 
                 let gstinY = 42 + centerAddrHeight + 2;
-                doc.text(`GSTIN: ${data.branch_gstin || ''}`, 240, gstinY, { width: 200, align: 'center' });
+                doc.text(`GSTIN: ${data.branch_gstin || ''}`, 30, gstinY, { width: 535, align: 'center' });
 
-                doc.fontSize(25).font('Times-Bold').text('SALES RETURN', 430, 30, { width: 145, align: 'right' });
+                // Render dynamic logo according to active brand
+                let logoFileName = 'KtmLogo.png';
+                if (activeBrand === 'bajaj') {
+                    logoFileName = 'BajajLogo.png';
+                }
+                const logoPath = path.join(__dirname, '../public', logoFileName);
 
-                let taxInvoiceY = Math.max(95, gstinY + 15);
-                doc.fontSize(16).text('TAX INVOICE', 240, taxInvoiceY, { width: 200, align: 'center' });
+                if (fs.existsSync(logoPath)) {
+                    doc.image(logoPath, 460, 20, { width: 100 });
+                } else {
+                    doc.fontSize(25).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { width: 125, align: 'right' });
+                }
 
-                doc.moveTo(40, 125).lineTo(col.end, 125).lineWidth(1).stroke();
+                // Place SALES RETURN document header on the right below the logo to prevent overlap
+                doc.fontSize(25).font('Times-Bold').text('SALES RETURN', 430, 70, { width: 145, align: 'right' });
+
+                let taxInvoiceY = Math.max(105, gstinY + 15);
+                doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, taxInvoiceY, { width: 535, align: 'center' });
+
+                doc.moveTo(40, 130).lineTo(col.end, 130).lineWidth(1).stroke();
 
                 // --- Details Section ---
                 let detailY = 135;

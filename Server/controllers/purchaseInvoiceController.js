@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const { updateStockQuantity } = require('../utils/stockUtils');
 const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 function numberToWords(num) {
     if (num === 0) return 'Zero';
@@ -209,8 +211,10 @@ const createPurchasePdf = async (req, res) => {
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Purchase invoice not found' });
         const data = records[0];
-
         const [items] = await db.execute('SELECT * FROM purchaseitem WHERE purchaseItemBillId = ?', [req.params.id]);
+
+        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
 
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         let filename = `Purchase_${data.invoiceNo}.pdf`;
@@ -230,15 +234,26 @@ const createPurchasePdf = async (req, res) => {
                 doc.font('Times-Roman').fontSize(7).text(data.branch_address ? data.branch_address.replace(/\r/g, '') : '', 40, 54, { width: 200, lineGap: -1 });
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, doc.y + 1);
 
-                doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', 200, 30, { align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 200, 42, { align: 'center' });
+                doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
 
-                doc.fontSize(22).font('Times-Bold').text('KTM', 450, 30, { align: 'right' });
+                // Render dynamic logo according to active brand
+                let logoFileName = 'KtmLogo.png';
+                if (activeBrand === 'bajaj') {
+                    logoFileName = 'BajajLogo.png';
+                }
+                const logoPath = path.join(__dirname, '../public', logoFileName);
+
+                if (fs.existsSync(logoPath)) {
+                    doc.image(logoPath, 460, 20, { width: 100 });
+                } else {
+                    doc.fontSize(22).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { align: 'right' });
+                }
 
                 doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, 105);
                 doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '', 40, 116);
 
-                doc.fontSize(14).text('Purchase Invoice', 200, 105, { align: 'center' });
+                doc.fontSize(14).font('Times-Bold').text('Purchase Invoice', 30, 105, { width: 535, align: 'center' });
 
                 doc.moveTo(40, 130).lineTo(565, 130).stroke();
 

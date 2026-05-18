@@ -16,11 +16,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 const authMiddleware = require('./middleware/authMiddleware');
 const authController = require('./controllers/authController');
+const brandController = require('./controllers/brandController');
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // 1. Specific Public Routes (No Auth)
 app.post('/api/auth/login', authController.login);
+app.get('/api/brand/active', brandController.getActiveBrand);
 app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'Sarathy Sales API is running', timestamp: new Date().toISOString() });
 });

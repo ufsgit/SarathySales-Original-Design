@@ -86,6 +86,26 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_create_brand_config`()
+BEGIN
+
+    CREATE TABLE IF NOT EXISTS tbl_brand_config (
+        brand_id     INT          NOT NULL AUTO_INCREMENT,
+        brand_name   VARCHAR(100) NOT NULL,
+        brand_color  VARCHAR(10)  NOT NULL DEFAULT '#3e424b' COMMENT 'Hex color code e.g. #f36f21',
+        brand_status TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
+        PRIMARY KEY (brand_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (1, 'KTM',   '#ff5a00 ', 1);
+    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (2, 'BAJAJ','#0b5ed7 ', 0);
+
+    SELECT * FROM tbl_brand_config;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `update_labour_tax_data`()
 BEGIN
     DECLARE done INT DEFAULT 0;

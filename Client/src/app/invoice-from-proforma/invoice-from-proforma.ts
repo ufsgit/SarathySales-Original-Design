@@ -863,7 +863,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                     this.pendingExecutive = p.pro_executive || null;
                     this.ensureProformaExecutiveOption();
 
-                    this.hypothication = p.pro_type_loan || '';
+                    this.hypothication = '';
 
                     if (res.items && res.items.length > 0) {
                         const firstItem = res.items[0];
@@ -879,7 +879,8 @@ export class InvoiceFromProformaComponent implements OnInit {
 
                         this.basicAmount = this.toAmount(firstItem.pro_prduct_bas_amt);
                         const proDisc = this.toAmount(firstItem.pro_discount_amt);
-                        this.discountAmount = proDisc > 0 ? proDisc : null;
+                        const proLess = this.toAmount(p.pro_less);
+                        this.discountAmount = proLess > 0 ? proLess : (proDisc > 0 ? proDisc : null);
                         this.taxableAmount = this.toAmount(firstItem.product_taxable_amt);
                         this.sgst = this.toAmount(firstItem.pro_product_sgst);
                         this.cgst = this.toAmount(firstItem.pro_product_cgst);
@@ -903,6 +904,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                                 cess: proCess
                             };
                         }
+                        this.recalculateTotalAmount();
                     }
 
                     this.cdr.detectChanges();
@@ -919,10 +921,24 @@ export class InvoiceFromProformaComponent implements OnInit {
                     .map((r: any) => (r?.icompany_name || '').toString().trim())
                     .filter((v: string) => !!v)
                     .map((v: string) => ({ value: v, label: v }));
+
+                // Ensure CASH and NIL options are always present in the list
+                const hasCash = this.hypothecationOptions.some(opt => opt.value.toUpperCase() === 'CASH');
+                if (!hasCash) {
+                    this.hypothecationOptions.unshift({ value: 'CASH', label: 'CASH' });
+                }
+                const hasNil = this.hypothecationOptions.some(opt => opt.value.toUpperCase() === 'NIL' || opt.value.toUpperCase() === 'NILL');
+                if (!hasNil) {
+                    this.hypothecationOptions.unshift({ value: 'NIL', label: 'NIL' });
+                }
+
                 this.refreshIssueType02Filters();
             },
             error: () => {
-                this.hypothecationOptions = [];
+                this.hypothecationOptions = [
+                    { value: 'CASH', label: 'CASH' },
+                    { value: 'NIL', label: 'NIL' }
+                ];
                 this.refreshIssueType02Filters();
             }
         });
@@ -1072,15 +1088,11 @@ export class InvoiceFromProformaComponent implements OnInit {
         const key = (this.chassisNo || '').toString().trim().toLowerCase();
         const selected = this.chassisIndex.get(key);
         if (!selected) {
-            this.hypothication = '';
             this.totalAmountDisplay = '00.00';
             this.selectedInvTotal = 0;
             return;
         }
 
-        if (selected.inv_hypothication) {
-            this.hypothication = selected.inv_hypothication.toString();
-        }
         this.engineNo = (selected.in_engine || selected.inv_engine_no || '').toString();
         this.vehicle = (selected.inv_vehicle || selected.vehicle || '').toString();
         this.pCode = (selected.inv_vehicle_code || selected.inv_product_id || '').toString();
@@ -1088,8 +1100,12 @@ export class InvoiceFromProformaComponent implements OnInit {
         this.hsnCode = (selected.inv_hsncode || selected.hsn_code || '').toString();
 
         this.basicAmount = this.toAmount(selected.basic_amount ?? selected.inv_basic_amt ?? 0);
+
+        // Preserve any discount already set (e.g. pre-filled from proforma).
+        // Only fall back to the chassis record's discount if nothing is set yet.
+        const savedDiscount = this.discountAmount;
         const discAmt = this.toAmount(selected.discount_amount ?? selected.inv_discount_amt);
-        this.discountAmount = discAmt > 0 ? discAmt : null;
+        this.discountAmount = savedDiscount ?? (discAmt > 0 ? discAmt : null);
 
         // Initial taxable amount calculation
         this.taxableAmount = this.basicAmount - (this.discountAmount ?? 0);
@@ -1270,7 +1286,7 @@ export class InvoiceFromProformaComponent implements OnInit {
                     if (res?.success) {
                         this.isSaved = true;
                         alert('Sales invoice saved successfully');
-                        // this.navigate('/previous-sales-invoice');
+                        this.navigate('/previous-sales-invoice');
                     } else {
                         alert(res?.message || 'Failed to save sales invoice');
                     }

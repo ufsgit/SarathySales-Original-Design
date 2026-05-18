@@ -1,3 +1,7 @@
+:root {
+  --primary-brand-color: #3e424b; /* Default Fallback color */
+}
+
 /* You can add global styles to this file, and also import other style files */
 body,
 html {
@@ -10,4 +14,79 @@ html {
 * {
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
+}
+
+/* Global Form/Card Header Color Sync to active Database Brand Color */
+.orange-header-strip {
+    background: var(--primary-brand-color) !important;
+}
+
+.blue-header-strip {
+    background: var(--primary-brand-color) !important;
+}
+
+.report-header {
+    background: var(--primary-brand-color) !important;
+}
+
+.page-title {
+    color: var(--primary-brand-color) !important;
+}
+
+/* Inner Page Sub-sections (e.g. Add Employee Basic/Personal Details) */
+.form-section {
+    border-color: var(--primary-brand-color) !important;
+}
+
+.form-section .section-title {
+    background-color: var(--primary-brand-color) !important;
+}
+
+/* Modals & Popups Dynamic Brand Color Sync */
+.modal-header:not(.warning) {
+    background: var(--primary-brand-color) !important;
+}
+
+.btn-modal-primary {
+    background: var(--primary-brand-color) !important;
+}
+
+.btn-modal-primary:hover:not(:disabled) {
+    filter: brightness(0.92);
+}
+
+/* Active Datatable Page Buttons */
+.dt-page-btn.active {
+    background: var(--primary-brand-color) !important;
+    border-color: var(--primary-brand-color) !important;
+}
+
+/* Edit action links and list edit buttons */
+.dropdown-item.edit {
+    color: var(--primary-brand-color) !important;
+}
+
+.btn-edit {
+    background: var(--primary-brand-color) !important;
+}
+
+/* Form input focus & selects */
+.edit-input:focus,
+.custom-select-trigger:hover {
+    border-color: var(--primary-brand-color) !important;
+}
+
+/* Ensure previous transaction list edit buttons are always green (e.g. Payslip, Gate Pass, Money Receipt) */
+.action-buttons .btn-edit,
+.action-td .btn-edit,
+.action-cell-stacked .btn-text-action.edit {
+    background-color: #2ecc71 !important;
+    color: #fff !important;
+}
+
+.action-buttons .btn-edit:hover,
+.action-td .btn-edit:hover,
+.action-cell-stacked .btn-text-action.edit:hover {
+    background-color: #27ae60 !important;
+    color: #fff !important;
 }

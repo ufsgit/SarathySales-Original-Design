@@ -1,5 +1,5 @@
 :root {
-    --primary-orange: #ff5a00;
+    --primary-orange: var(--primary-brand-color);
     --text-dark: #333333;
     --text-light: #666666;
     --bg-gray: #f2f2f2;
@@ -114,13 +114,11 @@
 
 /* Main Nav Bar (Orange) */
 .main-nav-bar {
-    background-color: var(--primary-orange);
+    background-color: var(--primary-brand-color);
     display: flex;
     align-items: center;
     padding: 0 40px;
     position: relative;
-    /* Gradient effect possibly */
-    background: linear-gradient(90deg, #ff5a00 0%, #3374db 100%);
 }
 
 .nav-links {
@@ -171,7 +169,7 @@
     position: absolute;
     top: 100%;
     left: 0;
-    background: rgb(255, 102, 46);
+    background: var(--primary-brand-color);
     min-width: 200px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     z-index: 1000;

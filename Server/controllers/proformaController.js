@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 function padSerial(n) { return String(n).padStart(5, '0'); }
 function nextNoFromLast(lastNo, year, branchId) {
@@ -231,6 +233,9 @@ const createProformaPdf = async (req, res) => {
 
         const [items] = await db.execute('SELECT * FROM tbl_proforma_item WHERE proforma_id = ?', [req.params.id]);
 
+        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
         const doc = new PDFDocument({ margin: 30, size: 'A4' });
         let filename = `Proforma_${data.pro_quot_no}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -246,12 +251,23 @@ const createProformaPdf = async (req, res) => {
 
         doc.font('Times-Bold').fontSize(7).text(`Code: 32 Kerala [State Code :32]`, 250, 54);
 
-        doc.fontSize(18).font('Times-Bold').text('KTM', 450, 30, { align: 'right' });
+        // Render dynamic logo according to active brand
+        let logoFileName = 'KtmLogo.png';
+        if (activeBrand === 'bajaj') {
+            logoFileName = 'BajajLogo.png';
+        }
+        const logoPath = path.join(__dirname, '../public', logoFileName);
+
+        if (fs.existsSync(logoPath)) {
+            doc.image(logoPath, 460, 20, { width: 100 });
+        } else {
+            doc.fontSize(18).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { align: 'right' });
+        }
 
         doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, 105);
         doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '', 40, 116);
 
-        doc.fontSize(12).text('PROFORMA INVOICE (Vehicle)', 200, 105, { align: 'center' });
+        doc.fontSize(12).font('Times-Bold').text('PROFORMA INVOICE (Vehicle)', 30, 105, { width: 535, align: 'center' });
 
         doc.moveTo(40, 130).lineTo(560, 130).stroke();
 
