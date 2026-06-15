@@ -272,7 +272,8 @@ export class AdminInstitutionmasterlist implements OnInit {
             pin: inst.branch_pin,
             gstin: inst.branch_gstin,
             phone: inst.branch_ph,
-            email: inst.branch_email
+            email: inst.branch_email,
+            logo_id: inst.logo_id
         }
     });
   }

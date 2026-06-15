@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { ApiService } from '../services/api.service';
+import { LogoService } from '../services/logo.service';
 import { NumericOnlyDirective } from '../numeric-only.directive';
 
 @Component({
@@ -73,6 +74,14 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
                 <div class="form-group row">
                     <label>Email Id :</label>
                     <input type="email" class="form-control" name="email" [(ngModel)]="email" placeholder="Email-Id">
+                </div>
+                
+                <div class="form-group row">
+                    <label>Select Logo :</label>
+                    <select class="form-control" name="logoId" [(ngModel)]="logoId">
+                        <option [ngValue]="null">-- No Logo Selected --</option>
+                        <option *ngFor="let logo of availableLogos()" [ngValue]="logo.logo_id">{{ logo.logo_title }}</option>
+                    </select>
                 </div>
 
                 <div class="form-actions">
@@ -150,15 +159,19 @@ export class AdminInstitutionmaster implements OnInit {
   gstin = '';
   phone = '';
   email = '';
+  logoId: number | null = null;
+  availableLogos = signal<any[]>([]);
 
   constructor(
     private apiService: ApiService, 
+    private logoService: LogoService,
     private router: Router,
     private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadInstitutions();
+    this.loadLogos();
 
     this.route.queryParams.subscribe(params => {
         if (params['id']) {
@@ -172,6 +185,7 @@ export class AdminInstitutionmaster implements OnInit {
             this.gstin = params['gstin'] || '';
             this.phone = params['phone'] || '';
             this.email = params['email'] || '';
+            this.logoId = params['logo_id'] ? Number(params['logo_id']) : null;
         }
     });
   }
@@ -185,6 +199,19 @@ export class AdminInstitutionmaster implements OnInit {
       },
       error: (err: any) => {
         console.error('Error loading institution list', err);
+      }
+    });
+  }
+
+  loadLogos() {
+    this.logoService.listLogos().subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.availableLogos.set(res.data || []);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading logo list', err);
       }
     });
   }
@@ -265,7 +292,8 @@ export class AdminInstitutionmaster implements OnInit {
         pinCode: this.pinCode,
         gstin: this.gstin,
         phone: this.phone,
-        email: this.email
+        email: this.email,
+        logoId: this.logoId
     };
 
     if (this.isEdit()) {
@@ -312,6 +340,7 @@ export class AdminInstitutionmaster implements OnInit {
     this.gstin = '';
     this.phone = '';
     this.email = '';
+    this.logoId = null;
     this.isEdit.set(false);
     this.editId.set(null);
   }

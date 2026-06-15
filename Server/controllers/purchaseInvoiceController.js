@@ -202,7 +202,7 @@ const savePurchaseInvoice = async (req, res) => {
 const createPurchasePdf = async (req, res) => {
     try {
         const [records] = await db.execute(
-            `SELECT pb.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin 
+            `SELECT pb.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id 
              FROM purchaseitembill pb
              LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
              WHERE pb.purchaseItemBillId = ? ${req.user && req.user.role == 2 ? 'AND pb.purch_branchId = ?' : ''}`,
@@ -215,6 +215,22 @@ const createPurchasePdf = async (req, res) => {
 
         const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
+        let piLogoFileName = 'KtmLogo.png';
+        if (activeBrand === 'bajaj') {
+            piLogoFileName = 'BajajLogo.png';
+        }
+        let dynamicLogoPath = path.join(__dirname, '../public', piLogoFileName);
+
+        if (data.logo_id) {
+            const [logoRows] = await db.execute('SELECT logo_url FROM logo_master WHERE logo_id = ? AND is_active = 1', [data.logo_id]);
+            if (logoRows && logoRows.length > 0) {
+                const fetchedLogoPath = path.join(__dirname, '../public', logoRows[0].logo_url);
+                if (fs.existsSync(fetchedLogoPath)) {
+                    dynamicLogoPath = fetchedLogoPath;
+                }
+            }
+        }
 
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         let filename = `Purchase_${data.invoiceNo}.pdf`;
@@ -238,14 +254,8 @@ const createPurchasePdf = async (req, res) => {
                 doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
 
                 // Render dynamic logo according to active brand
-                let logoFileName = 'KtmLogo.png';
-                if (activeBrand === 'bajaj') {
-                    logoFileName = 'BajajLogo.png';
-                }
-                const logoPath = path.join(__dirname, '../public', logoFileName);
-
-                if (fs.existsSync(logoPath)) {
-                    doc.image(logoPath, 460, 20, { width: 100 });
+                if (fs.existsSync(dynamicLogoPath)) {
+                    doc.image(dynamicLogoPath, 460, 20, { width: 100 });
                 } else {
                     doc.fontSize(22).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { align: 'right' });
                 }

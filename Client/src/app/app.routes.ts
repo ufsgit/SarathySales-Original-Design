@@ -75,6 +75,7 @@ export const routes: Routes = [
     { path: 'admin-colorlist', component: AdminColorlist, canActivate: [authGuard] },
     { path: 'admin-stock', component: AdminStock, canActivate: [authGuard] },
     { path: 'admin-stocklist', component: AdminStocklist, canActivate: [authGuard] },
+    { path: 'admin-logomaster', loadComponent: () => import('./admin-logomaster/admin-logomaster').then(m => m.AdminLogomaster), canActivate: [authGuard] },
     { path: 'previous-money-receipt', component: PreviousMoneyReceipt, canActivate: [authGuard] },
     { path: 'previous-pay-slip', component: PreviousPaySlip, canActivate: [authGuard] },
     { path: 'previous-gate-pass', component: PreviousGatePass, canActivate: [authGuard] },

@@ -256,7 +256,17 @@ const createProformaPdf = async (req, res) => {
         if (activeBrand === 'bajaj') {
             logoFileName = 'BajajLogo.png';
         }
-        const logoPath = path.join(__dirname, '../public', logoFileName);
+        let logoPath = path.join(__dirname, '../public', logoFileName);
+
+        if (data.logo_id) {
+            const [logoRows] = await db.execute('SELECT logo_url FROM logo_master WHERE logo_id = ? AND is_active = 1', [data.logo_id]);
+            if (logoRows && logoRows.length > 0) {
+                const dynamicLogoPath = path.join(__dirname, '../public', logoRows[0].logo_url);
+                if (fs.existsSync(dynamicLogoPath)) {
+                    logoPath = dynamicLogoPath;
+                }
+            }
+        }
 
         if (fs.existsSync(logoPath)) {
             doc.image(logoPath, 460, 20, { width: 100 });

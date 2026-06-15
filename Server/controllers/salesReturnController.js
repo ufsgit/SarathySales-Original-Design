@@ -25,7 +25,7 @@ function numberToWords(num) {
 const createSalesReturnPdf = async (req, res) => {
     try {
         const [records] = await db.execute(
-            `SELECT sr.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin 
+            `SELECT sr.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id 
              FROM tbl_sale_return sr
              LEFT JOIN tbl_branch b ON b.b_id = sr.inv_branch
              WHERE sr.inv_id = ?`, [req.params.id]
@@ -36,6 +36,22 @@ const createSalesReturnPdf = async (req, res) => {
 
         const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+
+        let logoFileName = 'KtmLogo.png';
+        if (activeBrand === 'bajaj') {
+            logoFileName = 'BajajLogo.png';
+        }
+        let dynamicLogoPath = path.join(__dirname, '../public', logoFileName);
+
+        if (data.logo_id) {
+            const [logoRows] = await db.execute('SELECT logo_url FROM logo_master WHERE logo_id = ? AND is_active = 1', [data.logo_id]);
+            if (logoRows && logoRows.length > 0) {
+                const fetchedLogoPath = path.join(__dirname, '../public', logoRows[0].logo_url);
+                if (fs.existsSync(fetchedLogoPath)) {
+                    dynamicLogoPath = fetchedLogoPath;
+                }
+            }
+        }
 
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         let filename = `SalesReturn_${data.inv_no}.pdf`;
@@ -69,20 +85,14 @@ const createSalesReturnPdf = async (req, res) => {
                 doc.text(`GSTIN: ${data.branch_gstin || ''}`, 30, gstinY, { width: 535, align: 'center' });
 
                 // Render dynamic logo according to active brand
-                let logoFileName = 'KtmLogo.png';
-                if (activeBrand === 'bajaj') {
-                    logoFileName = 'BajajLogo.png';
-                }
-                const logoPath = path.join(__dirname, '../public', logoFileName);
-
-                if (fs.existsSync(logoPath)) {
-                    doc.image(logoPath, 460, 20, { width: 100 });
+                if (fs.existsSync(dynamicLogoPath)) {
+                    doc.image(dynamicLogoPath, 460, 20, { width: 100 });
                 } else {
                     doc.fontSize(25).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { width: 125, align: 'right' });
                 }
 
                 // Place SALES RETURN document header on the right below the logo to prevent overlap
-                doc.fontSize(25).font('Times-Bold').text('SALES RETURN', 430, 70, { width: 145, align: 'right' });
+                doc.fontSize(14).font('Times-Bold').text('SALES RETURN', 430, 110, { width: 145, align: 'right' });
 
                 let taxInvoiceY = Math.max(105, gstinY + 15);
                 doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, taxInvoiceY, { width: 535, align: 'center' });

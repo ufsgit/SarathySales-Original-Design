@@ -106,6 +106,34 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_create_logo_master_table`()
+BEGIN
+
+    -- 1. Create the logo_master table
+    CREATE TABLE IF NOT EXISTS logo_master (
+        logo_id INT AUTO_INCREMENT PRIMARY KEY,
+        logo_title VARCHAR(255) NOT NULL,
+        logo_url VARCHAR(500) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    -- 2. Safely add the logo_id column to tbl_branch if it doesn't already exist
+    IF NOT EXISTS (
+        SELECT * FROM information_schema.columns 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'tbl_branch' 
+        AND column_name = 'logo_id'
+    ) THEN
+        ALTER TABLE tbl_branch ADD COLUMN logo_id INT NULL;
+    END IF;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `update_labour_tax_data`()
 BEGIN
     DECLARE done INT DEFAULT 0;

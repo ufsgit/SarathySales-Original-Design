@@ -447,7 +447,7 @@ const listInstitutions = async (req, res) => {
 
 const addInstitution = async (req, res) => {
     try {
-        const { code, name, address, location, pinCode, gstin, phone, email } = req.body;
+        const { code, name, address, location, pinCode, gstin, phone, email, logoId } = req.body;
 
         // Check for duplicates
         const [existing] = await db.execute(
@@ -467,8 +467,8 @@ const addInstitution = async (req, res) => {
 
         const pin = parseInt(pinCode) || 0;
         await db.execute(
-            'INSERT INTO tbl_branch (branch_id, branch_name, branch_address, branch_location, branch_pin, branch_gstin, branch_ph, branch_email, branch_prefix) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [code, name, address, location, pin, gstin, phone, email, 'KLM']
+            'INSERT INTO tbl_branch (branch_id, branch_name, branch_address, branch_location, branch_pin, branch_gstin, branch_ph, branch_email, branch_prefix, logo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [code, name, address, location, pin, gstin, phone, email, 'KLM', logoId || null]
         );
         res.json({ success: true, message: 'Institution master added successfully' });
     } catch (err) {
@@ -479,7 +479,7 @@ const addInstitution = async (req, res) => {
 
 const updateInstitution = async (req, res) => {
     const { id } = req.params; // branch_id
-    const { name, address, location, pinCode, gstin, phone, email } = req.body;
+    const { name, address, location, pinCode, gstin, phone, email, logoId } = req.body;
     try {
         const [existing] = await db.execute(
             'SELECT branch_id, branch_name FROM tbl_branch WHERE (branch_id = ? OR branch_name = ?) AND branch_id <> ?',
@@ -497,8 +497,8 @@ const updateInstitution = async (req, res) => {
 
         const pin = parseInt(pinCode) || 0;
         await db.execute(
-            'UPDATE tbl_branch SET branch_name=?, branch_address=?, branch_location=?, branch_pin=?, branch_gstin=?, branch_ph=?, branch_email=? WHERE branch_id=?',
-            [name, address, location, pin, gstin, phone, email, id]
+            'UPDATE tbl_branch SET branch_name=?, branch_address=?, branch_location=?, branch_pin=?, branch_gstin=?, branch_ph=?, branch_email=?, logo_id=? WHERE branch_id=?',
+            [name, address, location, pin, gstin, phone, email, logoId || null, id]
         );
         res.json({ success: true, message: 'Institution updated successfully' });
     } catch (err) {
