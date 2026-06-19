@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const xlsx = require('xlsx');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
@@ -61,10 +62,14 @@ const addEmployee = async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Username already exists' });
             }
 
+            // Hash password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password.trim(), salt);
+
             // Insert into tbl_login
             const [loginResult] = await conn.execute(
                 'INSERT INTO tbl_login (uname, pwd, role, role_des) VALUES (?, ?, ?, ?)',
-                [username.trim(), password.trim(), 2, 'staff']
+                [username.trim(), hashedPassword, 2, 'staff']
             );
             loginId = loginResult.insertId;
         }
@@ -122,15 +127,30 @@ const updateEmployee = async (req, res) => {
 
             if (loginId > 0) {
                 // Update existing login
-                await conn.execute(
-                    'UPDATE tbl_login SET uname = ?, pwd = ? WHERE login_id = ?',
-                    [username.trim(), password.trim(), loginId]
-                );
+                if (password && password.trim() !== '') {
+                    const salt = await bcrypt.genSalt(10);
+                    const hashedPassword = await bcrypt.hash(password.trim(), salt);
+                    await conn.execute(
+                        'UPDATE tbl_login SET uname = ?, pwd = ? WHERE login_id = ?',
+                        [username.trim(), hashedPassword, loginId]
+                    );
+                } else {
+                    await conn.execute(
+                        'UPDATE tbl_login SET uname = ? WHERE login_id = ?',
+                        [username.trim(), loginId]
+                    );
+                }
             } else {
+                if (!password) {
+                    await conn.rollback();
+                    return res.status(400).json({ success: false, message: 'Password is required to create a new user login' });
+                }
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(password.trim(), salt);
                 // Create new login if didn't exist
                 const [loginResult] = await conn.execute(
                     'INSERT INTO tbl_login (uname, pwd, role, role_des) VALUES (?, ?, ?, ?)',
-                    [username.trim(), password.trim(), 2, 'staff']
+                    [username.trim(), hashedPassword, 2, 'staff']
                 );
                 loginId = loginResult.insertId;
             }
@@ -456,12 +476,13 @@ const addInstitution = async (req, res) => {
         );
 
         if (existing.length > 0) {
-            const found = existing[0];
-            if (found.branch_id === code) {
-                return res.status(400).json({ success: false, message: 'Institution Code already exists' });
-            }
-            if (found.branch_name === name) {
-                return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+            for (const found of existing) {
+                if (String(found.branch_id) === String(code)) {
+                    return res.status(400).json({ success: false, message: 'Institution Code already exists' });
+                }
+                if (String(found.branch_name).toLowerCase() === String(name).toLowerCase()) {
+                    return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+                }
             }
         }
 
@@ -486,12 +507,13 @@ const updateInstitution = async (req, res) => {
             [id, name, id]
         );
         if (existing.length > 0) {
-            const found = existing[0];
-            if (found.branch_id == id) {
-                return res.status(400).json({ success: false, message: 'Institution Code already exists' });
-            }
-            if (found.branch_name === name) {
-                return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+            for (const found of existing) {
+                if (String(found.branch_id) === String(id)) {
+                    return res.status(400).json({ success: false, message: 'Institution Code already exists' });
+                }
+                if (String(found.branch_name).toLowerCase() === String(name).toLowerCase()) {
+                    return res.status(400).json({ success: false, message: 'Institution Name already exists' });
+                }
             }
         }
 

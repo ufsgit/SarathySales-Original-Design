@@ -42,7 +42,7 @@ import { NumericOnlyDirective } from '../numeric-only.directive';
             <div class="form-center-layout">
                 <div class="form-group row">
                     <label>Institution Code :</label>
-                    <input type="text" class="form-control" name="code" [(ngModel)]="code" placeholder="Institution Code" [disabled]="isEdit()" required>
+                    <input type="text" class="form-control" name="code" numericOnly [(ngModel)]="code" placeholder="Institution Code" [disabled]="isEdit()" required pattern="[0-9]*" inputmode="numeric" (input)="code = $any($event.target).value.replace(/[^0-9]/g, '')">
                 </div>
                 <div class="form-group row">
                     <label>Institution Name:</label>

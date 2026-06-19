@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
+import { BrandService } from '../services/brand.service';
 
 @Component({
     selector: 'app-myprofile-changepassword',
@@ -23,7 +24,11 @@ export class MyProfileChangePassword {
         return user?.role == 1 || user?.role_des === 'admin';
     });
 
-    constructor(private api: ApiService, private router: Router) { }
+    brandColor = computed(() => {
+        return this.brandService.activeBrand()?.brand_color || null;
+    });
+
+    constructor(private api: ApiService, private router: Router, private brandService: BrandService) { }
 
     onSubmit() {
         if (!this.oldPassword || !this.newPassword || !this.verifyNewPassword) {

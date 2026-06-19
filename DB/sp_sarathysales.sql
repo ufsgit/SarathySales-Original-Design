@@ -1,140 +1,67 @@
 DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_clear_all_data`()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ResetAllPasswordsTo123`()
 BEGIN
-    -- Disable FK checks
-    SET FOREIGN_KEY_CHECKS = 0;
-
-    -- DELETE DATA (KEEP LOGIN ID = 1)
-
-    DELETE FROM customer_details WHERE c_id > 0;
-
-    DELETE FROM purchaseitem WHERE purchaseItemId > 0;
-    DELETE FROM purchaseitembill WHERE purchaseItemBillId > 0;
-
-    DELETE FROM tbl_branch WHERE b_id > 0;
-    DELETE FROM tbl_branch_transfer WHERE lc_id > 0;
-
-    DELETE FROM tbl_employee WHERE emp_id > 0;
-    DELETE FROM tbl_gate_pass WHERE gate_pass_id > 0;
-
-    DELETE FROM tbl_insurance_company WHERE com_id > 0;
-
-    DELETE FROM tbl_invoice_labour WHERE inv_id > 0;
-    DELETE FROM tbl_labour_code WHERE labour_id > 0;
-
-    -- KEEP ADMIN LOGIN
-    DELETE FROM tbl_login WHERE login_id > 1;
-
-    DELETE FROM tbl_model WHERE model_id > 0;
-
-    DELETE FROM tbl_money_receipt WHERE receipt_id > 0;
-    DELETE FROM tbl_payslip WHERE payslip_id > 0;
-
-    DELETE FROM tbl_proforma WHERE pro_id > 0;
-    DELETE FROM tbl_proforma_item WHERE pro_item_id > 0;
-
-    DELETE FROM tbl_sale_return WHERE inv_id > 0;
-
-    DELETE FROM tbl_stock WHERE stock_id > 0;
-
-    DELETE FROM tbl_tax_slab WHERE id_tax_slab > 0;
-
-    DELETE FROM tbl_vsi_invoice WHERE inv_id > 0;
-    DELETE FROM tbl_vsi_invoice_cost WHERE lc_id > 0;
-
-    -- RESET AUTO_INCREMENT
-
-    ALTER TABLE customer_details AUTO_INCREMENT = 1;
-
-    ALTER TABLE purchaseitem AUTO_INCREMENT = 1;
-    ALTER TABLE purchaseitembill AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_branch AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_branch_transfer AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_employee AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_gate_pass AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_insurance_company AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_invoice_labour AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_labour_code AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_login AUTO_INCREMENT = 2;
-
-    ALTER TABLE tbl_model AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_money_receipt AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_payslip AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_proforma AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_proforma_item AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_sale_return AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_stock AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_tax_slab AUTO_INCREMENT = 1;
-
-    ALTER TABLE tbl_vsi_invoice AUTO_INCREMENT = 1;
-    ALTER TABLE tbl_vsi_invoice_cost AUTO_INCREMENT = 1;
-
-    -- Enable FK checks
-    SET FOREIGN_KEY_CHECKS = 1;
-
+    -- This uses the pre-computed Bcrypt hash for "123"
+    UPDATE tbl_login 
+    SET pwd = '$2b$10$dfO8ImRZ9kr9lDwzykoDounjZ4CTt2KLldsr7Vz5or.hbADR2Qgk2';
+    
+    SELECT 'All passwords have been reset to 123' AS Message;
 END$$
 DELIMITER ;
 
 DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_create_brand_config`()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp1_alter_customer_address_length`()
 BEGIN
+    ALTER TABLE tbl_invoice_labour
+        MODIFY COLUMN inv_cus_addres VARCHAR(1000) NOT NULL;
 
-    CREATE TABLE IF NOT EXISTS tbl_brand_config (
-        brand_id     INT          NOT NULL AUTO_INCREMENT,
-        brand_name   VARCHAR(100) NOT NULL,
-        brand_color  VARCHAR(10)  NOT NULL DEFAULT '#3e424b' COMMENT 'Hex color code e.g. #f36f21',
-        brand_status TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
-        PRIMARY KEY (brand_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (1, 'KTM',   '#ff5a00 ', 1);
-    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (2, 'BAJAJ','#0b5ed7 ', 0);
-
-    SELECT * FROM tbl_brand_config;
-
+    ALTER TABLE tbl_sale_return
+        MODIFY COLUMN inv_cus_addres VARCHAR(1000) NOT NULL;
 END$$
 DELIMITER ;
 
 DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_create_logo_master_table`()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp2_alter_tbl_proforma`()
 BEGIN
+    ALTER TABLE tbl_proforma
+    ADD COLUMN pro_missal3 VARCHAR(255) DEFAULT '',
+    ADD COLUMN pro_missal3_amt DECIMAL(15,2) DEFAULT '0.00';
+END$$
+DELIMITER ;
 
-    -- 1. Create the logo_master table
-    CREATE TABLE IF NOT EXISTS logo_master (
-        logo_id INT AUTO_INCREMENT PRIMARY KEY,
-        logo_title VARCHAR(255) NOT NULL,
-        logo_url VARCHAR(500) NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ON UPDATE CURRENT_TIMESTAMP
-    );
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp3_create_tax_slab_and_labour_code_add_taxid`()
+BEGIN
+    -- Create tbl_tax_slab
+    CREATE TABLE IF NOT EXISTS tbl_tax_slab (
+        id_tax_slab INT NOT NULL AUTO_INCREMENT,
+        GST DECIMAL(18,2) UNSIGNED DEFAULT '0.00',
+        CGST DECIMAL(18,2) UNSIGNED DEFAULT '0.00',
+        SGST DECIMAL(18,2) UNSIGNED DEFAULT '0.00',
+        IGST DECIMAL(18,2) UNSIGNED DEFAULT '0.00',
+        CESS DECIMAL(18,2) UNSIGNED DEFAULT '0.00',
+        PRIMARY KEY (id_tax_slab)
+    ) ENGINE=InnoDB
+      DEFAULT CHARSET=utf8mb4
+      COLLATE=utf8mb4_0900_ai_ci;
 
-    -- 2. Safely add the logo_id column to tbl_branch if it doesn't already exist
+    -- Add id_tax_slab column to tbl_labour_code if it doesn't exist
     IF NOT EXISTS (
-        SELECT * FROM information_schema.columns 
-        WHERE table_schema = DATABASE() 
-        AND table_name = 'tbl_branch' 
-        AND column_name = 'logo_id'
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'tbl_labour_code'
+          AND COLUMN_NAME = 'id_tax_slab'
     ) THEN
-        ALTER TABLE tbl_branch ADD COLUMN logo_id INT NULL;
+        ALTER TABLE tbl_labour_code
+        ADD COLUMN id_tax_slab INT DEFAULT NULL;
     END IF;
 
 END$$
 DELIMITER ;
 
 DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `update_labour_tax_data`()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp4_update_labour_tax_data`()
 BEGIN
     DECLARE done INT DEFAULT 0;
 
@@ -222,6 +149,141 @@ BEGIN
     END LOOP;
 
     CLOSE cur;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp5_create_brand_config`()
+BEGIN
+
+    CREATE TABLE IF NOT EXISTS tbl_brand_config (
+        brand_id     INT          NOT NULL AUTO_INCREMENT,
+        brand_name   VARCHAR(100) NOT NULL,
+        brand_color  VARCHAR(10)  NOT NULL DEFAULT '#3e424b' COMMENT 'Hex color code e.g. #f36f21',
+        brand_status TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
+        PRIMARY KEY (brand_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (1, 'KTM',   '#ff5a00 ', 1);
+    INSERT IGNORE INTO tbl_brand_config (brand_id, brand_name, brand_color, brand_status) VALUES (2, 'BAJAJ','#0b5ed7 ', 0);
+
+    SELECT * FROM tbl_brand_config;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp6_create_logo_master_table`()
+BEGIN
+
+    -- 1. Create the logo_master table
+    CREATE TABLE IF NOT EXISTS logo_master (
+        logo_id INT AUTO_INCREMENT PRIMARY KEY,
+        logo_title VARCHAR(255) NOT NULL,
+        logo_url VARCHAR(500) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    -- 2. Safely add the logo_id column to tbl_branch if it doesn't already exist
+    IF NOT EXISTS (
+        SELECT * FROM information_schema.columns 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'tbl_branch' 
+        AND column_name = 'logo_id'
+    ) THEN
+        ALTER TABLE tbl_branch ADD COLUMN logo_id INT NULL;
+    END IF;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_clear_all_data`()
+BEGIN
+    -- Disable FK checks
+    SET FOREIGN_KEY_CHECKS = 0;
+
+    -- DELETE DATA (KEEP LOGIN ID = 1)
+
+    DELETE FROM customer_details WHERE c_id > 0;
+
+    DELETE FROM purchaseitem WHERE purchaseItemId > 0;
+    DELETE FROM purchaseitembill WHERE purchaseItemBillId > 0;
+
+    DELETE FROM tbl_branch WHERE b_id > 0;
+    DELETE FROM tbl_branch_transfer WHERE lc_id > 0;
+
+    DELETE FROM tbl_employee WHERE emp_id > 0;
+    DELETE FROM tbl_gate_pass WHERE gate_pass_id > 0;
+
+    DELETE FROM tbl_insurance_company WHERE com_id > 0;
+
+    DELETE FROM tbl_invoice_labour WHERE inv_id > 0;
+    DELETE FROM tbl_labour_code WHERE labour_id > 0;
+
+    -- KEEP ADMIN LOGIN
+    DELETE FROM tbl_login WHERE login_id > 1;
+
+    DELETE FROM tbl_model WHERE model_id > 0;
+
+    DELETE FROM tbl_money_receipt WHERE receipt_id > 0;
+    DELETE FROM tbl_payslip WHERE payslip_id > 0;
+
+    DELETE FROM tbl_proforma WHERE pro_id > 0;
+    DELETE FROM tbl_proforma_item WHERE pro_item_id > 0;
+
+    DELETE FROM tbl_sale_return WHERE inv_id > 0;
+
+    DELETE FROM tbl_stock WHERE stock_id > 0;
+
+    DELETE FROM tbl_tax_slab WHERE id_tax_slab > 0;
+
+    DELETE FROM tbl_vsi_invoice WHERE inv_id > 0;
+    DELETE FROM tbl_vsi_invoice_cost WHERE lc_id > 0;
+
+    -- RESET AUTO_INCREMENT
+
+    ALTER TABLE customer_details AUTO_INCREMENT = 1;
+
+    ALTER TABLE purchaseitem AUTO_INCREMENT = 1;
+    ALTER TABLE purchaseitembill AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_branch AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_branch_transfer AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_employee AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_gate_pass AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_insurance_company AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_invoice_labour AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_labour_code AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_login AUTO_INCREMENT = 2;
+
+    ALTER TABLE tbl_model AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_money_receipt AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_payslip AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_proforma AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_proforma_item AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_sale_return AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_stock AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_tax_slab AUTO_INCREMENT = 1;
+
+    ALTER TABLE tbl_vsi_invoice AUTO_INCREMENT = 1;
+    ALTER TABLE tbl_vsi_invoice_cost AUTO_INCREMENT = 1;
+
+    -- Enable FK checks
+    SET FOREIGN_KEY_CHECKS = 1;
 
 END$$
 DELIMITER ;

@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 /**
  * POST /api/auth/login
@@ -31,7 +32,9 @@ const login = async (req, res) => {
         const submittedPwd = String(password || '').trim();
         const storedPwd = String(user.pwd || '').trim();
 
-        if (submittedPwd !== storedPwd) {
+        const isMatch = await bcrypt.compare(submittedPwd, storedPwd);
+
+        if (!isMatch) {
             return res.status(401).json({
                 success: false,
                 message: 'Wrong Username or Password!!!'
@@ -114,11 +117,15 @@ const changePassword = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        if (oldPassword !== rows[0].pwd) {
+        const isMatch = await bcrypt.compare(oldPassword, rows[0].pwd);
+        if (!isMatch) {
             return res.status(400).json({ success: false, message: 'Old password is incorrect' });
         }
 
-        await db.execute('UPDATE tbl_login SET pwd = ? WHERE login_id = ?', [newPassword, loginId]);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await db.execute('UPDATE tbl_login SET pwd = ? WHERE login_id = ?', [hashedPassword, loginId]);
 
         res.json({ success: true, message: 'Password updated successfully' });
 
