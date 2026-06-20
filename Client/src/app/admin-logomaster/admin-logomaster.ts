@@ -77,8 +77,13 @@ import { environment } from '../../environments/environment';
                 <tr *ngFor="let logo of logos(); let i = index">
                   <td>{{ (currentPage() - 1) * pageLimit() + i + 1 }}</td>
                   <td>
-                    <img [src]="env.FilePath + logo.logo_url" alt="Logo" class="logo-thumbnail"
-                         onerror="this.src='sarathy-logo.png'">
+                    <ng-container *ngIf="!logo.imgError; else notFoundTpl">
+                      <img [src]="env.FilePath + logo.logo_url" alt="Logo" class="logo-thumbnail"
+                           (error)="logo.imgError = true">
+                    </ng-container>
+                    <ng-template #notFoundTpl>
+                      <span style="color: red; font-weight: bold;">Not Found</span>
+                    </ng-template>
                   </td>
                   <td>{{ logo.logo_title }}</td>
 
@@ -199,7 +204,12 @@ import { environment } from '../../environments/environment';
         <div class="edit-preview-row">
           <div class="edit-preview-box">
             <p class="preview-label">Current Image</p>
-            <img [src]="editCurrentPreview()" alt="Current Logo" class="preview-image" onerror="this.src='sarathy-logo.png'">
+            <ng-container *ngIf="!editCurrentPreviewError(); else currentNotFoundTpl">
+              <img [src]="editCurrentPreview()" alt="Current Logo" class="preview-image" (error)="editCurrentPreviewError.set(true)">
+            </ng-container>
+            <ng-template #currentNotFoundTpl>
+              <span style="color: red; font-weight: bold; display: block; margin-top: 10px;">Not Found</span>
+            </ng-template>
           </div>
           <div class="edit-preview-box" *ngIf="editImagePreview()">
             <p class="preview-label">New Image</p>
@@ -368,6 +378,7 @@ export class AdminLogomaster implements OnInit {
   editSelectedFile  = signal<File | null>(null);
   editImagePreview  = signal<string | null>(null);
   editCurrentPreview = signal<string>('');
+  editCurrentPreviewError = signal<boolean>(false);
   editFileError     = signal<string | null>(null);
 
   private logoService = inject(LogoService);
@@ -469,6 +480,7 @@ export class AdminLogomaster implements OnInit {
     this.editingLogoId.set(logo.logo_id);
     this.editLogoForm.patchValue({ title: logo.logo_title });
     this.editCurrentPreview.set(this.env.FilePath + logo.logo_url);
+    this.editCurrentPreviewError.set(false);
     this.editSelectedFile.set(null);
     this.editImagePreview.set(null);
     this.editFileError.set(null);
@@ -482,6 +494,7 @@ export class AdminLogomaster implements OnInit {
     this.editSelectedFile.set(null);
     this.editImagePreview.set(null);
     this.editCurrentPreview.set('');
+    this.editCurrentPreviewError.set(false);
     this.editFileError.set(null);
   }
 

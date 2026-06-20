@@ -3,7 +3,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ResetAllPasswordsTo123`()
 BEGIN
     -- This uses the pre-computed Bcrypt hash for "123"
     UPDATE tbl_login 
-    SET pwd = '$2b$10$dfO8ImRZ9kr9lDwzykoDounjZ4CTt2KLldsr7Vz5or.hbADR2Qgk2';
+    SET pwd = '$2b$10$dfO8ImRZ9kr9lDwzykoDounjZ4CTt2KLldsr7Vz5or.hbADR2Qgk2'
+    WHERE login_id > 0;
     
     SELECT 'All passwords have been reset to 123' AS Message;
 END$$
