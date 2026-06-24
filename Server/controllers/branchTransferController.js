@@ -418,8 +418,11 @@ const createBranchTransferPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Transfer record not found' });
         const data = records[0];
 
-        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]';
+        const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : '';
 
         let logoFileName = 'KtmLogo.png';
         if (activeBrand === 'bajaj') {
@@ -459,8 +462,9 @@ const createBranchTransferPdf = async (req, res) => {
                 doc.text(`PH : ${data.from_branch_ph || ''}`, 40, branchY);
 
                 // Top Center: Sarathy Motors
-                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
+                doc.font('Times-Bold').fontSize(10).text(brandTitle, 30, 30, { width: 535, align: 'center' });
+                const centerAddrText = brandStateCode ? `${brandAddress}\n${brandStateCode}` : brandAddress;
+                doc.font('Times-Roman').fontSize(7.5).text(centerAddrText, 30, 42, { width: 535, align: 'center' });
 
                 // Render dynamic logo according to active brand
                 if (fs.existsSync(dynamicLogoPath)) {
@@ -493,7 +497,7 @@ const createBranchTransferPdf = async (req, res) => {
 
                 drawFieldRow('Invoice No.', data.debit_note_no, 'Vehicle', data.vehicle || '', detailY, false, true);
                 detailY += 12;
-                drawFieldRow('Invoice Date', data.debit_note_date ? new Date(data.debit_note_date).toLocaleDateString('en-GB') : '', 'Code.', data.vehicle_code || '', detailY);
+                drawFieldRow('Invoice Date', data.debit_note_date ? new Date(data.debit_note_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Code.', data.vehicle_code || '', detailY);
                 detailY += 12;
 
                 doc.font('Times-Bold').text('Transfer TO', fieldX1, detailY);
@@ -589,10 +593,10 @@ const createBranchTransferPdf = async (req, res) => {
         doc.font('Times-Bold').fontSize(8.5).text('Get your vehicle serviced at regular intervals.', 40, msgY, { width: 535, align: 'center' });
         const nextDate = data.debit_note_date ? new Date(data.debit_note_date) : new Date();
         nextDate.setMonth(nextDate.getMonth() + 3); // Approx 3 months later
-        doc.text(`Next due date for service is ${nextDate.toLocaleDateString('en-GB')}`, 40, msgY + 12, { width: 535, align: 'center' });
+        doc.text(`Next due date for service is ${nextDate.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })}`, 40, msgY + 12, { width: 535, align: 'center' });
         doc.text('Thank You & Happy Riding', 40, msgY + 24, { width: 535, align: 'center' });
 
-        doc.font('Times-Bold').fontSize(7.5).text('SARATHY MOTORS', col.end - 150, currentY - 10, { width: 150, align: 'center' });
+        doc.font('Times-Bold').fontSize(7.5).text(brandTitle, col.end - 150, currentY - 10, { width: 150, align: 'center' });
         doc.moveTo(col.end - 140, currentY + 2).lineTo(col.end - 10, currentY + 2).lineWidth(0.5).stroke();
         doc.font('Times-Bold').fontSize(8.5).text('Authorised Signatory', col.end - 150, currentY + 5, { width: 150, align: 'center' });
 
@@ -604,7 +608,7 @@ const createBranchTransferPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
             doc.font('Times-Roman').fontSize(7.5).text(printedText, 30, 810, { lineBreak: false });
             doc.text(pageText, col.end - 40, 810, { lineBreak: false });

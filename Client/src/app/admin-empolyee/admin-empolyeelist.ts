@@ -48,6 +48,32 @@ import { ApiService } from '../services/api.service';
               </select>
               <label>entries</label>
             </div>
+            <div class="filter-group">
+              <label>Institute:</label>
+              <div class="custom-select-container" (click)="$event.stopPropagation()">
+                <div class="custom-select-trigger" (click)="toggleInstituteList()">
+                  <span>{{ selectedInstitute() === 'All' ? 'All' : selectedInstitute() }}</span>
+                  <i class="fas fa-caret-down dropdown-arrow"></i>
+                </div>
+                <div class="custom-select-dropdown" *ngIf="showInstituteList">
+                  <div class="dropdown-search-box">
+                    <input type="text"
+                           [value]="instituteSearch()"
+                           (input)="onInstituteSearchInput($any($event.target).value)"
+                           placeholder="SEARCH..."
+                           (click)="$event.stopPropagation()">
+                  </div>
+                  <ul class="dropdown-options-list">
+                    <li (click)="onInstituteSelect('All')">All</li>
+                    <li *ngFor="let b of filteredBranches()" (click)="onInstituteSelect(b.branch_name)">
+                      {{ b.branch_name }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <label>Search:</label>
+              <input type="text" class="filter-input" [value]="searchQuery()" (input)="onSearchChange($any($event.target).value)" placeholder="Search employee...">
+            </div>
           </div>
 
           <div class="table-container">
@@ -149,6 +175,34 @@ import { ApiService } from '../services/api.service';
     .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
     .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
     
+    .filter-group { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #666; }
+    .filter-select, .filter-input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+    .filter-input { width: 180px; }
+    
+    /* Custom Select Dropdown Styles */
+    .custom-select-container { position: relative; width: 240px; font-family: sans-serif; }
+    .custom-select-trigger { 
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 3px; background: #fff;
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+      font-size: 13px; color: #333; min-height: 30px; box-sizing: border-box;
+    }
+    .custom-select-trigger .dropdown-arrow { font-size: 14px; color: #777; }
+    
+    .custom-select-dropdown { 
+      position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ccc;
+      border-top: none; z-index: 1000; box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+    }
+    .dropdown-search-box { padding: 6px; }
+    .dropdown-search-box input { 
+      width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 2px; font-size: 12px; outline: none;
+      box-sizing: border-box; color: #555;
+    }
+    .dropdown-search-box input::placeholder { color: #aaa; }
+    
+    .dropdown-options-list { margin: 0; padding: 0; list-style: none; max-height: 250px; overflow-y: auto; }
+    .dropdown-options-list li { padding: 8px 10px; font-size: 13px; cursor: pointer; color: #444; }
+    .dropdown-options-list li:hover { background-color: #f5f5f5; }
+    
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .report-table th { background: #f1f1f1; color: #333; font-weight: 600; padding: 10px; text-align: left; border: 1px solid #ddd; white-space: nowrap; }
@@ -188,7 +242,19 @@ export class AdminEmpolyeelist implements OnInit {
   total = signal(0);
   page = signal(1);
   limit = signal(25);
+  searchQuery = signal('');
+  selectedInstitute = signal('All');
+  instituteSearch = signal('');
+  showInstituteList: boolean = false;
+  branches = signal<any[]>([]);
   openDropdownIndex: number | null = null;
+
+  filteredBranches = computed(() => {
+    const list = this.branches();
+    const query = this.instituteSearch().toLowerCase().trim();
+    if (!query || query === 'all') return list;
+    return list.filter(b => b.branch_name.toLowerCase().includes(query));
+  });
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
   fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
@@ -217,11 +283,21 @@ export class AdminEmpolyeelist implements OnInit {
   constructor(private apiService: ApiService, private router: Router) {}
 
   ngOnInit(): void {
+    this.loadBranches();
     this.loadEmployees();
   }
 
+  loadBranches() {
+    this.apiService.getBranches().subscribe({
+      next: (res: any) => {
+        if (res.success) this.branches.set(res.data || []);
+      },
+      error: (err: any) => console.error('Error loading branches', err)
+    });
+  }
+
   loadEmployees() {
-    this.apiService.listEmployees(this.page(), this.limit()).subscribe({
+    this.apiService.listEmployees(this.page(), this.limit(), this.searchQuery(), this.selectedInstitute()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.employees.set(res.data || []);
@@ -234,6 +310,31 @@ export class AdminEmpolyeelist implements OnInit {
 
   onLimitChange(value: string): void {
     this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadEmployees();
+  }
+
+  toggleInstituteList() {
+    this.showInstituteList = !this.showInstituteList;
+    if (this.showInstituteList) {
+      this.instituteSearch.set('');
+    }
+  }
+
+  onInstituteSearchInput(value: string) {
+    this.instituteSearch.set(value);
+  }
+
+  onInstituteSelect(value: string) {
+    this.instituteSearch.set('');
+    this.selectedInstitute.set(value);
+    this.showInstituteList = false;
+    this.page.set(1);
+    this.loadEmployees();
+  }
+
+  onSearchChange(value: string): void {
+    this.searchQuery.set(value.trim());
     this.page.set(1);
     this.loadEmployees();
   }
@@ -269,6 +370,7 @@ export class AdminEmpolyeelist implements OnInit {
 
   closeAllDropdowns() {
     this.openDropdownIndex = null;
+    this.showInstituteList = false;
   }
 
   onEdit(emp: any) {

@@ -329,8 +329,11 @@ const createSalesPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
         const data = records[0];
 
-        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY BIKES PVT LTD';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State';
+        const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : 'Code: 32 Kerala [State Code :32]';
 
         let logoFileName = 'KtmLogo.png';
         if (activeBrand === 'bajaj') {
@@ -385,8 +388,8 @@ const createSalesPdf = async (req, res) => {
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
                 currentY += 10;
 
-                doc.font('Times-Bold').fontSize(10).text('SARATHY BIKES PVT LTD', 30, 30, { width: 535, align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
+                doc.font('Times-Bold').fontSize(10).text(brandTitle, 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Roman').fontSize(7.5).text(`${brandAddress}\n${brandStateCode}`, 30, 42, { width: 535, align: 'center' });
 
                 // Render dynamic logo according to active brand
                 if (fs.existsSync(dynamicLogoPath)) {
@@ -419,7 +422,7 @@ const createSalesPdf = async (req, res) => {
 
                 drawFieldRow('Invoice No.', data.inv_no, 'CDMS No', data.inv_cdms_no || '', detailY, true, false);
                 detailY += 12;
-                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
+                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
                 detailY += 12;
 
                 doc.font('Times-Bold').text('Billed TO', fieldX1, detailY);
@@ -434,7 +437,7 @@ const createSalesPdf = async (req, res) => {
                 doc.font('Times-Roman').text(`Mobile : ${data.inv_pho || ''}`, fieldX2, detailY);
                 doc.font('Times-Bold').text('Sale Date', fieldX3, detailY);
                 doc.text(':', fieldX4 - 10, detailY);
-                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', fieldX4, detailY);
+                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', fieldX4, detailY);
 
                 detailY += 12;
                 const billedAddr = `${data.inv_cus_addres || ''}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nPincode : ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
@@ -616,7 +619,7 @@ const createSalesPdf = async (req, res) => {
 
         currentY += 60;
         doc.font('Times-Roman').text('Sign of Customer Or His Agent', col.sl, currentY);
-        doc.font('Times-Bold').text('SARATHY BIKES PVT LTD', col.end - 150, currentY, { width: 150, align: 'center' });
+        doc.font('Times-Bold').text(brandTitle, col.end - 150, currentY, { width: 150, align: 'center' });
         doc.font('Times-Bold').fontSize(8.5).text('Authorised Signatory', col.end - 150, currentY + 12, { width: 150, align: 'center' });
 
         doc.moveTo(col.sl, currentY + 35).lineTo(col.end, currentY + 35).dash(2, { space: 2 }).stroke().undash();
@@ -626,7 +629,7 @@ const createSalesPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
 
             // Draw at Y=810 (safe within margin) with lineBreak: false to stay on page
@@ -676,7 +679,7 @@ const createSalesLetterPdf = async (req, res) => {
         doc.font('Times-Roman').text('has been delivered by us ', { continued: true });
         doc.font('Times-Bold').text((data.inv_cus || '') + '  ', { continued: true });
         doc.font('Times-Roman').text('on ', { continued: true });
-        doc.font('Times-Bold').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '');
+        doc.font('Times-Bold').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '');
 
         currentY += 25;
         const fieldX1 = 40, fieldX2 = 120;
@@ -687,7 +690,7 @@ const createSalesLetterPdf = async (req, res) => {
         };
 
         drawField('Sale Letter No.', data.inv_no, currentY); currentY += 12;
-        drawField('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', currentY); currentY += 12;
+        drawField('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY); currentY += 12;
         drawField('Name of the Buyer', data.inv_cus || '', currentY, true); currentY += 10;
 
         const buyerAddr = `Mobile : ${data.inv_pho || ''}\n${(data.inv_cus_addres || '').replace(/\r?\n|\r/g, ' ')}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
@@ -723,7 +726,7 @@ const createSalesLetterPdf = async (req, res) => {
         currentY = drawSpec(11, 'Color/Colours of the Body', data.inv_color || '', currentY);
         currentY = drawSpec(12, 'Gross Vehicle Weight', data.r_weight ? `${data.r_weight}` : ' ', currentY);
         currentY = drawSpec(13, 'Type of Body', data.tbody || 'Solo with Pillion', currentY);
-        currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB') : '', currentY);
+        currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY);
 
         currentY += 40;
         doc.font('Times-Roman').fontSize(7.5);
@@ -737,7 +740,7 @@ const createSalesLetterPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
 
             doc.font('Times-Roman').fontSize(7.5)
@@ -789,7 +792,7 @@ const createStickerPdf = async (req, res) => {
             stickerY += 12;
             doc.text(`Engine No:- ${data.in_engine || ''}`, x, stickerY, { width: stickerWidth });
             stickerY += 12;
-            doc.text(`Inv& Date:- ${data.inv_no} & ${data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : ''}`, x, stickerY, { width: stickerWidth });
+            doc.text(`Inv& Date:- ${data.inv_no} & ${data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''}`, x, stickerY, { width: stickerWidth });
         }
 
         doc.end();
@@ -903,7 +906,7 @@ const createRtoBillPdf = async (req, res) => {
 
                 drawFieldRow('Invoice No.', data.inv_no, 'CDMS No', data.inv_cdms_no || '', detailY, true, false);
                 detailY += 12;
-                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
+                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
                 detailY += 12;
 
                 doc.font('Times-Bold').text('Billed TO', fieldX1, detailY);
@@ -918,7 +921,7 @@ const createRtoBillPdf = async (req, res) => {
                 doc.font('Times-Roman').text(`Mobile : ${data.inv_pho || ''}`, fieldX2, detailY);
                 doc.font('Times-Bold').text('Sale Date', fieldX3, detailY);
                 doc.text(':', fieldX4 - 10, detailY);
-                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', fieldX4, detailY);
+                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', fieldX4, detailY);
 
                 detailY += 12;
                 const billedAddr = `${data.inv_cus_addres || ''}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nPincode : ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
@@ -1110,7 +1113,7 @@ const createRtoBillPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
 
             // Draw at Y=810 (safe within margin) with lineBreak: false to stay on page

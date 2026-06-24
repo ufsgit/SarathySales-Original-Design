@@ -145,7 +145,7 @@ const createStickerPdf = async (req, res) => {
             stickerY += 12;
             doc.text(`Engine No:- ${data.in_engine || ''}`, x, stickerY, { width: stickerWidth });
             stickerY += 12;
-            doc.text(`Inv& Date:- ${data.inv_no} & ${data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : ''}`, x, stickerY, { width: stickerWidth });
+            doc.text(`Inv& Date:- ${data.inv_no} & ${data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''}`, x, stickerY, { width: stickerWidth });
         }
 
         doc.end();
@@ -190,7 +190,7 @@ const createSaleLetterPdf = async (req, res) => {
         doc.font('Times-Roman').text('has been delivered by us ', { continued: true });
         doc.font('Times-Bold').text((data.inv_cus || '') + '  ', { continued: true });
         doc.font('Times-Roman').text('on ', { continued: true });
-        doc.font('Times-Bold').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '');
+        doc.font('Times-Bold').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '');
 
         currentY += 25;
         const fieldX1 = 40, fieldX2 = 120;
@@ -201,7 +201,7 @@ const createSaleLetterPdf = async (req, res) => {
         };
 
         drawField('Sale Letter No.', data.inv_no, currentY); currentY += 12;
-        drawField('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', currentY); currentY += 12;
+        drawField('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY); currentY += 12;
         drawField('Name of the Buyer', data.inv_cus || '', currentY, true); currentY += 10;
 
         const buyerAddr = `Mobile : ${data.inv_pho || ''}\n${(data.inv_cus_addres || '').replace(/\r?\n|\r/g, ' ')}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
@@ -237,7 +237,7 @@ const createSaleLetterPdf = async (req, res) => {
         currentY = drawSpec(11, 'Color/Colours of the Body', data.inv_color || '', currentY);
         currentY = drawSpec(12, 'Gross Vehicle Weight', data.r_weight ? `${data.r_weight} ` : ' ', currentY);
         currentY = drawSpec(13, 'Type of Body', data.tbody || 'Solo with Pillion', currentY);
-        currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB') : '', currentY);
+        currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY);
 
         currentY += 40;
         doc.font('Times-Roman').fontSize(7.5);
@@ -251,7 +251,7 @@ const createSaleLetterPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
             doc.font('Times-Roman').fontSize(7.5).text(printedText, 40, 810, { lineBreak: false });
             doc.text(pageText, 500, 810, { lineBreak: false });
@@ -303,7 +303,7 @@ const createPrintEnquiryPdf = async (req, res) => {
         };
 
         drawFieldRow('Chassis No.', data.inv_chassis, 'Vehicle Name', data.inv_vehicle, detailY); detailY += 15;
-        drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', 'Regn Type', data.inv_type || '01', detailY); detailY += 15;
+        drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Regn Type', data.inv_type || '01', detailY); detailY += 15;
         drawFieldRow('Billed TO', data.inv_cus, 'CDMS.', data.inv_cdms_no, detailY); detailY += 15;
         drawFieldRow('Vehicle Code', data.inv_vehicle_code, '', '', detailY); detailY += 20;
 
@@ -358,7 +358,7 @@ const createPrintEnquiryPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
             doc.font('Times-Roman').fontSize(7.5).text(printedText, 30, 810, { lineBreak: false });
             doc.text(pageText, col.end - 40, 810, { lineBreak: false });

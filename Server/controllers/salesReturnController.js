@@ -34,8 +34,11 @@ const createSalesReturnPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Sales Return record not found' });
         const data = records[0];
 
-        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [Code: 32]';
+        const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : '';
 
         let logoFileName = 'KtmLogo.png';
         if (activeBrand === 'bajaj') {
@@ -76,10 +79,11 @@ const createSalesReturnPdf = async (req, res) => {
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
 
                 // Main Title Center (Symmetrical centering across the page width)
-                doc.font('Times-Bold').fontSize(10).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Bold').fontSize(10).text(brandTitle, 30, 30, { width: 535, align: 'center' });
                 
-                const centerAddrHeight = doc.heightOfString(branchAddr, { width: 535, size: 7.5 });
-                doc.font('Times-Roman').fontSize(7.5).text(branchAddr, 30, 42, { width: 535, align: 'center' });
+                const centerAddrText = brandStateCode ? `${brandAddress}\n${brandStateCode}` : brandAddress;
+                const centerAddrHeight = doc.heightOfString(centerAddrText, { width: 535, size: 7.5 });
+                doc.font('Times-Roman').fontSize(7.5).text(centerAddrText, 30, 42, { width: 535, align: 'center' });
                 
                 let gstinY = 42 + centerAddrHeight + 2;
                 doc.text(`GSTIN: ${data.branch_gstin || ''}`, 30, gstinY, { width: 535, align: 'center' });
@@ -116,7 +120,7 @@ const createSalesReturnPdf = async (req, res) => {
 
                 drawFieldRow('Invoice No.', data.inv_no, 'CDMS No', data.inv_cdms_no || '', detailY, true, false);
                 detailY += 12;
-                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
+                drawFieldRow('Invoice Date', data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Receipt No.', data.inv_receipt_no || '', detailY);
                 detailY += 12;
 
                 doc.font('Times-Bold').text('Billed TO', fieldX1, detailY);
@@ -131,7 +135,7 @@ const createSalesReturnPdf = async (req, res) => {
                 doc.font('Times-Roman').text(`Mobile : ${data.inv_pho || ''}`, fieldX2, detailY);
                 doc.font('Times-Bold').text('Sale Date', fieldX3, detailY);
                 doc.text(':', fieldX4 - 10, detailY);
-                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB') : '', fieldX4, detailY);
+                doc.font('Times-Roman').text(data.inv_inv_date ? new Date(data.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', fieldX4, detailY);
 
                 detailY += 12;
                 const billedAddr = `${data.inv_cus_addres || ''}\n${data.inv_place || ''} ${data.inv_pincode || ''}`;
@@ -196,7 +200,7 @@ const createSalesReturnPdf = async (req, res) => {
 
                 doc.font('Times-Bold').text('Return Date', fieldX3, detailY);
                 doc.text(':', fieldX4 - 10, detailY);
-                doc.font('Times-Roman').text(data.return_date ? new Date(data.return_date).toLocaleDateString('en-GB') : '', fieldX4, detailY);
+                doc.font('Times-Roman').text(data.return_date ? new Date(data.return_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', fieldX4, detailY);
                 detailY += 12;
 
                 detailY += 12;
@@ -328,7 +332,7 @@ const createSalesReturnPdf = async (req, res) => {
 
         currentY += 60;
         doc.font('Times-Roman').text('Sign of Customer Or His Agent', col.sl, currentY);
-        doc.font('Times-Bold').text('SARATHY MOTORS', col.end - 150, currentY, { width: 150, align: 'center' });
+        doc.font('Times-Bold').text(brandTitle, col.end - 150, currentY, { width: 150, align: 'center' });
         doc.text('Authorised Signatory', col.end - 150, currentY + 12, { width: 150, align: 'center' });
 
         doc.moveTo(col.sl, currentY + 35).lineTo(col.end, currentY + 35).dash(2, { space: 2 }).stroke().undash();
@@ -337,7 +341,7 @@ const createSalesReturnPdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
+            const printedText = `Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`;
             const pageText = `Page ${i + 1}/${totalPages}`;
             doc.font('Times-Roman').fontSize(7.5).text(printedText, col.sl, 810, { lineBreak: false });
             doc.text(pageText, col.end - 50, 810, { lineBreak: false });

@@ -56,22 +56,26 @@ function calculateTotals(data) {
 
 async function getNextNo(branchId) {
     const year = new Date().getFullYear().toString();
+    const prefix = `PS${year}${branchId}`;
     console.log(`[paySlipController] getNextNo for branchId: ${branchId}`);
     try {
-        const [rows] = await db.execute('SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ?', [branchId]);
+        const [rows] = await db.execute(
+            'SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ? AND pay_slip_no LIKE ?', 
+            [branchId, `${prefix}%`]
+        );
         const lastNo = rows[0]?.last_no;
         console.log(`[paySlipController] Last number found: ${lastNo}`);
 
         if (!lastNo || typeof lastNo !== 'string') {
-            const next = `PS${year}${branchId}${padSerial(1)}`;
-            console.log(`[paySlipController] No existing number or invalid. Returning: ${next}`);
+            const next = `${prefix}${padSerial(1)}`;
+            console.log(`[paySlipController] No existing number matching prefix. Returning: ${next}`);
             return next;
         }
 
         const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
-        const lastYear = lastNo.substring(2, 6);
-        const nextSerial = lastYear === year ? lastSerial + 1 : 1;
-        const next = `PS${year}${branchId}${padSerial(nextSerial)}`;
+        const nextSerial = lastSerial + 1;
+        const next = `${prefix}${padSerial(nextSerial)}`;
+        console.log(`[paySlipController] DEBUG -> lastNo: '${lastNo}', slice(-5): '${lastNo.slice(-5)}', lastSerial: ${lastSerial}, nextSerial: ${nextSerial}`);
         console.log(`[paySlipController] Generated next number: ${next}`);
         return next;
     } catch (error) {
@@ -347,6 +351,8 @@ const savePaySlip = async (req, res) => {
             duesAmt, gpay, others1, others2, others3
         });
 
+        console.log(`[paySlipController] DEBUG -> Saving PaySlip. Generated PaySlipNo: '${paySlipNo}', Target Branch ID: '${branchId}'`);
+
         const [result] = await conn.execute(
             `INSERT INTO tbl_payslip (
                 pay_branch_id, pay_slip_no, pay_slip_date, pay_finance, pay_slip_reference, pay_regn,
@@ -510,7 +516,7 @@ const createPdf = async (req, res) => {
         drawInfo('Vehicle Name', data.pay_slip_reference, rightX, startY);
 
         startY += 18;
-        drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB') : '', leftX, startY);
+        drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', leftX, startY);
         drawInfo('Executive', data.pay_regn || '', rightX, startY);
 
         startY += 18;
@@ -643,8 +649,8 @@ const createPdf = async (req, res) => {
         // Footer Metadata
         doc.fontSize(7).font('Times-Roman');
         const now = new Date();
-        const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+        const dateStr = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
 
         doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, 800);
         doc.text('Page 1/1', x6 - 45, 800);
@@ -692,7 +698,7 @@ const createPdfByNo = async (req, res) => {
         drawInfo('Vehicle Name', data.pay_slip_reference, rightX, startY);
 
         startY += 18;
-        drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB') : '', leftX, startY);
+        drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', leftX, startY);
         drawInfo('Executive', data.pay_regn || '', rightX, startY);
 
         startY += 18;
@@ -825,8 +831,8 @@ const createPdfByNo = async (req, res) => {
         // Footer Metadata
         doc.fontSize(7).font('Times-Roman');
         const now = new Date();
-        const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+        const dateStr = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
 
         doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, 800);
         doc.text('Page 1/1', x6 - 45, 800);

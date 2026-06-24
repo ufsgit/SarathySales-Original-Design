@@ -9,17 +9,36 @@ const path = require('path');
 const listEmployees = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search || '';
+    const institute = req.query.institute || '';
     const offset = (page - 1) * limit;
 
+    let whereSql = "WHERE 1=1";
+    let queryParams = [];
+
+    if (search) {
+        whereSql += " AND (e.e_first_name LIKE ? OR e.e_code LIKE ? OR e.e_mobile LIKE ?)";
+        queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    if (institute && institute !== 'All') {
+        whereSql += " AND e.e_branch = ?";
+        queryParams.push(institute);
+    }
+
+    // Prepare limit/offset separately since they are not parameter placeholders in this setup easily
+    // or just append them directly as before
     try {
-        const [rows] = await db.execute(
-            `SELECT e.*, l.uname, l.pwd 
-             FROM tbl_employee e 
-             LEFT JOIN tbl_login l ON e.emp_login_id = l.login_id
-             ORDER BY e.e_first_name 
-             LIMIT ${limit} OFFSET ${offset}`
-        );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_employee');
+        const queryStr = `SELECT e.*, l.uname, l.pwd 
+                          FROM tbl_employee e 
+                          LEFT JOIN tbl_login l ON e.emp_login_id = l.login_id
+                          ${whereSql}
+                          ORDER BY e.e_first_name 
+                          LIMIT ${limit} OFFSET ${offset}`;
+        const [rows] = await db.execute(queryStr, queryParams);
+
+        const countQueryStr = `SELECT COUNT(*) as total FROM tbl_employee e ${whereSql}`;
+        const [totalRows] = await db.execute(countQueryStr, queryParams);
 
         res.json({
             success: true,

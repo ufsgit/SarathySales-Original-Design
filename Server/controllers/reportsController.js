@@ -343,7 +343,7 @@ const exportProformaExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 quot_no: r.pro_quot_no,
-                quot_date: r.pro_date ? new Date(r.pro_date).toLocaleDateString('en-GB') : '',
+                quot_date: r.pro_date ? new Date(r.pro_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 branch: `${r.branch_name} (${r.branch_id})`,
                 customer: r.pro_cus_name,
                 address: r.pro_cus_address,
@@ -435,7 +435,7 @@ const exportProformaPagedExcel = async (req, res) => {
         worksheet.getRow(2).font = { bold: true };
 
         rows.forEach((r, i) => {
-            const dateStr = r.pro_date ? new Date(r.pro_date).toISOString().split('T')[0] : '';
+            const dateStr = r.pro_date ? new Date(r.pro_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '-') : '';
             const statusStr = r.pro_status == 1 ? 'Open' : 'Closed';
 
             worksheet.addRow([
@@ -508,7 +508,7 @@ const exportProformaPagedCsv = async (req, res) => {
         ]);
 
         rows.forEach((r) => {
-            const dateStr = r.pro_date ? new Date(r.pro_date).toISOString().split('T')[0] : '';
+            const dateStr = r.pro_date ? new Date(r.pro_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '-') : '';
             const statusStr = r.pro_status == 1 ? 'Open' : 'Closed';
 
             worksheet.addRow([
@@ -610,7 +610,7 @@ const exportSalesExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 inv_no: r.inv_no,
-                inv_date: r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB') : '',
+                inv_date: r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 branch: r.branch_name,
                 customer: r.inv_cus,
                 address: r.inv_cus_addres,
@@ -712,7 +712,7 @@ const exportSalesPagedExcel = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.inv_no,
-                r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB') : '',
+                r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.branch_name + '(' + r.branch_id + ')',
                 r.inv_vehicle,
                 r.inv_vehicle_code,
@@ -795,7 +795,7 @@ const exportSalesPagedCsv = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.inv_no,
-                r.inv_inv_date ? new Date(r.inv_inv_date).toISOString().split('T')[0] : '',
+                r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '-') : '',
                 r.branch_name + '(' + r.branch_id + ')',
                 r.inv_vehicle,
                 r.inv_vehicle_code,
@@ -902,13 +902,13 @@ const exportPurchaseExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 inv_no: r.invoiceNo,
-                rc_date: r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB') : '',
+                rc_date: r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 branch: r.branch_name,
                 pname: r.materialName,
                 vname: r.pucha_vendorName,
                 address: r.purcha_vend_addrs,
                 vcode: r.materialsId,
-                inv_date: r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB') : '',
+                inv_date: r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 chassis: r.chassis_no,
                 engine: r.engine_no,
                 color: r.color_name,
@@ -999,12 +999,12 @@ const exportPurchasePagedExcel = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.invoiceNo,
-                r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB') : '',
+                r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.branch_name} (${r.branch_id})`,
                 r.materialName,
                 r.materialsId,
                 r.pucha_vendorName,
-                r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB') : '',
+                r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.chassis_no,
                 r.engine_no,
                 r.color_name,
@@ -1085,12 +1085,12 @@ const exportPurchasePagedCsv = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.invoiceNo,
-                r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB') : '',
+                r.rac_date ? new Date(r.rac_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.branch_name} (${r.branch_id})`,
                 r.materialName,
                 r.materialsId,
                 r.pucha_vendorName,
-                r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB') : '',
+                r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.chassis_no,
                 r.engine_no,
                 r.color_name,
@@ -1156,7 +1156,7 @@ const exportPayslipExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 pay_slip_no: r.pay_slip_no,
-                pay_slip_date: r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB') : '',
+                pay_slip_date: r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 branch_name: r.branch_name,
                 pay_cus_name: r.pay_cus_name,
                 pay_slip_reference: r.pay_slip_reference,
@@ -1224,7 +1224,7 @@ const exportPayslipPagedExcel = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.pay_slip_no,
-                r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB') : '',
+                r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.branch_name} (${r.branch_id})`,
                 r.pay_slip_reference,
                 r.pay_cus_name,
@@ -1286,7 +1286,7 @@ const exportPayslipPagedCsv = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.pay_slip_no,
-                r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB') : '',
+                r.pay_slip_date ? new Date(r.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.branch_name} (${r.branch_id})`,
                 r.pay_slip_reference,
                 r.pay_cus_name,
@@ -1359,12 +1359,12 @@ const exportMoneyReceiptExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 receipt_no: r.receipt_no,
-                receipt_date: r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB') : '',
+                receipt_date: r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 branch_name: r.branch_name,
                 reference: r.reference,
                 reason: r.reason,
                 pay_type: r.pay_type,
-                cheque_dd_date: r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB') : '',
+                cheque_dd_date: r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 cheque_dd_po_no: r.cheque_dd_po_no,
                 receipt_cus: r.receipt_cus,
                 receipt_cus_address: r.receipt_cus_address,
@@ -1430,12 +1430,12 @@ const exportMoneyReceiptPagedExcel = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.receipt_no,
-                r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB') : '',
+                r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.branch_name,
                 r.reference,
                 r.reason,
                 r.pay_type,
-                r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB') : '',
+                r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.cheque_dd_po_no,
                 r.receipt_cus,
                 r.receipt_cus_address,
@@ -1496,12 +1496,12 @@ const exportMoneyReceiptPagedCsv = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.receipt_no,
-                r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB') : '',
+                r.receipt_date ? new Date(r.receipt_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.branch_name,
                 r.reference,
                 r.reason,
                 r.pay_type,
-                r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB') : '',
+                r.cheque_dd_date ? new Date(r.cheque_dd_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 r.cheque_dd_po_no,
                 r.receipt_cus,
                 r.receipt_cus_address,
@@ -1577,7 +1577,7 @@ const exportBranchTransferExcel = async (req, res) => {
             worksheet.addRow({
                 sino: i + 1,
                 debit_note_no: r.debit_note_no,
-                debit_note_date: r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB') : '',
+                debit_note_date: r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 from_branch_name: r.from_branch_name,
                 to_branch_name: r.to_branch_name || r.lnstitute_name,
                 to_branch_address: r.to_branch_address,
@@ -1653,7 +1653,7 @@ const exportBranchTransferPagedExcel = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.debit_note_no,
-                r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB') : '',
+                r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.from_branch_name} (${r.from_branch_id})`,
                 r.to_branch_name || r.lnstitute_name,
                 r.to_branch_address,
@@ -1718,7 +1718,7 @@ const exportBranchTransferPagedCsv = async (req, res) => {
         rows.forEach((r) => {
             worksheet.addRow([
                 r.debit_note_no,
-                r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB') : '',
+                r.debit_note_date ? new Date(r.debit_note_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
                 `${r.from_branch_name} (${r.from_branch_id})`,
                 r.to_branch_name || r.lnstitute_name,
                 r.to_branch_address,

@@ -62,7 +62,7 @@ const getStockVerificationAll = async (req, res) => {
     if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = '2000-01-01'; // Very old date for "ALL"
-    const toDate = new Date().toISOString().split('T')[0];
+    const toDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -149,7 +149,7 @@ const getStockVerification = async (req, res) => {
     }
 
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
@@ -316,7 +316,7 @@ const getStockSplitup = async (req, res) => {
         branchId = req.user.branch_id;
     }
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const chassisNo = (req.query.chassisNo || '').trim();
     const search = (req.query.search || '').trim();
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -510,7 +510,7 @@ const exportStockVerificationExcel = async (req, res) => {
     if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const search = (req.query.search || '').trim();
 
     try {
@@ -572,7 +572,7 @@ const exportStockVerificationPagedExcel = async (req, res) => {
     if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -637,7 +637,7 @@ const exportStockVerificationPagedCsv = async (req, res) => {
     if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
     const offset = (page - 1) * limit;
@@ -695,7 +695,7 @@ const getStockSplitupQuery = (req) => {
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
 
     const fromDate = req.query.from || '2000-01-01';
-    const toDate = req.query.to || new Date().toISOString().split('T')[0];
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const chassisNo = (req.query.chassisNo || '').trim();
     const vehicleCodeStr = req.query.vehicleCode;
     const search = (req.query.search || '').trim();
@@ -790,7 +790,7 @@ const exportStockSplitupExcel = async (req, res) => {
         worksheet.getRow(1).font = { bold: true };
 
         rows.forEach((r, i) => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow({
                 sino: i + 1, ...r,
                 rc_date: fmtDate(r.rc_date),
@@ -827,7 +827,7 @@ const exportStockSplitupPagedExcel = async (req, res) => {
         worksheet.getRow(2).font = { bold: true };
 
         rows.forEach(r => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
         });
 
@@ -853,7 +853,7 @@ const exportStockSplitupPagedCsv = async (req, res) => {
         worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost']);
 
         rows.forEach(r => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
         });
 
@@ -884,7 +884,7 @@ const getStockSplitupAll = async (req, res) => {
             "stock_base.retn_status = 'Available'",
             "stock_base.item_status = 'Available'"
         ];
-        let params = [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]];
+        let params = [new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })];
 
         if (branchId && branchId !== 'ALL') {
             conditions.push('stock_base.branch_id = ?');
@@ -1007,7 +1007,7 @@ const getStockSplitupAllQuery = (req) => {
         "pi.retn_status = 'Available'",
         "pi.item_status = 'Available'"
     ];
-    let params = [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]];
+    let params = [new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })];
 
     if (branchId && branchId !== 'ALL') {
         conditions.push('pb.purch_branchId = ?');
@@ -1072,7 +1072,7 @@ const exportStockSplitupAllExcel = async (req, res) => {
         ];
         worksheet.getRow(1).font = { bold: true };
         rows.forEach((r, i) => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow({ sino: i + 1, ...r, rc_date: fmtDate(r.rc_date), invoice_date: fmtDate(r.invoice_date), mfg_date: fmtDate(r.mfg_date) });
         });
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1096,7 +1096,7 @@ const exportStockSplitupAllPagedExcel = async (req, res) => {
         worksheet.getRow(2).values = ['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost'];
         worksheet.getRow(2).font = { bold: true };
         rows.forEach(r => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
         });
         worksheet.columns.forEach(col => { col.width = 18; });
@@ -1116,7 +1116,7 @@ const exportStockSplitupAllPagedCsv = async (req, res) => {
         const worksheet = workbook.addWorksheet('Stock Splitup All CSV');
         worksheet.addRow(['INVOICE NO', 'RC DATE', 'BRANCH', 'VEHICLE CODE', 'VENDOR DETAILS', 'PRODUCT CODE', 'INVOICE DATE', 'CHASSIS NO', 'ENGINE NO', 'COLOR', 'RC NO', 'MFG DATE', 'Cost']);
         rows.forEach(r => {
-            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '';
             worksheet.addRow([r.invoice_no, fmtDate(r.rc_date), r.branch_name, r.vehicle_code, r.vendor_name, r.product_code, fmtDate(r.invoice_date), r.chassis_no, r.engine_no, r.color, r.rc_no, fmtDate(r.mfg_date), r.total_amount]);
         });
         res.setHeader('Content-Type', 'text/csv');

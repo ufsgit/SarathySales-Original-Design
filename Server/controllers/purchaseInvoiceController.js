@@ -213,8 +213,11 @@ const createPurchasePdf = async (req, res) => {
         const data = records[0];
         const [items] = await db.execute('SELECT * FROM purchaseitem WHERE purchaseItemBillId = ?', [req.params.id]);
 
-        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State';
+        const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : 'Code: 32 Kerala [State Code : 32]';
 
         let piLogoFileName = 'KtmLogo.png';
         if (activeBrand === 'bajaj') {
@@ -250,8 +253,8 @@ const createPurchasePdf = async (req, res) => {
                 doc.font('Times-Roman').fontSize(7).text(data.branch_address ? data.branch_address.replace(/\r/g, '') : '', 40, 54, { width: 200, lineGap: -1 });
                 doc.text(`PH : ${data.branch_ph || ''}`, 40, doc.y + 1);
 
-                doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', 30, 30, { width: 535, align: 'center' });
-                doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj Pallimukku Kollam Kerala State\nCode: 32 Kerala [State Code :32]', 30, 42, { width: 535, align: 'center' });
+                doc.font('Times-Bold').fontSize(9).text(brandTitle, 30, 30, { width: 535, align: 'center' });
+                doc.font('Times-Roman').fontSize(7.5).text(`${brandAddress}\n${brandStateCode}`, 30, 42, { width: 535, align: 'center' });
 
                 // Render dynamic logo according to active brand
                 if (fs.existsSync(dynamicLogoPath)) {
@@ -281,7 +284,7 @@ const createPurchasePdf = async (req, res) => {
                 detailY += 15;
                 doc.font('Times-Bold').text('Invoice Date', 40, detailY);
                 doc.text(':', 115, detailY);
-                doc.font('Times-Roman').text(data.invoiceDate ? new Date(data.invoiceDate).toLocaleDateString('en-GB') : '', 125, detailY);
+                doc.font('Times-Roman').text(data.invoiceDate ? new Date(data.invoiceDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 125, detailY);
 
                 doc.font('Times-Bold').text('Customer Address.', 380, detailY);
                 doc.text(':', 470, detailY);
@@ -292,7 +295,7 @@ const createPurchasePdf = async (req, res) => {
                 detailY += Math.max(15, addrHeight);
                 doc.font('Times-Bold').text('Rc Date.', 40, detailY);
                 doc.text(':', 115, detailY);
-                doc.font('Times-Roman').text(data.rac_date ? new Date(data.rac_date).toLocaleDateString('en-GB') : '', 125, detailY);
+                doc.font('Times-Roman').text(data.rac_date ? new Date(data.rac_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 125, detailY);
 
                 doc.font('Times-Bold').text('RC No :', 380, detailY);
                 doc.font('Times-Roman').text(`: ${data.rc_no || ''}`, 480, detailY);
@@ -370,7 +373,7 @@ const createPurchasePdf = async (req, res) => {
             doc.text(item.engine_no || '', col.engine + 2, currentY + 7);
             doc.text(item.color_name || '', col.color + 2, currentY + 7, { width: col.ccode - col.color - 4 });
             doc.text(item.color_id || '', col.ccode + 2, currentY + 7);
-            doc.text(item.p_date ? new Date(item.p_date).toLocaleDateString('en-GB') : '', col.date + 2, currentY + 7);
+            doc.text(item.p_date ? new Date(item.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', col.date + 2, currentY + 7);
             doc.text(item.sale_type || '', col.stype + 2, currentY + 7);
             doc.text(itemRate.toFixed(2), col.amt, currentY + 7, { width: col.end - col.amt - 2, align: 'right' });
             currentY += rowH;
@@ -423,7 +426,7 @@ const createPurchasePdf = async (req, res) => {
         currentY += 50;
         doc.text('Sign of Customer Or His Agent', col.sl, currentY);
         doc.text('Thank You & Happy Riding', 200, currentY, { align: 'center', width: 250 });
-        doc.font('Times-Bold').text('SARATHY MOTORS', col.end - 120, currentY, { width: 120, align: 'center' });
+        doc.font('Times-Bold').text(brandTitle, col.end - 120, currentY, { width: 120, align: 'center' });
         doc.font('Times-Roman').fontSize(8).text('Authorised Signatory', col.end - 120, currentY + 12, { width: 120, align: 'center' });
 
         doc.moveTo(col.sl, currentY + 30).lineTo(col.end, currentY + 30).dash(2, { space: 2 }).stroke().undash();
@@ -433,8 +436,8 @@ const createPurchasePdf = async (req, res) => {
         for (let i = 0; i < totalPages; i++) {
             doc.switchToPage(i);
             const now = new Date();
-            const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+            const dateStr = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
 
             doc.font('Times-Roman').fontSize(7).text(`Printed On: ${dateStr}, ${timeStr}`, col.sl, 800);
             doc.text(`Page ${i + 1}/${totalPages}`, col.end - 45, 800);

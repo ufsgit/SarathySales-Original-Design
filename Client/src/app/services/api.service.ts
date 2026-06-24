@@ -1099,8 +1099,10 @@ export class ApiService {
     }
     // ─── Admin Masters ────────────────────────────────────────────────────────────
 
-    listEmployees(page = 1, limit = 25): Observable<ApiResponse> {
+    listEmployees(page = 1, limit = 25, search = '', institute = 'All'): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
+        if (search) params = params.set('search', search);
+        if (institute && institute !== 'All') params = params.set('institute', institute);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/employees/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }

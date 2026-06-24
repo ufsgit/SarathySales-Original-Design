@@ -233,8 +233,11 @@ const createProformaPdf = async (req, res) => {
 
         const [items] = await db.execute('SELECT * FROM tbl_proforma_item WHERE proforma_id = ?', [req.params.id]);
 
-        const [brandRows] = await db.execute('SELECT brand_name FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State';
+        const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : 'Code: 32 Kerala [State Code : 32]';
 
         const doc = new PDFDocument({ margin: 30, size: 'A4' });
         let filename = `Proforma_${data.pro_quot_no}.pdf`;
@@ -249,7 +252,9 @@ const createProformaPdf = async (req, res) => {
         // doc.font('Times-Roman').fontSize(7).text(data.pro_cus_address ? data.pro_cus_address.replace(/\r/g, '') : '', 40, 54, { width: 200, lineGap: -1 });
         doc.text(`PH : ${data.branch_ph || ''}`, 40, doc.y + 1);
 
-        doc.font('Times-Bold').fontSize(7).text(`Code: 32 Kerala [State Code :32]`, 250, 54);
+        doc.font('Times-Bold').fontSize(10).text(brandTitle, 30, 30, { width: 535, align: 'center' });
+        const centerAddrText = brandStateCode ? `${brandAddress}\n${brandStateCode}` : brandAddress;
+        doc.font('Times-Roman').fontSize(7.5).text(centerAddrText, 30, 42, { width: 535, align: 'center' });
 
         // Render dynamic logo according to active brand
         let logoFileName = 'KtmLogo.png';
@@ -287,7 +292,7 @@ const createProformaPdf = async (req, res) => {
         doc.text('Quotation No.', 40, detailY);
         doc.font('Times-Roman').text(`: ${data.pro_quot_no}`, 120, detailY);
         doc.font('Times-Bold').text('Quotation Date', 380, detailY);
-        doc.font('Times-Roman').text(`: ${data.pro_date ? new Date(data.pro_date).toLocaleDateString('en-GB') : ''}`, 480, detailY);
+        doc.font('Times-Roman').text(`: ${data.pro_date ? new Date(data.pro_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''}`, 480, detailY);
 
         detailY += 12;
         doc.font('Times-Bold').text('Billed TO', 40, detailY);
@@ -454,9 +459,9 @@ const createProformaPdf = async (req, res) => {
         doc.fontSize(8);
         doc.text('Sign of Customer Or His Agent', col.sl, tableY);
 
-        doc.font('Times-Bold').fontSize(9).text('Note :The Finance amount may please be raised\nvide DD or cheque in favour of SARATHY MOTORS\npayable at Kollam.\nA/c No : 0000 037 740 159725\nBranch : SBI Commercial Branch, Kollam\nIFS Code : SBIN0004063', 180, tableY, { align: 'center', width: 250 });
+        doc.font('Times-Bold').fontSize(9).text(`Note :The Finance amount may please be raised\nvide DD or cheque in favour of ${brandTitle}\npayable at Kollam.\nA/c No : 0000 037 740 159725\nBranch : SBI Commercial Branch, Kollam\nIFS Code : SBIN0004063`, 180, tableY, { align: 'center', width: 250 });
 
-        doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', col.end - 120, tableY, { width: 120, align: 'center' });
+        doc.font('Times-Bold').fontSize(9).text(brandTitle, col.end - 120, tableY, { width: 120, align: 'center' });
         doc.font('Times-Roman').fontSize(8).text('Authorised Signatory', col.end - 120, tableY + 12, { width: 120, align: 'center' });
 
         doc.moveTo(col.sl, tableY + 80).lineTo(col.end, tableY + 80).dash(2, { space: 2 }).stroke().undash();
@@ -486,7 +491,7 @@ const createProformaPdf = async (req, res) => {
         });
 
         const now = new Date();
-        doc.font('Times-Roman').fontSize(7).text(`Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`, col.sl, 800);
+        doc.font('Times-Roman').fontSize(7).text(`Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`, col.sl, 800);
         doc.text('Page 1/1', col.end - 45, 800);
 
         doc.end();

@@ -204,6 +204,12 @@ const createMoneyReceiptPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Receipt not found' });
         const data = records[0];
 
+        const [brandConfigRows] = await db.execute('SELECT brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const brand = brandConfigRows[0] || {};
+        const brandTitle = brand.brand_title || 'SARATHY MOTORS';
+        const brandAddress = brand.brand_address || 'Sarathy Bajaj Pallimukku Kollam Kerala State';
+        const brandStateCode = brand.brand_state_code || 'Code: 32 Kerala [State Code : 32]';
+
         const doc = new PDFDocument({ margin: 30, size: 'A4' });
         let filename = `MoneyReceipt_${data.receipt_no}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -224,9 +230,9 @@ const createMoneyReceiptPdf = async (req, res) => {
         doc.text(`PH : ${data.branch_ph || ''}`, col.start, doc.y + 1);
 
         // Center Header
-        doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', 200, 30, { align: 'center', width: 200 });
-        doc.font('Times-Roman').fontSize(7).text('Sarathy Bajaj Pallimukku Kollam Kerala State', 200, 42, { align: 'center', width: 200 });
-        doc.text('Code: 32 Kerala [State Code : 32]', 200, 52, { align: 'center', width: 200 });
+        doc.font('Times-Bold').fontSize(9).text(brandTitle, 200, 30, { align: 'center', width: 200 });
+        doc.font('Times-Roman').fontSize(7).text(brandAddress, 200, 42, { align: 'center', width: 200 });
+        doc.text(brandStateCode, 200, 52, { align: 'center', width: 200 });
 
         // Right Header
         // const brLoc = (data.branch_location || data.branch_name || '').split(' ')[0].toUpperCase();
@@ -254,7 +260,7 @@ const createMoneyReceiptPdf = async (req, res) => {
 
         drawRow('Receipt No.', data.receipt_no, 'Billed TO', data.receipt_cus, y);
         y += 12;
-        drawRow('Receipt Date', data.receipt_date ? new Date(data.receipt_date).toLocaleDateString('en-GB') : '', 'Customer Address', data.receipt_cus_address ? data.receipt_cus_address.replace(/\r/g, '').replace(/\n/g, ' ') : '', y);
+        drawRow('Receipt Date', data.receipt_date ? new Date(data.receipt_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', 'Customer Address', data.receipt_cus_address ? data.receipt_cus_address.replace(/\r/g, '').replace(/\n/g, ' ') : '', y);
         
         y = Math.max(y + 24, doc.y + 10);
         doc.moveTo(col.start, y).lineTo(col.end, y).stroke();
@@ -294,7 +300,7 @@ const createMoneyReceiptPdf = async (req, res) => {
             let bankInfo = '';
             if (data.pay_type !== 'Cash') {
                 bankInfo = `${data.bank_name || ''} ${data.bank_place || ''}\n${data.cheque_dd_po_no || ''}`;
-                if (data.cheque_dd_date) bankInfo += ` / ${new Date(data.cheque_dd_date).toLocaleDateString('en-GB')}`;
+                if (data.cheque_dd_date) bankInfo += ` / ${new Date(data.cheque_dd_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })}`;
             }
 
             const wDesc = tCol.mode - tCol.desc - 4;
@@ -361,14 +367,14 @@ const createMoneyReceiptPdf = async (req, res) => {
         doc.text('Thank You & Happy Riding', 200, y, { align: 'center', width: 220 });
         
         doc.font('Times-Bold');
-        doc.text('SARATHY MOTORS', col.end - 120, y, { align: 'center', width: 120 });
+        doc.text(brandTitle, col.end - 120, y, { align: 'center', width: 120 });
         doc.font('Times-Roman').fontSize(7.5).text('Authorised Signatory', col.end - 120, y + 10, { align: 'center', width: 120 });
 
         y += 60;
         doc.moveTo(col.start, y).lineTo(col.end, y).dash(2, { space: 2 }).stroke().undash();
 
         const now = new Date();
-        doc.font('Times-Roman').fontSize(7).text(`Printed On: ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`, col.start, 800);
+        doc.font('Times-Roman').fontSize(7).text(`Printed On: ${now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}`, col.start, 800);
         doc.text('Page 1/1', col.end - 45, 800);
 
         doc.end();
