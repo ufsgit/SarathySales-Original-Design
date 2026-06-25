@@ -320,9 +320,10 @@ const listInvoices = async (req, res) => {
 const createSalesPdf = async (req, res) => {
     try {
         const [records] = await db.execute(
-            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id 
+            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id, e.e_first_name AS executive_name 
              FROM tbl_invoice_labour inv
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
+             LEFT JOIN tbl_employee e ON CAST(e.emp_id AS CHAR) = CAST(inv.inv_advisername AS CHAR)
              WHERE inv.inv_id = ?`, [req.params.id]
         );
 
@@ -468,7 +469,7 @@ const createSalesPdf = async (req, res) => {
                 detailY += 12;
                 drawFieldRow('Mobile No.', data.inv_pho || '', 'Color', data.inv_color || '', detailY);
                 detailY += 12;
-                drawFieldRow('Executive Name', data.inv_advisername || '', '', '', detailY, true);
+                drawFieldRow('Executive Name', data.executive_name || data.inv_advisername || '', '', '', detailY, true);
                 detailY += 12;
                 drawFieldRow('Invoice Type', data.inv_type || '01', '', '', detailY);
                 detailY += 12;
@@ -807,9 +808,10 @@ const createRtoBillPdf = async (req, res) => {
     // To keep it clean, I'll essentially reuse createSalesPdf logic but change the title string.
     try {
         const [records] = await db.execute(
-            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id 
+            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id, e.e_first_name AS executive_name 
              FROM tbl_invoice_labour inv
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
+             LEFT JOIN tbl_employee e ON CAST(e.emp_id AS CHAR) = CAST(inv.inv_advisername AS CHAR)
              WHERE inv.inv_id = ?`, [req.params.id]
         );
 
@@ -952,7 +954,7 @@ const createRtoBillPdf = async (req, res) => {
                 detailY += 12;
                 drawFieldRow('Mobile No.', data.inv_pho || '', 'Color', data.inv_color || '', detailY);
                 detailY += 12;
-                drawFieldRow('Executive Name', data.inv_advisername || '', '', '', detailY, true);
+                drawFieldRow('Executive Name', data.executive_name || data.inv_advisername || '', '', '', detailY, true);
                 detailY += 12;
                 drawFieldRow('Invoice Type', data.inv_type || '01', '', '', detailY);
                 detailY += 12;
