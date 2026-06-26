@@ -21,42 +21,73 @@ function numberToWords(num) {
 
 function padSerial(n) { return String(n).padStart(5, '0'); }
 
-function nextTransferNoFromLast(lastNo, year, branchId) {
-    if (!branchId) return '';
-    if (!lastNo) return `BT${year}${branchId}${padSerial(1)}`;
-    const normalized = String(lastNo).trim();
-    const serialMatch = normalized.match(/(\d{5})$/);
-    const lastSerial = serialMatch ? parseInt(serialMatch[1], 10) : 0;
-    const lastYear = normalized.substring(2, 6);
-    const serial = lastYear === year ? lastSerial + 1 : 1;
-    return `BT${year}${branchId}${padSerial(serial)}`;
-}
-
-async function getLastTransferNoByBranch(executor, branchId, year) {
-    const prefix = `BT${year}${branchId}`;
-    const [rows] = await executor.execute(
-        `SELECT debit_note_no
-         FROM tbl_branch_transfer
-         WHERE ic_branch = ?
-           AND TRIM(debit_note_no) LIKE CONCAT(?, '%')
-         ORDER BY CAST(RIGHT(TRIM(debit_note_no), 5) AS UNSIGNED) DESC
-         LIMIT 1`,
-        [branchId, prefix]
-    );
-    return rows?.[0]?.debit_note_no || '';
-}
-
 const getNextBranchTransferNo = async (req, res) => {
     let branchId = (req.query.branchId || '').toString().trim();
     if (req.user && req.user.role == 2) {
         branchId = String(req.user.branch_id || '').trim();
     }
-    const year = new Date().getFullYear().toString();
+    
     try {
         if (!branchId) return res.status(400).json({ success: false, message: 'branchId is required' });
-        const lastNo = await getLastTransferNoByBranch(db, branchId, year);
-        res.json({ success: true, transferNo: nextTransferNoFromLast(lastNo, year, branchId) });
-    } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to generate transfer number' }); }
+        
+        const currentYear = new Date().getFullYear().toString();
+        
+        // 🔹 Fetch branch_id from tbl_branch
+        const [branchRows] = await db.execute(
+            `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+            [branchId]
+        );
+
+        let brand_id = branchId;
+        if (branchRows.length > 0 && branchRows[0].branch_id) {
+            brand_id = branchRows[0].branch_id;
+        }
+
+        const prefix = `CN${currentYear}${brand_id}`;
+
+        // 🔹 Fetch last transfer note matching the new prefix
+        const [rows] = await db.execute(
+            `SELECT debit_note_no
+             FROM tbl_branch_transfer
+             WHERE ic_branch = ?
+               AND debit_note_no LIKE ?
+             ORDER BY lc_id DESC
+             LIMIT 1`,
+            [branchId, `${prefix}%`]
+        );
+
+        let nextRunningNumber = 1;
+        let padLength = 5; // Default standard length
+
+        if (rows.length > 0 && rows[0].debit_note_no) {
+            const lastNo = rows[0].debit_note_no;
+            console.log("Max transfer no fetched from DB:", lastNo);
+
+            // Dynamically strip the prefix to get the pure serial number
+            const serialStr = lastNo.substring(prefix.length);
+            const lastNumber = parseInt(serialStr, 10);
+            
+            if (!isNaN(lastNumber)) {
+                nextRunningNumber = lastNumber + 1;
+                // Measure the length of the existing serial to maintain formatting
+                padLength = serialStr.length > 0 ? serialStr.length : 5;
+            }
+        } else {
+            console.log("No previous transfer no found for prefix:", prefix);
+        }
+
+        const formattedRunningNumber = nextRunningNumber
+            .toString()
+            .padStart(padLength, '0');
+
+        const newTransferNumber = `${prefix}${formattedRunningNumber}`;
+        console.log("Generated new transfer no:", newTransferNumber);
+
+        res.json({ success: true, transferNo: newTransferNumber });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to generate transfer number' });
+    }
 };
 
 
@@ -233,8 +264,47 @@ const saveBranchTransfer = async (req, res) => {
         }
 
         const year = new Date().getFullYear().toString();
-        const lastNo = await getLastTransferNoByBranch(conn, effectiveFromBranchId, year);
-        const finalTransferNo = nextTransferNoFromLast(lastNo, year, effectiveFromBranchId);
+        
+        // 🔹 Fetch branch_id from tbl_branch
+        const [branchRows] = await conn.execute(
+            `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+            [effectiveFromBranchId]
+        );
+
+        let brand_id = effectiveFromBranchId;
+        if (branchRows.length > 0 && branchRows[0].branch_id) {
+            brand_id = branchRows[0].branch_id;
+        }
+
+        const prefix = `CN${year}${brand_id}`;
+
+        // 🔹 Fetch last transfer note matching the new prefix
+        const [rows] = await conn.execute(
+            `SELECT debit_note_no
+             FROM tbl_branch_transfer
+             WHERE ic_branch = ?
+               AND debit_note_no LIKE ?
+             ORDER BY lc_id DESC
+             LIMIT 1`,
+            [effectiveFromBranchId, `${prefix}%`]
+        );
+
+        let nextRunningNumber = 1;
+        let padLength = 5;
+
+        if (rows.length > 0 && rows[0].debit_note_no) {
+            const lastNo = rows[0].debit_note_no;
+            const serialStr = lastNo.substring(prefix.length);
+            const lastNumber = parseInt(serialStr, 10);
+            
+            if (!isNaN(lastNumber)) {
+                nextRunningNumber = lastNumber + 1;
+                padLength = serialStr.length > 0 ? serialStr.length : 5;
+            }
+        }
+
+        const formattedRunningNumber = nextRunningNumber.toString().padStart(padLength, '0');
+        const finalTransferNo = `${prefix}${formattedRunningNumber}`;
 
         const firstItem = (items && items[0]) || {};
         let amount = Number(firstItem.amount || 0) || 0;

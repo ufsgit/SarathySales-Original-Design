@@ -48,36 +48,58 @@ const getNextInvoiceNo = async (req, res) => {
     try {
         const currentYear = new Date().getFullYear();
 
-        // 🔹 Fetch last invoice from tbl_invoice_labour
+        // 🔹 Fetch branch_id from tbl_branch
+        const [branchRows] = await db.execute(
+            `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+            [branchId]
+        );
+
+        let brand_id = branchId;
+        if (branchRows.length > 0 && branchRows[0].branch_id) {
+            brand_id = branchRows[0].branch_id;
+        }
+
+        const prefix = `VSI${currentYear}${brand_id}`;
+
+        // 🔹 Fetch last invoice matching the new prefix
         const [rows] = await db.execute(
             `
             SELECT inv_no
             FROM tbl_invoice_labour
             WHERE inv_branch = ?
-              AND YEAR(inv_inv_date) = ?
+              AND inv_no LIKE ?
             ORDER BY inv_id DESC
             LIMIT 1
             `,
-            [branchId, currentYear]
+            [branchId, `${prefix}%`]
         );
 
         let nextRunningNumber = 1;
+        let padLength = 6; // Default standard length
 
         if (rows.length > 0 && rows[0].inv_no) {
             const lastInvoiceNo = rows[0].inv_no;
+            console.log("Max invoice no fetched from DB:", lastInvoiceNo);
 
-            // Extract last 6 digits safely
-            const lastNumber = parseInt(lastInvoiceNo.slice(-6)) || 0;
-            nextRunningNumber = lastNumber + 1;
+            // Dynamically strip the prefix to get the pure serial number
+            const serialStr = lastInvoiceNo.substring(prefix.length);
+            const lastNumber = parseInt(serialStr, 10);
+            
+            if (!isNaN(lastNumber)) {
+                nextRunningNumber = lastNumber + 1;
+                // Measure the length of the existing serial to maintain formatting
+                padLength = serialStr.length > 0 ? serialStr.length : 6;
+            }
+        } else {
+            console.log("No previous invoice found for prefix:", prefix);
         }
 
         const formattedRunningNumber = nextRunningNumber
             .toString()
-            .padStart(6, '0');
+            .padStart(padLength, '0');
 
-        // Format → VSI202610000001
-        const newInvoiceNumber =
-            `VSI${currentYear}${branchId}${formattedRunningNumber}`;
+        const newInvoiceNumber = `${prefix}${formattedRunningNumber}`;
+        console.log("Generated new invoice no:", newInvoiceNumber);
 
         return res.json({
             success: true,
@@ -667,15 +689,15 @@ const createSalesLetterPdf = async (req, res) => {
         doc.pipe(res);
 
         // --- Header ---
-        doc.font('Times-Bold').fontSize(7.5).text('SARATHY MOTORS', 40, 40);
-        doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj\nPallimukku\nKollam-10\nKerala', 40, 52);
+        doc.font('Times-Bold').fontSize(9.5).text('SARATHY MOTORS', 40, 40);
+        doc.font('Times-Roman').fontSize(9.5).text('Sarathy Bajaj\nPallimukku\nKollam-10\nKerala', 40, 52);
 
-        doc.font('Times-Bold').fontSize(9).text('FORM 21', 400, 40, { width: 150, align: 'right' });
-        doc.fontSize(10).text('SALES CERTIFICATE', 400, 52, { width: 150, align: 'right' });
-        doc.fontSize(10).text('rule 47 (a) & (b)', 400, 64, { width: 150, align: 'right' });
+        doc.font('Times-Bold').fontSize(11).text('FORM 21', 400, 40, { width: 150, align: 'right' });
+        doc.fontSize(12).text('SALES CERTIFICATE', 400, 52, { width: 150, align: 'right' });
+        doc.fontSize(12).text('rule 47 (a) & (b)', 400, 64, { width: 150, align: 'right' });
 
         let currentY = 150;
-        doc.font('Times-Roman').fontSize(8.5).text('Certified that ', 40, currentY, { continued: true });
+        doc.font('Times-Roman').fontSize(10.5).text('Certified that ', 40, currentY, { continued: true });
         doc.font('Times-Bold').text((data.inv_vehicle || '') + ' ', { continued: true });
         doc.font('Times-Roman').text('has been delivered by us ', { continued: true });
         doc.font('Times-Bold').text((data.inv_cus || '') + '  ', { continued: true });
@@ -685,7 +707,7 @@ const createSalesLetterPdf = async (req, res) => {
         currentY += 25;
         const fieldX1 = 40, fieldX2 = 120;
         const drawField = (label, val, y, isBold = false) => {
-            doc.font('Times-Bold').fontSize(7.5).text(label, fieldX1, y);
+            doc.font('Times-Bold').fontSize(9.5).text(label, fieldX1, y);
             doc.text(':', fieldX2 - 10, y);
             doc.font(isBold ? 'Times-Bold' : 'Times-Roman').text(val || '', fieldX2, y, { width: 350 });
         };
@@ -695,19 +717,19 @@ const createSalesLetterPdf = async (req, res) => {
         drawField('Name of the Buyer', data.inv_cus || '', currentY, true); currentY += 10;
 
         const buyerAddr = `Mobile : ${data.inv_pho || ''}\n${(data.inv_cus_addres || '').replace(/\r?\n|\r/g, ' ')}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
-        doc.font('Times-Roman').fontSize(7.5).text(buyerAddr, fieldX2, currentY, { width: 350 });
+        doc.font('Times-Roman').fontSize(9.5).text(buyerAddr, fieldX2, currentY, { width: 350 });
         currentY += doc.heightOfString(buyerAddr, { width: 350 }) + 5;
 
         drawField('Father/Husband', data.inv_cus_father_hus || '', currentY, true); currentY += 12;
         drawField('Mobile No.', data.inv_pho || '', currentY); currentY += 12;
         drawField('Hypothication', data.inv_hypothication || 'BAJAJ FINANCE LTD', currentY, true); currentY += 15;
 
-        doc.font('Times-Bold').fontSize(9).text('The Details of vehicle are given below:-', 40, currentY);
+        doc.font('Times-Bold').fontSize(11).text('The Details of vehicle are given below:-', 40, currentY);
         currentY += 20;
 
         const specX1 = 40, specX2 = 60, specX3 = 180, specX4 = 230, specX5 = 260;
         const drawSpec = (idx, label, val, y, isBoldVal = false) => {
-            doc.font('Times-Roman').fontSize(8.5).text(`${idx}.`, specX1, y);
+            doc.font('Times-Roman').fontSize(10.5).text(`${idx}.`, specX1, y);
             doc.text(label, specX2, y);
             doc.text(':-', specX4 - 10, y);
             doc.font(isBoldVal ? 'Times-Bold' : 'Times-Roman').text(val || '', specX5, y, { width: 250 });
@@ -730,7 +752,7 @@ const createSalesLetterPdf = async (req, res) => {
         currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY);
 
         currentY += 40;
-        doc.font('Times-Roman').fontSize(7.5);
+        doc.font('Times-Roman').fontSize(9.5);
         doc.text('Sign of Customer Or His Agent', 40, currentY);
         doc.font('Times-Bold').text('SARATHY MOTORS', 450, currentY, { width: 120, align: 'center' });
         doc.text('Authorised Signatory', 450, currentY + 12, { width: 120, align: 'center' });

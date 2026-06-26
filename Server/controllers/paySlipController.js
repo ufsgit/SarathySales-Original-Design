@@ -56,26 +56,48 @@ function calculateTotals(data) {
 
 async function getNextNo(branchId) {
     const year = new Date().getFullYear().toString();
-    const prefix = `PS${year}${branchId}`;
-    console.log(`[paySlipController] getNextNo for branchId: ${branchId}`);
+    console.log(`[paySlipController] getNextNo for branchId (b_id): ${branchId}`);
     try {
+        // 🔹 Fetch branch_id from tbl_branch
+        const [branchRows] = await db.execute(
+            `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+            [branchId]
+        );
+
+        let brand_id = branchId;
+        if (branchRows.length > 0 && branchRows[0].branch_id) {
+            brand_id = branchRows[0].branch_id;
+        }
+
+        const prefix = `PS${year}${brand_id}`;
+
         const [rows] = await db.execute(
-            'SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ? AND pay_slip_no LIKE ?', 
+            'SELECT MAX(pay_slip_no) as last_no FROM tbl_payslip WHERE pay_branch_id = ? AND pay_slip_no LIKE ?',
             [branchId, `${prefix}%`]
         );
         const lastNo = rows[0]?.last_no;
         console.log(`[paySlipController] Last number found: ${lastNo}`);
 
-        if (!lastNo || typeof lastNo !== 'string') {
-            const next = `${prefix}${padSerial(1)}`;
-            console.log(`[paySlipController] No existing number matching prefix. Returning: ${next}`);
-            return next;
+        let nextSerial = 1;
+        let padLength = 5; // Default length for payslip (it was using padSerial(5) originally)
+
+        if (lastNo && typeof lastNo === 'string') {
+            // Dynamically strip the prefix to get the pure serial number
+            const serialStr = lastNo.substring(prefix.length);
+            const parsedLast = parseInt(serialStr, 10);
+
+            if (!isNaN(parsedLast)) {
+                nextSerial = parsedLast + 1;
+                // Measure the length of the existing serial to maintain formatting
+                padLength = serialStr.length > 0 ? serialStr.length : 5;
+            }
+        } else {
+            console.log(`[paySlipController] No existing number matching prefix ${prefix}. Starting fresh.`);
         }
 
-        const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
-        const nextSerial = lastSerial + 1;
-        const next = `${prefix}${padSerial(nextSerial)}`;
-        console.log(`[paySlipController] DEBUG -> lastNo: '${lastNo}', slice(-5): '${lastNo.slice(-5)}', lastSerial: ${lastSerial}, nextSerial: ${nextSerial}`);
+        const formattedRunningNumber = nextSerial.toString().padStart(padLength, '0');
+        const next = `${prefix}${formattedRunningNumber}`;
+
         console.log(`[paySlipController] Generated next number: ${next}`);
         return next;
     } catch (error) {
@@ -159,19 +181,25 @@ const getPaySlipFormData = async (req, res) => {
     try {
         const financeOptions = ['By Cash'];
 
-        const [vehicleRows] = branchId
-            ? await db.execute(
-                `SELECT stock_id, stock_item_name, stock_item_code
-                 FROM tbl_stock
-                 WHERE stock_item_branch = ?
-                 ORDER BY stock_item_name`,
-                [branchId]
-            )
-            : await db.execute(
-                `SELECT stock_id, stock_item_name, stock_item_code
-                 FROM tbl_stock
-                 ORDER BY stock_item_name`
-            );
+        // const [vehicleRows] = branchId
+        //     ? await db.execute(
+        //         `SELECT stock_id, stock_item_name, stock_item_code
+        //          FROM tbl_stock
+        //          WHERE stock_item_branch = ?
+        //          ORDER BY stock_item_name`,
+        //         [branchId]
+        //     )
+        //     : await db.execute(
+        //         `SELECT stock_id, stock_item_name, stock_item_code
+        //          FROM tbl_stock
+        //          ORDER BY stock_item_name`
+        //     );
+        
+         const [vehicleRows] = await db.execute(
+            `SELECT labour_id AS stock_id, labour_title AS stock_item_name, labour_code AS stock_item_code
+             FROM tbl_labour_code
+             ORDER BY labour_title`
+        );
 
         const [executiveRows] = branchId
             ? await db.execute(
@@ -492,7 +520,7 @@ const createPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Pay slip not found' });
         const data = records[0];
 
-        const doc = new PDFDocument({ margin: 30, size: 'A4' });
+        const doc = new PDFDocument({ margin: { top: 10, left: 30, right: 30, bottom: 30 }, size: 'A4' });
         let filename = `PaySlip_${data.pay_slip_no}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
@@ -500,7 +528,7 @@ const createPdf = async (req, res) => {
 
         // --- Header Section ---
         doc.font('Times-Bold').fontSize(16).text('Pay slip(Vehicle)', { align: 'center' });
-        doc.moveDown(1.5);
+
 
         const leftX = 40;
         const rightX = 350;
@@ -515,22 +543,22 @@ const createPdf = async (req, res) => {
         drawInfo('Pay Slip No.', data.pay_slip_no, leftX, startY);
         drawInfo('Vehicle Name', data.pay_slip_reference, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', leftX, startY);
         drawInfo('Executive', data.pay_regn || '', rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Billed TO', data.pay_cus_name, leftX, startY);
         drawInfo('Remarks.', data.pay_remarks, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Vehicle Type', data.pay_vehil_type, leftX, startY);
         drawInfo('Location.', data.branch_location, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Finance/Cash', data.pay_finance, leftX, startY);
 
-        doc.moveDown(2);
+        doc.y = startY + 15;
 
         // --- Table Section ---
         const tableStartY = doc.y;
@@ -633,7 +661,7 @@ const createPdf = async (req, res) => {
         doc.text('Total', x4, currentY + 4, { width: x5 - x4, align: 'center' });
         doc.text(`${fmt(data.pay_less_total)}/-`, x5, currentY + 4, { width: x6 - x5 - 5, align: 'right' });
 
-        currentY += rowHeight + 10;
+        currentY += rowHeight + 2;
 
         // --- Bottom Summary ---
         doc.font('Times-Bold').fontSize(9);
@@ -652,8 +680,8 @@ const createPdf = async (req, res) => {
         const dateStr = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
 
-        doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, 800);
-        doc.text('Page 1/1', x6 - 45, 800);
+        doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, currentY + 10);
+        doc.text('Page 1/1', x6 - 45, currentY + 10);
 
         doc.end();
 
@@ -674,7 +702,7 @@ const createPdfByNo = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Pay slip not found' });
         const data = records[0];
 
-        const doc = new PDFDocument({ margin: 30, size: 'A4' });
+        const doc = new PDFDocument({ margin: { top: 10, left: 30, right: 30, bottom: 30 }, size: 'A4' });
         let filename = `PaySlip_${data.pay_slip_no}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
@@ -682,7 +710,7 @@ const createPdfByNo = async (req, res) => {
 
         // --- Header Section ---
         doc.font('Times-Bold').fontSize(16).text('Pay slip(Vehicle)', { align: 'center' });
-        doc.moveDown(1.5);
+
 
         const leftX = 40;
         const rightX = 350;
@@ -697,22 +725,22 @@ const createPdfByNo = async (req, res) => {
         drawInfo('Pay Slip No.', data.pay_slip_no, leftX, startY);
         drawInfo('Vehicle Name', data.pay_slip_reference, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Pay Slip Date', data.pay_slip_date ? new Date(data.pay_slip_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', leftX, startY);
         drawInfo('Executive', data.pay_regn || '', rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Billed TO', data.pay_cus_name, leftX, startY);
         drawInfo('Remarks.', data.pay_remarks, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Vehicle Type', data.pay_vehil_type, leftX, startY);
         drawInfo('Location.', data.branch_location, rightX, startY);
 
-        startY += 18;
+        startY += 15;
         drawInfo('Finance/Cash', data.pay_finance, leftX, startY);
 
-        doc.moveDown(2);
+        doc.y = startY + 15;
 
         // --- Table Section ---
         const tableStartY = doc.y;
@@ -815,7 +843,7 @@ const createPdfByNo = async (req, res) => {
         doc.text('Total', x4, currentY + 4, { width: x5 - x4, align: 'center' });
         doc.text(`${fmt(data.pay_less_total)}/-`, x5, currentY + 4, { width: x6 - x5 - 5, align: 'right' });
 
-        currentY += rowHeight + 10;
+        currentY += rowHeight + 2;
 
         // --- Bottom Summary ---
         doc.font('Times-Bold').fontSize(9);
@@ -834,8 +862,8 @@ const createPdfByNo = async (req, res) => {
         const dateStr = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
 
-        doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, 800);
-        doc.text('Page 1/1', x6 - 45, 800);
+        doc.text(`Printed On: ${dateStr}, ${timeStr}`, x1, currentY + 10);
+        doc.text('Page 1/1', x6 - 45, currentY + 10);
 
         doc.end();
 

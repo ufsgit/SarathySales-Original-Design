@@ -4,21 +4,47 @@ const PDFDocument = require('pdfkit');
 function padSerial(n) { return String(n).padStart(5, '0'); }
 async function getNextNo(branchId, branchName = '') {
     const year = new Date().getFullYear().toString();
-    console.log(`[gatePassController] getNextNo called for branchId: ${branchId}, branchName: ${branchName}`);
+    console.log(`[gatePassController] getNextNo called for branchId (b_id): ${branchId}, branchName: ${branchName}`);
 
-    const [rows] = await db.execute('SELECT MAX(gate_pass_no) as last_no FROM tbl_gate_pass WHERE gate_branch_id = ?', [branchId]);
-    const lastNo = rows[0]?.last_no;
+    // 🔹 Fetch branch_id from tbl_branch
+    const [branchRows] = await db.execute(
+        `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+        [branchId]
+    );
 
-    if (!lastNo) {
-        const fallback = `GP${year}${branchId}${padSerial(1)}`;
-        console.log(`[gatePassController] No existing gate pass found. Fallback: ${fallback}`);
-        return fallback;
+    let brand_id = branchId;
+    if (branchRows.length > 0 && branchRows[0].branch_id) {
+        brand_id = branchRows[0].branch_id;
     }
 
-    console.log(`[gatePassController] Last gate pass number found: ${lastNo}`);
-    const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
-    const lastYear = lastNo.substring(2, 6);
-    const nextNo = `GP${year}${branchId}${padSerial(lastYear === year ? lastSerial + 1 : 1)}`;
+    const prefix = `GP${year}${brand_id}`;
+
+    const [rows] = await db.execute(
+        'SELECT MAX(gate_pass_no) as last_no FROM tbl_gate_pass WHERE gate_branch_id = ? AND gate_pass_no LIKE ?', 
+        [branchId, `${prefix}%`]
+    );
+    const lastNo = rows[0]?.last_no;
+
+    let nextSerial = 1;
+    let padLength = 5;
+
+    if (lastNo && typeof lastNo === 'string') {
+        console.log(`[gatePassController] Last gate pass number found: ${lastNo}`);
+        // Dynamically strip the prefix to get the pure serial number
+        const serialStr = lastNo.substring(prefix.length);
+        const parsedLast = parseInt(serialStr, 10);
+        
+        if (!isNaN(parsedLast)) {
+            nextSerial = parsedLast + 1;
+            // Measure the length of the existing serial to maintain formatting
+            padLength = serialStr.length > 0 ? serialStr.length : 5;
+        }
+    } else {
+        console.log(`[gatePassController] No existing gate pass found for prefix ${prefix}. Starting fresh.`);
+    }
+
+    const formattedRunningNumber = nextSerial.toString().padStart(padLength, '0');
+    const nextNo = `${prefix}${formattedRunningNumber}`;
     console.log(`[gatePassController] Generated next gate pass number: ${nextNo}`);
     return nextNo;
 }

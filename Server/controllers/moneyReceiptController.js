@@ -19,18 +19,50 @@ function numberToWords(num) {
 
 function padSerial(n) { return String(n).padStart(5, '0'); }
 
-function buildNo(prefix, year, branchId, serial) {
-    return `${prefix}${year}${branchId}${padSerial(serial)}`;
-}
-
-async function getNextNo(table, noColumn, branchColumn, branchId, prefix) {
+async function getNextNo(table, noColumn, branchColumn, branchId, basePrefix) {
     const year = new Date().getFullYear().toString();
-    const [rows] = await db.execute(`SELECT MAX(${noColumn}) as last_no FROM ${table} WHERE ${branchColumn} = ?`, [branchId]);
-    const lastNo = rows[0].last_no;
-    if (!lastNo) return buildNo(prefix, year, branchId, 1);
-    const lastSerial = parseInt(lastNo.slice(-5), 10) || 0;
-    const lastYear = lastNo.substring(prefix.length, prefix.length + 4);
-    return buildNo(prefix, year, branchId, lastYear === year ? lastSerial + 1 : 1);
+    console.log(`[moneyReceiptController] getNextNo for branchId (b_id): ${branchId}`);
+    
+    // 🔹 Fetch branch_id from tbl_branch
+    const [branchRows] = await db.execute(
+        `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+        [branchId]
+    );
+
+    let brand_id = branchId;
+    if (branchRows.length > 0 && branchRows[0].branch_id) {
+        brand_id = branchRows[0].branch_id;
+    }
+
+    const prefix = `${basePrefix}${year}${brand_id}`;
+
+    const [rows] = await db.execute(
+        `SELECT MAX(${noColumn}) as last_no FROM ${table} WHERE ${branchColumn} = ? AND ${noColumn} LIKE ?`, 
+        [branchId, `${prefix}%`]
+    );
+    const lastNo = rows[0]?.last_no;
+    console.log(`[moneyReceiptController] Last number found: ${lastNo}`);
+
+    let nextSerial = 1;
+    let padLength = 5;
+
+    if (lastNo && typeof lastNo === 'string') {
+        const serialStr = lastNo.substring(prefix.length);
+        const parsedLast = parseInt(serialStr, 10);
+        
+        if (!isNaN(parsedLast)) {
+            nextSerial = parsedLast + 1;
+            padLength = serialStr.length > 0 ? serialStr.length : 5;
+        }
+    } else {
+        console.log(`[moneyReceiptController] No existing number matching prefix ${prefix}. Starting fresh.`);
+    }
+
+    const formattedRunningNumber = nextSerial.toString().padStart(padLength, '0');
+    const next = `${prefix}${formattedRunningNumber}`;
+    
+    console.log(`[moneyReceiptController] Generated next number: ${next}`);
+    return next;
 }
 
 /** GET /api/money-receipt/next-no */

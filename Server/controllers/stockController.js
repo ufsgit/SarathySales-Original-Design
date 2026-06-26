@@ -1048,9 +1048,114 @@ const getStockSplitupAllQuery = (req) => {
     return { sql, params, page: Math.max(1, parseInt(req.query.page) || 1), limit: Math.max(1, parseInt(req.query.limit) || 25) };
 };
 
+const getExcelStockSplitupAllQuery = (req) => {
+    let branchId = req.query.branchId;
+    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const search = (req.query.search || '').trim();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 25);
+
+    let conditions = [
+        'si.inv_id IS NULL',
+        "stock_base.retn_status = 'Available'",
+        "stock_base.item_status = 'Available'"
+    ];
+    let params = [new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })];
+
+    if (branchId && branchId !== 'ALL') {
+        conditions.push('stock_base.branch_id = ?');
+        params.push(branchId);
+    }
+    if (chassisNo) {
+        conditions.push('stock_base.chassis_no LIKE ?');
+        params.push(`%${chassisNo}%`);
+    }
+    if (search) {
+        conditions.push('(stock_base.invoice_no LIKE ? OR stock_base.product_code LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+    }
+    const vehicleCodeStr = req.query.vehicleCode;
+    if (vehicleCodeStr) {
+        const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+        if (codes.length > 0) {
+            const placeholders = codes.map(() => '?').join(',');
+            conditions.push(`stock_base.product_code IN (${placeholders})`);
+            params.push(...codes);
+        }
+    }
+    const where = 'WHERE ' + conditions.join(' AND ');
+    
+    const stockBaseSql = `
+        FROM (
+            SELECT
+                pi.purchaseItemId,
+                pb.invoiceNo AS invoice_no,
+                pb.rac_date AS rc_date,
+                pb.pucha_vendorName AS vendor_name,
+                pi.materialName AS vehicle_code,
+                pi.materialsId AS product_code,
+                pb.invoiceDate AS invoice_date,
+                pb.purch_branchId AS branch_id,
+                pi.chassis_no,
+                pi.engine_no,
+                pi.color_name AS color,
+                pb.rc_no AS rc_no,
+                pi.p_date AS mfg_date,
+                pi.lc_rate AS total_amount,
+                pi.product_id,
+                pi.item_status,
+                pi.retn_status
+            FROM purchaseitem pi
+            JOIN purchaseitembill pb
+                ON pb.purchaseItemBillId = pi.purchaseItemBillId
+            INNER JOIN (
+                SELECT
+                    pi2.chassis_no,
+                    MAX(pi2.purchaseItemId) AS latest_purchase_item_id
+                FROM purchaseitem pi2
+                JOIN purchaseitembill pb2
+                    ON pb2.purchaseItemBillId = pi2.purchaseItemBillId
+                WHERE pb2.invoiceDate <= ?
+                GROUP BY pi2.chassis_no
+            ) latest_pi
+                ON latest_pi.latest_purchase_item_id = pi.purchaseItemId
+        ) stock_base
+        LEFT JOIN tbl_branch b
+            ON b.b_id = stock_base.branch_id
+        LEFT JOIN tbl_invoice_labour si
+            ON si.inv_chassis = stock_base.chassis_no
+            AND si.inv_inv_date <= ?
+    `;
+
+    const sql = `
+        SELECT 
+            stock_base.invoice_no,
+            stock_base.rc_date,
+            b.branch_name AS branch_name,
+            stock_base.vehicle_code,
+            stock_base.vendor_name,
+            stock_base.product_code,
+            stock_base.invoice_date,
+            stock_base.chassis_no,
+            stock_base.engine_no,
+            stock_base.color,
+            stock_base.rc_no,
+            stock_base.mfg_date,
+            stock_base.total_amount,
+            stock_base.product_id,
+            stock_base.item_status
+        ${stockBaseSql}
+        ${where} 
+        ORDER BY stock_base.invoice_date DESC, stock_base.purchaseItemId DESC
+    `;
+    return { sql, params, page, limit };
+};
+
 const exportStockSplitupAllExcel = async (req, res) => {
     try {
-        const { sql, params } = getStockSplitupAllQuery(req);
+        const { sql, params } = getExcelStockSplitupAllQuery(req);
         const [rows] = await db.execute(sql, params);
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Stock Splitup All Report');
@@ -1084,7 +1189,7 @@ const exportStockSplitupAllExcel = async (req, res) => {
 
 const exportStockSplitupAllPagedExcel = async (req, res) => {
     try {
-        const { sql, params, page, limit } = getStockSplitupAllQuery(req);
+        const { sql, params, page, limit } = getExcelStockSplitupAllQuery(req);
         const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
         const [rows] = await db.execute(pagedSql, params);
         const workbook = new ExcelJS.Workbook();
@@ -1109,7 +1214,7 @@ const exportStockSplitupAllPagedExcel = async (req, res) => {
 
 const exportStockSplitupAllPagedCsv = async (req, res) => {
     try {
-        const { sql, params, page, limit } = getStockSplitupAllQuery(req);
+        const { sql, params, page, limit } = getExcelStockSplitupAllQuery(req);
         const pagedSql = sql + ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
         const [rows] = await db.execute(pagedSql, params);
         const workbook = new ExcelJS.Workbook();

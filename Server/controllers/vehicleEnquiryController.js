@@ -177,15 +177,15 @@ const createSaleLetterPdf = async (req, res) => {
         doc.pipe(res);
 
         // --- Header ---
-        doc.font('Times-Bold').fontSize(7.5).text('SARATHY MOTORS', 40, 40);
-        doc.font('Times-Roman').fontSize(7.5).text('Sarathy Bajaj\nPallimukku\nKollam-10\nKerala', 40, 52);
+        doc.font('Times-Bold').fontSize(9.5).text('SARATHY MOTORS', 40, 40);
+        doc.font('Times-Roman').fontSize(9.5).text('Sarathy Bajaj\nPallimukku\nKollam-10\nKerala', 40, 52);
 
-        doc.font('Times-Bold').fontSize(9).text('FORM 21', 400, 40, { width: 150, align: 'right' });
-        doc.fontSize(10).text('SALES CERTIFICATE', 400, 52, { width: 150, align: 'right' });
-        doc.fontSize(10).text('rule 47 (a) & (b)', 400, 64, { width: 150, align: 'right' });
+        doc.font('Times-Bold').fontSize(11).text('FORM 21', 400, 40, { width: 150, align: 'right' });
+        doc.fontSize(12).text('SALES CERTIFICATE', 400, 52, { width: 150, align: 'right' });
+        doc.fontSize(12).text('rule 47 (a) & (b)', 400, 64, { width: 150, align: 'right' });
 
         let currentY = 150;
-        doc.font('Times-Roman').fontSize(8.5).text('Certified that ', 40, currentY, { continued: true });
+        doc.font('Times-Roman').fontSize(10.5).text('Certified that ', 40, currentY, { continued: true });
         doc.font('Times-Bold').text((data.inv_vehicle || '') + ' ', { continued: true });
         doc.font('Times-Roman').text('has been delivered by us ', { continued: true });
         doc.font('Times-Bold').text((data.inv_cus || '') + '  ', { continued: true });
@@ -195,7 +195,7 @@ const createSaleLetterPdf = async (req, res) => {
         currentY += 25;
         const fieldX1 = 40, fieldX2 = 120;
         const drawField = (label, val, y, isBold = false) => {
-            doc.font('Times-Bold').fontSize(7.5).text(label, fieldX1, y);
+            doc.font('Times-Bold').fontSize(9.5).text(label, fieldX1, y);
             doc.text(':', fieldX2 - 10, y);
             doc.font(isBold ? 'Times-Bold' : 'Times-Roman').text(val || '', fieldX2, y, { width: 350 });
         };
@@ -205,19 +205,19 @@ const createSaleLetterPdf = async (req, res) => {
         drawField('Name of the Buyer', data.inv_cus || '', currentY, true); currentY += 10;
 
         const buyerAddr = `Mobile : ${data.inv_pho || ''}\n${(data.inv_cus_addres || '').replace(/\r?\n|\r/g, ' ')}\n${data.inv_place || ''} ${data.inv_pincode || ''}\nKerala[State Code :32] INDIA`;
-        doc.font('Times-Roman').fontSize(7.5).text(buyerAddr, fieldX2, currentY, { width: 350 });
+        doc.font('Times-Roman').fontSize(9.5).text(buyerAddr, fieldX2, currentY, { width: 350 });
         currentY += doc.heightOfString(buyerAddr, { width: 350 }) + 5;
 
         drawField('Father/Husband', data.inv_cus_father_hus || '', currentY, true); currentY += 12;
         drawField('Mobile No.', data.inv_pho || '', currentY); currentY += 12;
         drawField('Hypothication', data.inv_hypothication || 'NIL', currentY, true); currentY += 15;
 
-        doc.font('Times-Bold').fontSize(9).text('The Details of vehicle are given below:-', 40, currentY);
+        doc.font('Times-Bold').fontSize(11).text('The Details of vehicle are given below:-', 40, currentY);
         currentY += 20;
 
         const specX1 = 40, specX2 = 60, specX3 = 230, specX4 = 260;
         const drawSpec = (idx, label, val, y, isBoldVal = false) => {
-            doc.font('Times-Roman').fontSize(8.5).text(`${idx}.`, specX1, y);
+            doc.font('Times-Roman').fontSize(10.5).text(`${idx}.`, specX1, y);
             doc.text(label, specX2, y);
             doc.text(':-', specX3 - 10, y);
             doc.font(isBoldVal ? 'Times-Bold' : 'Times-Roman').text(val || '', specX4, y, { width: 300 });
@@ -240,7 +240,7 @@ const createSaleLetterPdf = async (req, res) => {
         currentY = drawSpec(14, 'Manufacturing Date', data.p_date ? new Date(data.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', currentY);
 
         currentY += 40;
-        doc.font('Times-Roman').fontSize(7.5);
+        doc.font('Times-Roman').fontSize(9.5);
         doc.text('Sign of Customer Or His Agent', 40, currentY);
         doc.font('Times-Bold').text('SARATHY MOTORS', 450, currentY, { width: 120, align: 'center' });
         doc.text('Authorised Signatory', 450, currentY + 12, { width: 120, align: 'center' });
