@@ -49,6 +49,11 @@ import { ApiService } from '../services/api.service';
               </select>
               <label>entries</label>
             </div>
+            
+            <div class="search-group">
+              <label>Search:</label>
+              <input type="text" class="search-input" [ngModel]="searchTerm()" (ngModelChange)="onSearch($event)" placeholder="Code or Name...">
+            </div>
           </div>
 
           <div class="table-container">
@@ -143,6 +148,9 @@ import { ApiService } from '../services/api.service';
     .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
     .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
     .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+    .search-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+    .search-input { padding: 5px 10px; border: 1px solid #777 !important; border-radius: 4px; outline: none; width: 200px; background-color: #fff; }
+    .search-input:focus { border-color: #0b5ed7 !important; box-shadow: 0 0 0 2px rgba(11,94,215,0.2); }
     
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -179,6 +187,7 @@ export class AdminInstitutionmasterlist implements OnInit {
   total = signal(0);
   page = signal(1);
   limit = signal(25);
+  searchTerm = signal('');
   openDropdownIndex: number | null = null;
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
@@ -212,7 +221,7 @@ export class AdminInstitutionmasterlist implements OnInit {
   }
 
   loadInstitutions() {
-    this.apiService.listInstitutions(this.page(), this.limit()).subscribe({
+    this.apiService.listInstitutions(this.page(), this.limit(), this.searchTerm()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.institutions.set(res.data || []);
@@ -225,6 +234,12 @@ export class AdminInstitutionmasterlist implements OnInit {
 
   onLimitChange(value: string): void {
     this.limit.set(Number(value));
+    this.page.set(1);
+    this.loadInstitutions();
+  }
+
+  onSearch(value: string): void {
+    this.searchTerm.set(value);
     this.page.set(1);
     this.loadInstitutions();
   }

@@ -1122,8 +1122,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listProducts(page = 1, limit = 25): Observable<ApiResponse> {
+    listProducts(page = 1, limit = 25, search = ''): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
+        if (search) {
+            params = params.set('search', search);
+        }
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/products/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
@@ -1213,8 +1216,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listInstitutions(page = 1, limit = 25): Observable<ApiResponse> {
+    listInstitutions(page = 1, limit = 25, search = ''): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
+        if (search) {
+            params = params.set('search', search);
+        }
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/institutions/list`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }

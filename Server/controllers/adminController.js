@@ -206,13 +206,26 @@ const deleteEmployee = async (req, res) => {
 const listProducts = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
     const offset = (page - 1) * limit;
 
     try {
-        const [rows] = await db.execute(
-            `SELECT * FROM tbl_labour_code ORDER BY labour_title LIMIT ${limit} OFFSET ${offset}`
-        );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_labour_code');
+        let whereClause = '';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            whereClause = 'WHERE labour_code LIKE ? OR labour_title LIKE ?';
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
+            countParams = [searchTerm, searchTerm];
+        }
+
+        const query = `SELECT * FROM tbl_labour_code ${whereClause} ORDER BY labour_title LIMIT ${limit} OFFSET ${offset}`;
+        const countQuery = `SELECT COUNT(*) as total FROM tbl_labour_code ${whereClause}`;
+
+        const [rows] = await db.execute(query, params);
+        const [totalRows] = await db.execute(countQuery, countParams);
 
         res.json({
             success: true,
@@ -463,13 +476,26 @@ const deleteCompany = async (req, res) => {
 const listInstitutions = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
     const offset = (page - 1) * limit;
 
     try {
-        const [rows] = await db.execute(
-            `SELECT * FROM tbl_branch ORDER BY branch_name ASC LIMIT ${limit} OFFSET ${offset}`
-        );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_branch');
+        let whereClause = '';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            whereClause = 'WHERE branch_id LIKE ? OR branch_name LIKE ?';
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
+            countParams = [searchTerm, searchTerm];
+        }
+
+        const query = `SELECT * FROM tbl_branch ${whereClause} ORDER BY branch_name ASC LIMIT ${limit} OFFSET ${offset}`;
+        const countQuery = `SELECT COUNT(*) as total FROM tbl_branch ${whereClause}`;
+
+        const [rows] = await db.execute(query, params);
+        const [totalRows] = await db.execute(countQuery, countParams);
 
         res.json({
             success: true,
