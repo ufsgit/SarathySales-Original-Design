@@ -433,7 +433,19 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
     private loadPaySlipIntoForm(d: any): void {
         this.paySlipNo.set(d.pay_slip_no || '');
-        this.paySlipDate.set(d.pay_slip_date ? new Date(d.pay_slip_date).toISOString().substr(0, 10) : '');
+        if (d.pay_slip_date) {
+            const dt = new Date(d.pay_slip_date);
+            if (!isNaN(dt.getTime())) {
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth() + 1).padStart(2, '0');
+                const day = String(dt.getDate()).padStart(2, '0');
+                this.paySlipDate.set(`${y}-${m}-${day}`);
+            } else {
+                this.paySlipDate.set('');
+            }
+        } else {
+            this.paySlipDate.set('');
+        }
         this.customerName.set(d.pay_cus_name || '');
         this.vehicleName.set(d.pay_slip_reference || '');
         this.remarks.set(d.pay_remarks || '');

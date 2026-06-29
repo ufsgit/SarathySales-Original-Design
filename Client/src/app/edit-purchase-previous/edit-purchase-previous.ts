@@ -173,7 +173,10 @@ export class EditPurchasePrevious implements OnInit {
     if (!d) return '';
     const dt = new Date(d);
     if (isNaN(dt.getTime())) return '';
-    return dt.toISOString().split('T')[0];
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   loadBranches() {

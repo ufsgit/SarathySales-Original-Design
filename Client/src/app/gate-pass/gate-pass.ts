@@ -667,7 +667,19 @@ export class GatePassComponent implements OnInit {
           this.color.set(d.color || '');
           this.productCode.set(d.productCode || '');
           if (d.selectionDate) {
-            this.selectionDate.set(new Date(d.selectionDate).toISOString().slice(0, 10));
+            if (d.selectionDate) {
+            const dt = new Date(d.selectionDate);
+            if (!isNaN(dt.getTime())) {
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth() + 1).padStart(2, '0');
+                const day = String(dt.getDate()).padStart(2, '0');
+                this.selectionDate.set(`${y}-${m}-${day}`);
+            } else {
+                this.selectionDate.set('');
+            }
+        } else {
+            this.selectionDate.set('');
+        }
           }
         }
       },
