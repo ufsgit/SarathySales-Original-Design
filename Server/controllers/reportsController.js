@@ -12,7 +12,7 @@ const getSalesReport = async (req, res) => {
 
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "(tbl_invoice_labour.inv_type = 'sale' OR tbl_invoice_labour.inv_type = '01')"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
         let params = [from, to];
 
         if (branchId) {
@@ -546,7 +546,7 @@ const exportSalesExcel = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "(tbl_invoice_labour.inv_type = 'sale' OR tbl_invoice_labour.inv_type = '01')"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
         let params = [from, to];
 
         if (branchId) {
@@ -565,8 +565,16 @@ const exportSalesExcel = async (req, res) => {
 
         const where = 'WHERE ' + conditions.join(' AND ');
 
-        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_name FROM tbl_invoice_labour
+        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_name, pi.p_date AS mfg_date FROM tbl_invoice_labour
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_invoice_labour.inv_branch
+             LEFT JOIN purchaseitem pi ON pi.purchaseItemId = (
+                 SELECT MAX(p_inner.purchaseItemId) 
+                 FROM purchaseitem p_inner 
+                 LEFT JOIN purchaseitembill pb_inner ON p_inner.purchaseItemBillId = pb_inner.purchaseItemBillId
+                 WHERE p_inner.chassis_no = tbl_invoice_labour.inv_chassis 
+                   AND p_inner.item_status = 'Delivered'
+                   AND pb_inner.purch_branchId = tbl_invoice_labour.inv_branch
+             )
              ${where} ORDER BY inv_inv_date DESC`;
 
         const [rows] = await db.execute(query, params);
@@ -601,7 +609,8 @@ const exportSalesExcel = async (req, res) => {
             { header: 'CGST', key: 'cgst', width: 12 },
             { header: 'CESS', key: 'cess', width: 12 },
             { header: 'TOTAL', key: 'total', width: 15 },
-            { header: 'GSTIN', key: 'gstin', width: 20 }
+            { header: 'GSTIN', key: 'gstin', width: 20 },
+            { header: 'MFG DATE', key: 'mfg_date', width: 15 }
         ];
 
         worksheet.getRow(1).font = { bold: true };
@@ -634,7 +643,8 @@ const exportSalesExcel = async (req, res) => {
                 cgst: parseFloat(r.inv_cgst || 0),
                 cess: parseFloat(r.inv_cess || 0),
                 total: parseFloat(r.inv_total || 0),
-                gstin: r.inv_gstin
+                gstin: r.inv_gstin,
+                mfg_date: r.mfg_date ? new Date(r.mfg_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''
             });
         });
 
@@ -670,7 +680,7 @@ const exportSalesPagedExcel = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "(tbl_invoice_labour.inv_type = 'sale' OR tbl_invoice_labour.inv_type = '01')"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
         let params = [from, to];
 
         if (branchId) {
@@ -689,8 +699,16 @@ const exportSalesPagedExcel = async (req, res) => {
 
         const where = 'WHERE ' + conditions.join(' AND ');
 
-        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_id, tbl_branch.branch_name FROM tbl_invoice_labour
+        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_id, tbl_branch.branch_name, pi.p_date AS mfg_date FROM tbl_invoice_labour
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_invoice_labour.inv_branch
+             LEFT JOIN purchaseitem pi ON pi.purchaseItemId = (
+                 SELECT MAX(p_inner.purchaseItemId) 
+                 FROM purchaseitem p_inner 
+                 LEFT JOIN purchaseitembill pb_inner ON p_inner.purchaseItemBillId = pb_inner.purchaseItemBillId
+                 WHERE p_inner.chassis_no = tbl_invoice_labour.inv_chassis 
+                   AND p_inner.item_status = 'Delivered'
+                   AND pb_inner.purch_branchId = tbl_invoice_labour.inv_branch
+             )
              ${where} ORDER BY inv_inv_date DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [rows] = await db.execute(query, params);
@@ -698,45 +716,71 @@ const exportSalesPagedExcel = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Sales Report Page');
 
-        worksheet.mergeCells('A1:L1');
-        const titleRow = worksheet.getRow(1);
-        titleRow.getCell(1).value = 'Sales Bill Statement';
-        titleRow.getCell(1).alignment = { horizontal: 'center' };
-        titleRow.getCell(1).font = { bold: true };
-
-        worksheet.getRow(2).values = [
-            'INVOICE NO', 'DATE', 'BRANCH', 'VEHICLE', 'VEHICLE CODE', 'CUSTOMER', 'ADDRESS', 'CONTACT', 'FATHER', 'INVOICE TYPE', 'CDMS', 'AREA', 'HYPO', 'CHASSIS', 'ENGINE', 'EXECUTIVE', 'COLOR', 'TAXABLE', 'SGST', 'CGST', 'CESS', 'TOTAL'
+        worksheet.columns = [
+            { header: 'SINO', key: 'sino', width: 8 },
+            { header: 'INVOICE NO', key: 'inv_no', width: 20 },
+            { header: 'INVOICE DATE', key: 'inv_date', width: 15 },
+            { header: 'BRANCH', key: 'branch', width: 25 },
+            { header: 'CUSTOMER', key: 'customer', width: 25 },
+            { header: 'ADDRESS', key: 'address', width: 35 },
+            { header: 'CONTACT NO', key: 'contact', width: 15 },
+            { header: 'FATHER/HUS B', key: 'father', width: 20 },
+            { header: 'BILL TYPE', key: 'type', width: 12 },
+            { header: 'CDMS NO', key: 'cdms', width: 15 },
+            { header: 'AREA', key: 'area', width: 20 },
+            { header: 'HYPOTHICATIO', key: 'hypo', width: 20 },
+            { header: 'CHASSIS NUME', key: 'chassis', width: 25 },
+            { header: 'ENGINE NUMB', key: 'engine', width: 25 },
+            { header: 'PLACE', key: 'place', width: 20 },
+            { header: 'RECEIPT NO', key: 'receipt', width: 15 },
+            { header: 'EXECUTIVE', key: 'executive', width: 20 },
+            { header: 'FINANCE DUES', key: 'dues', width: 15 },
+            { header: 'VEHICLE CODE', key: 'vcode', width: 15 },
+            { header: 'VEHICLE NAME', key: 'vname', width: 25 },
+            { header: 'COLOR', key: 'color', width: 15 },
+            { header: 'TAXAB', key: 'taxable', width: 12 },
+            { header: 'SGSTA', key: 'sgst', width: 12 },
+            { header: 'CGST', key: 'cgst', width: 12 },
+            { header: 'CESS', key: 'cess', width: 12 },
+            { header: 'TOTAL', key: 'total', width: 15 },
+            { header: 'GSTIN', key: 'gstin', width: 20 },
+            { header: 'MFG DATE', key: 'mfg_date', width: 15 }
         ];
-        worksheet.getRow(2).font = { bold: true };
 
-        rows.forEach((r) => {
-            worksheet.addRow([
-                r.inv_no,
-                r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
-                r.branch_name + '(' + r.branch_id + ')',
-                r.inv_vehicle,
-                r.inv_vehicle_code,
-                r.inv_cus,
-                r.inv_cus_addres,
-                r.inv_pho,
-                r.inv_cus_father_hus,
-                r.inv_type,
-                r.inv_cdms_no,
-                r.inv_area,
-                r.inv_hypothication,
-                r.inv_chassis,
-                r.in_engine,
-                r.inv_advisername,
-                r.inv_color,
-                parseFloat(r.inv_taxable_amt || 0),
-                parseFloat(r.inv_sgst || 0),
-                parseFloat(r.inv_cgst || 0),
-                parseFloat(r.inv_cess || 0),
-                parseFloat(r.inv_total || 0)
-            ]);
+        worksheet.getRow(1).font = { bold: true };
+
+        rows.forEach((r, i) => {
+            worksheet.addRow({
+                sino: offset + i + 1,
+                inv_no: r.inv_no,
+                inv_date: r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
+                branch: r.branch_name,
+                customer: r.inv_cus,
+                address: r.inv_cus_addres,
+                contact: r.inv_pho,
+                father: r.inv_cus_father_hus,
+                type: r.inv_type,
+                cdms: r.inv_cdms_no,
+                area: r.inv_area,
+                hypo: r.inv_hypothication,
+                chassis: r.inv_chassis,
+                engine: r.in_engine,
+                place: r.inv_place,
+                receipt: r.inv_receipt_no,
+                executive: r.inv_advisername,
+                dues: r.inv_finance_dues,
+                vcode: r.inv_vehicle_code,
+                vname: r.inv_vehicle,
+                color: r.inv_color,
+                taxable: parseFloat(r.inv_taxable_amt || 0),
+                sgst: parseFloat(r.inv_sgst || 0),
+                cgst: parseFloat(r.inv_cgst || 0),
+                cess: parseFloat(r.inv_cess || 0),
+                total: parseFloat(r.inv_total || 0),
+                gstin: r.inv_gstin,
+                mfg_date: r.mfg_date ? new Date(r.mfg_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''
+            });
         });
-
-        worksheet.columns.forEach(col => { col.width = 20; });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=SalesPaged_${page}.xlsx`);
@@ -760,7 +804,7 @@ const exportSalesPagedCsv = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "(tbl_invoice_labour.inv_type = 'sale' OR tbl_invoice_labour.inv_type = '01')"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
         let params = [from, to];
 
         if (branchId) {
@@ -779,8 +823,16 @@ const exportSalesPagedCsv = async (req, res) => {
 
         const where = 'WHERE ' + conditions.join(' AND ');
 
-        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_id, tbl_branch.branch_name FROM tbl_invoice_labour
+        const query = `SELECT tbl_invoice_labour.*, tbl_branch.branch_id, tbl_branch.branch_name, pi.p_date AS mfg_date FROM tbl_invoice_labour
              LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_invoice_labour.inv_branch
+             LEFT JOIN purchaseitem pi ON pi.purchaseItemId = (
+                 SELECT MAX(p_inner.purchaseItemId) 
+                 FROM purchaseitem p_inner 
+                 LEFT JOIN purchaseitembill pb_inner ON p_inner.purchaseItemBillId = pb_inner.purchaseItemBillId
+                 WHERE p_inner.chassis_no = tbl_invoice_labour.inv_chassis 
+                   AND p_inner.item_status = 'Delivered'
+                   AND pb_inner.purch_branchId = tbl_invoice_labour.inv_branch
+             )
              ${where} ORDER BY inv_inv_date DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [rows] = await db.execute(query, params);
@@ -788,35 +840,70 @@ const exportSalesPagedCsv = async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Sales Report Page');
 
-        worksheet.addRow([
-            'INVOICE NO', 'DATE', 'BRANCH', 'VEHICLE', 'VEHICLE CODE', 'CUSTOMER', 'ADDRESS', 'CONTACT', 'FATHER', 'INVOICE TYPE', 'CDMS', 'AREA', 'HYPO', 'CHASSIS', 'ENGINE', 'EXECUTIVE', 'COLOR', 'TAXABLE', 'SGST', 'CGST', 'CESS', 'TOTAL'
-        ]);
+        worksheet.columns = [
+            { header: 'SINO', key: 'sino', width: 8 },
+            { header: 'INVOICE NO', key: 'inv_no', width: 20 },
+            { header: 'INVOICE DATE', key: 'inv_date', width: 15 },
+            { header: 'BRANCH', key: 'branch', width: 25 },
+            { header: 'CUSTOMER', key: 'customer', width: 25 },
+            { header: 'ADDRESS', key: 'address', width: 35 },
+            { header: 'CONTACT NO', key: 'contact', width: 15 },
+            { header: 'FATHER/HUS B', key: 'father', width: 20 },
+            { header: 'BILL TYPE', key: 'type', width: 12 },
+            { header: 'CDMS NO', key: 'cdms', width: 15 },
+            { header: 'AREA', key: 'area', width: 20 },
+            { header: 'HYPOTHICATIO', key: 'hypo', width: 20 },
+            { header: 'CHASSIS NUME', key: 'chassis', width: 25 },
+            { header: 'ENGINE NUMB', key: 'engine', width: 25 },
+            { header: 'PLACE', key: 'place', width: 20 },
+            { header: 'RECEIPT NO', key: 'receipt', width: 15 },
+            { header: 'EXECUTIVE', key: 'executive', width: 20 },
+            { header: 'FINANCE DUES', key: 'dues', width: 15 },
+            { header: 'VEHICLE CODE', key: 'vcode', width: 15 },
+            { header: 'VEHICLE NAME', key: 'vname', width: 25 },
+            { header: 'COLOR', key: 'color', width: 15 },
+            { header: 'TAXAB', key: 'taxable', width: 12 },
+            { header: 'SGSTA', key: 'sgst', width: 12 },
+            { header: 'CGST', key: 'cgst', width: 12 },
+            { header: 'CESS', key: 'cess', width: 12 },
+            { header: 'TOTAL', key: 'total', width: 15 },
+            { header: 'GSTIN', key: 'gstin', width: 20 },
+            { header: 'MFG DATE', key: 'mfg_date', width: 15 }
+        ];
 
-        rows.forEach((r) => {
-            worksheet.addRow([
-                r.inv_no,
-                r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '-') : '',
-                r.branch_name + '(' + r.branch_id + ')',
-                r.inv_vehicle,
-                r.inv_vehicle_code,
-                r.inv_cus,
-                r.inv_cus_addres,
-                r.inv_pho,
-                r.inv_cus_father_hus,
-                r.inv_type,
-                r.inv_cdms_no,
-                r.inv_area,
-                r.inv_hypothication,
-                r.inv_chassis,
-                r.in_engine,
-                r.inv_advisername,
-                r.inv_color,
-                parseFloat(r.inv_taxable_amt || 0),
-                parseFloat(r.inv_sgst || 0),
-                parseFloat(r.inv_cgst || 0),
-                parseFloat(r.inv_cess || 0),
-                parseFloat(r.inv_total || 0)
-            ]);
+        worksheet.getRow(1).font = { bold: true };
+
+        rows.forEach((r, i) => {
+            worksheet.addRow({
+                sino: offset + i + 1,
+                inv_no: r.inv_no,
+                inv_date: r.inv_inv_date ? new Date(r.inv_inv_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '',
+                branch: r.branch_name,
+                customer: r.inv_cus,
+                address: r.inv_cus_addres,
+                contact: r.inv_pho,
+                father: r.inv_cus_father_hus,
+                type: r.inv_type,
+                cdms: r.inv_cdms_no,
+                area: r.inv_area,
+                hypo: r.inv_hypothication,
+                chassis: r.inv_chassis,
+                engine: r.in_engine,
+                place: r.inv_place,
+                receipt: r.inv_receipt_no,
+                executive: r.inv_advisername,
+                dues: r.inv_finance_dues,
+                vcode: r.inv_vehicle_code,
+                vname: r.inv_vehicle,
+                color: r.inv_color,
+                taxable: parseFloat(r.inv_taxable_amt || 0),
+                sgst: parseFloat(r.inv_sgst || 0),
+                cgst: parseFloat(r.inv_cgst || 0),
+                cess: parseFloat(r.inv_cess || 0),
+                total: parseFloat(r.inv_total || 0),
+                gstin: r.inv_gstin,
+                mfg_date: r.mfg_date ? new Date(r.mfg_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : ''
+            });
         });
 
         res.setHeader('Content-Type', 'text/csv');

@@ -342,10 +342,9 @@ const listInvoices = async (req, res) => {
 const createSalesPdf = async (req, res) => {
     try {
         const [records] = await db.execute(
-            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id, e.e_first_name AS executive_name 
+            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id
              FROM tbl_invoice_labour inv
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
-             LEFT JOIN tbl_employee e ON CAST(e.emp_id AS CHAR) = CAST(inv.inv_advisername AS CHAR)
              WHERE inv.inv_id = ?`, [req.params.id]
         );
 
@@ -491,7 +490,7 @@ const createSalesPdf = async (req, res) => {
                 detailY += 12;
                 drawFieldRow('Mobile No.', data.inv_pho || '', 'Color', data.inv_color || '', detailY);
                 detailY += 12;
-                drawFieldRow('Executive Name', data.executive_name || data.inv_advisername || '', '', '', detailY, true);
+                drawFieldRow('Executive Name', data.inv_advisername || '', '', '', detailY, true);
                 detailY += 12;
                 drawFieldRow('Invoice Type', data.inv_type || '01', '', '', detailY);
                 detailY += 12;
@@ -830,10 +829,9 @@ const createRtoBillPdf = async (req, res) => {
     // To keep it clean, I'll essentially reuse createSalesPdf logic but change the title string.
     try {
         const [records] = await db.execute(
-            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id, e.e_first_name AS executive_name 
+            `SELECT inv.*, b.branch_name, b.branch_address, b.branch_ph, b.branch_gstin, b.logo_id 
              FROM tbl_invoice_labour inv
              LEFT JOIN tbl_branch b ON b.b_id = inv.inv_branch
-             LEFT JOIN tbl_employee e ON CAST(e.emp_id AS CHAR) = CAST(inv.inv_advisername AS CHAR)
              WHERE inv.inv_id = ?`, [req.params.id]
         );
 
@@ -976,7 +974,7 @@ const createRtoBillPdf = async (req, res) => {
                 detailY += 12;
                 drawFieldRow('Mobile No.', data.inv_pho || '', 'Color', data.inv_color || '', detailY);
                 detailY += 12;
-                drawFieldRow('Executive Name', data.executive_name || data.inv_advisername || '', '', '', detailY, true);
+                drawFieldRow('Executive Name', data.inv_advisername || '', '', '', detailY, true);
                 detailY += 12;
                 drawFieldRow('Invoice Type', data.inv_type || '01', '', '', detailY);
                 detailY += 12;
@@ -1247,6 +1245,14 @@ const saveInvoice = async (req, res) => {
 
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
+        let finalAdviserName = adviserId || '';
+        if (adviserId) {
+            const [empRows] = await conn.execute(`SELECT e_first_name FROM tbl_employee WHERE emp_id = ?`, [adviserId]);
+            if (empRows.length > 0) {
+                finalAdviserName = empRows[0].e_first_name;
+            }
+        }
+
         const params = [
             invoiceNo,
             branchId,
@@ -1255,7 +1261,7 @@ const saveInvoice = async (req, res) => {
             chassisNo || '',
             engineNo || '',
             regNo || '',
-            adviserId || '',
+            finalAdviserName,
             totalAmount || 0,
             mobileNo || '',
             guardian || '',
@@ -1369,9 +1375,17 @@ const updateInvoice = async (req, res) => {
         const safeProductId = invProductId !== undefined && invProductId !== null && invProductId !== '' ? parseInt(invProductId, 10) || 0 : 0;
         const safeColorCode = invColorCode !== undefined && invColorCode !== null && invColorCode !== '' ? parseInt(invColorCode, 10) || 0 : 0;
 
+        let finalAdviserName = adviserId || '';
+        if (adviserId) {
+            const [empRows] = await conn.execute(`SELECT e_first_name FROM tbl_employee WHERE emp_id = ?`, [adviserId]);
+            if (empRows.length > 0) {
+                finalAdviserName = empRows[0].e_first_name;
+            }
+        }
+
         const params = [
             invoiceNo, branchId, parsedDate, customerName, chassisNo || '', engineNo || '',
-            regNo || '', adviserId || '', totalAmount, mobileNo || '', guardian || '',
+            regNo || '', finalAdviserName, totalAmount, mobileNo || '', guardian || '',
             address || '', issueType || '', age || '', cdmsNo || '', area || '', hypothication || '', place || '',
             receiptNo || '', financeDues || '', vehicle || '', pCode || '', color || '', gstin || '',
             basicAmount || 0, discountAmount || 0, hsnCode || '', taxableAmount || 0, sgst || 0, cgst || 0, cess || 0,
