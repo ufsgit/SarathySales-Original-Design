@@ -79,36 +79,54 @@ const getNextInvoiceFromProformaNumber = async (req, res) => {
     try {
         const currentYear = new Date().getFullYear();
 
-        // 🔹 Fetch last invoice from tbl_invoice_labour
+        // 🔹 Fetch branch_id from tbl_branch
+        const [branchRows] = await db.execute(
+            `SELECT branch_id FROM tbl_branch WHERE b_id = ?`,
+            [branchId]
+        );
+
+        let brand_id = branchId;
+        if (branchRows.length > 0 && branchRows[0].branch_id) {
+            brand_id = branchRows[0].branch_id;
+        }
+
+        const prefix = `VSI${currentYear}${brand_id}`;
+
+        // 🔹 Fetch last invoice matching the new prefix
         const [rows] = await db.execute(
             `
             SELECT inv_no
             FROM tbl_invoice_labour
             WHERE inv_branch = ?
-              AND YEAR(inv_inv_date) = ?
+              AND inv_no LIKE ?
             ORDER BY inv_id DESC
             LIMIT 1
             `,
-            [branchId, currentYear]
+            [branchId, `${prefix}%`]
         );
 
         let nextRunningNumber = 1;
+        let padLength = 6; // Default standard length
 
         if (rows.length > 0 && rows[0].inv_no) {
             const lastInvoiceNo = rows[0].inv_no;
 
-            // Extract last 6 digits safely
-            const lastNumber = parseInt(lastInvoiceNo.slice(-6)) || 0;
-            nextRunningNumber = lastNumber + 1;
+            // Dynamically strip the prefix to get the pure serial number
+            const serialStr = lastInvoiceNo.substring(prefix.length);
+            const lastNumber = parseInt(serialStr, 10);
+            
+            if (!isNaN(lastNumber)) {
+                nextRunningNumber = lastNumber + 1;
+                // Measure the length of the existing serial to maintain formatting
+                padLength = serialStr.length > 0 ? serialStr.length : 6;
+            }
         }
 
         const formattedRunningNumber = nextRunningNumber
             .toString()
-            .padStart(6, '0');
+            .padStart(padLength, '0');
 
-        // Format → VSI202610000001
-        const newInvoiceNumber =
-            `VSI${currentYear}${branchId}${formattedRunningNumber}`;
+        const newInvoiceNumber = `${prefix}${formattedRunningNumber}`;
 
         return res.json({
             success: true,
