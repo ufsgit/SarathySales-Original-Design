@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, HostListener } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -48,6 +48,36 @@ import { ApiService } from '../services/api.service';
                 <option value="100">100</option>
               </select>
               <label>entries</label>
+            </div>
+            <div class="filters-group">
+              <div class="custom-select-container" (click)="$event.stopPropagation()">
+                <div class="custom-select-trigger" (click)="toggleBranchDropdown()">
+                  <span>{{ getSelectedBranchName() }}</span>
+                  <i class="fas fa-caret-down dropdown-arrow"></i>
+                </div>
+                <div class="custom-select-dropdown" *ngIf="isBranchDropdownOpen()">
+                  <div class="dropdown-search-box">
+                    <input type="text"
+                           [value]="branchSearchTerm()"
+                           (input)="onBranchSearchInput($any($event.target).value)"
+                           placeholder="SEARCH..."
+                           (click)="$event.stopPropagation()">
+                  </div>
+                  <ul class="dropdown-options-list">
+                    <li (click)="onBranchSelect('')">All Branches</li>
+                    <li *ngFor="let b of filteredBranches()" (click)="onBranchSelect(b.b_id)">
+                      {{b.branch_name}}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <label class="checkbox-label">
+                <input type="checkbox" [ngModel]="hasStock()" (ngModelChange)="onHasStockChange($event)">
+                Current Stock Only
+              </label>
+              <div class="search-group">
+                <input type="text" class="search-input" placeholder="Search Item Code or Name..." [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)">
+              </div>
             </div>
           </div>
 
@@ -142,10 +172,40 @@ import { ApiService } from '../services/api.service';
     
     .page-card-content { padding: 0; background: #fff; }
 
-    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
+    .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; flex-wrap: wrap; gap: 15px; }
     .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
     .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
     
+    .filters-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+    
+    /* Custom Select Dropdown Styles */
+    .custom-select-container { position: relative; width: 240px; font-family: sans-serif; }
+    .custom-select-trigger { 
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 3px; background: #fff;
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+      font-size: 13px; color: #333; min-height: 30px; box-sizing: border-box;
+    }
+    .custom-select-trigger .dropdown-arrow { font-size: 14px; color: #777; }
+    
+    .custom-select-dropdown { 
+      position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ccc;
+      border-top: none; z-index: 1000; box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+    }
+    .dropdown-search-box { padding: 6px; }
+    .dropdown-search-box input { 
+      width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 2px; font-size: 12px; outline: none;
+      box-sizing: border-box; color: #555;
+    }
+    .dropdown-search-box input::placeholder { color: #aaa; }
+    
+    .dropdown-options-list { margin: 0; padding: 0; list-style: none; max-height: 250px; overflow-y: auto; }
+    .dropdown-options-list li { padding: 8px 10px; font-size: 13px; cursor: pointer; color: #444; }
+    .dropdown-options-list li:hover { background-color: #f5f5f5; }
+
+    .checkbox-label { font-size: 13px; color: #333; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .search-group { display: flex; align-items: center; }
+    .search-input { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; outline: none; font-size: 13px; width: 220px; }
+
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .report-table th { background: #f1f1f1; padding: 10px; text-align: left; border: 1px solid #ddd; color: #333; font-weight: 600; }
@@ -183,7 +243,18 @@ export class AdminStocklist implements OnInit {
   total = signal(0);
   page = signal(1);
   limit = signal(25);
+  searchTerm = signal('');
+  selectedBranchId = signal('');
+  hasStock = signal(false);
+  branches = signal<any[]>([]);
+  branchSearchTerm = signal('');
+  isBranchDropdownOpen = signal(false);
   openDropdownIndex: number | null = null;
+
+  filteredBranches = computed(() => {
+    const term = this.branchSearchTerm().toLowerCase();
+    return this.branches().filter(b => b.branch_name?.toLowerCase().includes(term));
+  });
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
   fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
@@ -209,14 +280,27 @@ export class AdminStocklist implements OnInit {
     return pages;
   });
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  constructor(private apiService: ApiService, private router: Router) { }
 
   ngOnInit(): void {
+    this.loadBranches();
     this.loadStocks();
   }
 
+  loadBranches() {
+    this.apiService.listBranches().subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.branches.set(res.data || []);
+        }
+      },
+      error: (err: any) => console.error('Error loading branches', err)
+    });
+  }
+
   loadStocks() {
-    this.apiService.listStocks(undefined, this.page(), this.limit()).subscribe({
+    const branchId = this.selectedBranchId() || undefined;
+    this.apiService.listStocks(branchId, this.page(), this.limit(), this.searchTerm(), this.hasStock()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.stocks.set(res.data || []);
@@ -225,6 +309,48 @@ export class AdminStocklist implements OnInit {
       },
       error: (err: any) => console.error('Error loading stocks', err)
     });
+  }
+
+  onSearchChange(value: string) {
+    this.searchTerm.set(value);
+    this.page.set(1);
+    this.loadStocks();
+  }
+
+  toggleBranchDropdown() {
+    this.isBranchDropdownOpen.set(!this.isBranchDropdownOpen());
+    if (this.isBranchDropdownOpen()) {
+      this.branchSearchTerm.set('');
+    }
+  }
+
+  onBranchSearchInput(value: string) {
+    this.branchSearchTerm.set(value);
+  }
+
+  @HostListener('document:click')
+  closeBranchDropdown() {
+    this.isBranchDropdownOpen.set(false);
+  }
+
+  onBranchSelect(value: string) {
+    this.selectedBranchId.set(value);
+    this.isBranchDropdownOpen.set(false);
+    this.page.set(1);
+    this.loadStocks();
+  }
+
+  getSelectedBranchName(): string {
+    const id = this.selectedBranchId();
+    if (!id) return 'All Branches';
+    const branch = this.branches().find(b => b.b_id?.toString() === id.toString());
+    return branch ? branch.branch_name : 'All Branches';
+  }
+
+  onHasStockChange(value: boolean) {
+    this.hasStock.set(value);
+    this.page.set(1);
+    this.loadStocks();
   }
 
   onLimitChange(value: string): void {

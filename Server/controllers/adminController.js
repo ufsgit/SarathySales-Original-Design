@@ -291,13 +291,26 @@ const addProduct = async (req, res) => {
 const listHypothecations = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
     const offset = (page - 1) * limit;
 
     try {
+        let whereClause = '';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            whereClause = 'WHERE icompany_name LIKE ? OR icompany_gst LIKE ?';
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
+            countParams = [searchTerm, searchTerm];
+        }
+
         const [rows] = await db.execute(
-            `SELECT com_id as id, icompany_name as name, icompany_address as address, icompany_gst as gstin FROM tbl_insurance_company ORDER BY icompany_name ASC LIMIT ${limit} OFFSET ${offset}`
+            `SELECT com_id as id, icompany_name as name, icompany_address as address, icompany_gst as gstin FROM tbl_insurance_company ${whereClause} ORDER BY icompany_name ASC LIMIT ${limit} OFFSET ${offset}`,
+            params
         );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_insurance_company');
+        const [totalRows] = await db.execute(`SELECT COUNT(*) as total FROM tbl_insurance_company ${whereClause}`, countParams);
 
         res.json({
             success: true,
@@ -373,13 +386,26 @@ const deleteHypothecation = async (req, res) => {
 const listCompanies = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
     const offset = (page - 1) * limit;
 
     try {
+        let whereClause = '';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            whereClause = 'WHERE c_reg_no LIKE ? OR c_name LIKE ?';
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
+            countParams = [searchTerm, searchTerm];
+        }
+
         const [rows] = await db.execute(
-            `SELECT * FROM customer_details ORDER BY c_name ASC LIMIT ${limit} OFFSET ${offset}`
+            `SELECT * FROM customer_details ${whereClause} ORDER BY c_name ASC LIMIT ${limit} OFFSET ${offset}`,
+            params
         );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM customer_details');
+        const [totalRows] = await db.execute(`SELECT COUNT(*) as total FROM customer_details ${whereClause}`, countParams);
 
         res.json({
             success: true,
@@ -588,13 +614,26 @@ const deleteInstitution = async (req, res) => {
 const listColors = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
     const offset = (page - 1) * limit;
 
     try {
+        let whereClause = '';
+        let params = [];
+        let countParams = [];
+
+        if (search) {
+            whereClause = 'WHERE mod_code LIKE ? OR mod_name LIKE ?';
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
+            countParams = [searchTerm, searchTerm];
+        }
+
         const [rows] = await db.execute(
-            `SELECT model_id as id, mod_code as color_code, mod_name as description FROM tbl_model ORDER BY mod_code ASC LIMIT ${limit} OFFSET ${offset}`
+            `SELECT model_id as id, mod_code as color_code, mod_name as description FROM tbl_model ${whereClause} ORDER BY mod_code ASC LIMIT ${limit} OFFSET ${offset}`,
+            params
         );
-        const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM tbl_model');
+        const [totalRows] = await db.execute(`SELECT COUNT(*) as total FROM tbl_model ${whereClause}`, countParams);
 
         res.json({
             success: true,

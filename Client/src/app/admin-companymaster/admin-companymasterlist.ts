@@ -51,6 +51,9 @@ import { FormsModule } from '@angular/forms';
               </select>
               <label>entries</label>
             </div>
+            <div class="search-group">
+              <input type="text" class="search-input" placeholder="Search ID or Name..." [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)">
+            </div>
           </div>
 
           <div class="table-container">
@@ -152,6 +155,8 @@ import { FormsModule } from '@angular/forms';
     .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
     .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
     .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+    .search-group { display: flex; align-items: center; }
+    .search-input { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; outline: none; font-size: 13px; width: 220px; }
     
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -198,6 +203,7 @@ export class AdminCompanymasterlist implements OnInit {
   total = signal(0);
   page = signal(1);
   limit = signal(25);
+  searchTerm = signal('');
   openDropdownIndex: number | null = null;
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
@@ -231,7 +237,7 @@ export class AdminCompanymasterlist implements OnInit {
   }
 
   loadCompanies() {
-    this.apiService.listCompanies(this.page(), this.limit()).subscribe({
+    this.apiService.listCompanies(this.page(), this.limit(), this.searchTerm()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.companies.set(res.data || []);
@@ -240,6 +246,12 @@ export class AdminCompanymasterlist implements OnInit {
       },
       error: (err: any) => console.error(err)
     });
+  }
+
+  onSearchChange(value: string) {
+    this.searchTerm.set(value);
+    this.page.set(1);
+    this.loadCompanies();
   }
 
   onLimitChange(value: string): void {

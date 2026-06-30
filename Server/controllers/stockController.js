@@ -10,20 +10,35 @@ const getStockList = async (req, res) => {
     }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 25);
+    const search = req.query.search ? req.query.search.trim() : '';
+    const hasStock = req.query.hasStock === 'true';
     const offset = (page - 1) * limit;
 
     try {
         let sql = `SELECT tbl_stock.*, tbl_branch.branch_name FROM tbl_stock
-                   LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_item_branch`;
-        let countSql = `SELECT COUNT(*) as total FROM tbl_stock`;
+                   LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_item_branch WHERE 1=1`;
+        let countSql = `SELECT COUNT(*) as total FROM tbl_stock
+                   LEFT JOIN tbl_branch ON tbl_branch.b_id = tbl_stock.stock_item_branch WHERE 1=1`;
         let params = [];
         let countParams = [];
 
         if (branchId) {
-            sql += ` WHERE tbl_stock.stock_item_branch = ?`;
-            countSql += ` WHERE tbl_stock.stock_item_branch = ?`;
+            sql += ` AND tbl_stock.stock_item_branch = ?`;
+            countSql += ` AND tbl_stock.stock_item_branch = ?`;
             params.push(branchId);
             countParams.push(branchId);
+        }
+
+        if (search) {
+            sql += ` AND (tbl_stock.stock_item_code LIKE ? OR tbl_stock.stock_item_name LIKE ?)`;
+            countSql += ` AND (tbl_stock.stock_item_code LIKE ? OR tbl_stock.stock_item_name LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`);
+            countParams.push(`%${search}%`, `%${search}%`);
+        }
+
+        if (hasStock) {
+            sql += ` AND (tbl_stock.stock_qty > 0 AND tbl_stock.stock_qty IS NOT NULL AND tbl_stock.stock_qty != '')`;
+            countSql += ` AND (tbl_stock.stock_qty > 0 AND tbl_stock.stock_qty IS NOT NULL AND tbl_stock.stock_qty != '')`;
         }
 
         sql += ` ORDER BY tbl_stock.stock_id DESC LIMIT ${limit} OFFSET ${offset}`;

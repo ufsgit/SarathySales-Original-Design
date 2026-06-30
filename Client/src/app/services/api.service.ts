@@ -1152,10 +1152,11 @@ export class ApiService {
     }
 
 
-    listHypothecations(page = 1, limit = 25): Observable<ApiResponse> {
-        let params = new HttpParams().set('page', page).set('limit', limit);
+    listHypothecations(page = 1, limit = 25, search = ''): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page.toString()).set('limit', limit.toString());
+        if (search) params = params.set('search', search);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/hypothecations/list`, { params })
-            .pipe(catchError(err => this.handleError(err)));
+            .pipe(catchError(this.handleError.bind(this)));
     }
 
     addHypothecationMaster(data: any): Observable<ApiResponse> {
@@ -1189,16 +1190,18 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listColors(page = 1, limit = 25): Observable<ApiResponse> {
-        let params = new HttpParams().set('page', page).set('limit', limit);
+    listColors(page = 1, limit = 25, search = ''): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page.toString()).set('limit', limit.toString());
+        if (search) params = params.set('search', search);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/colors/list`, { params })
-            .pipe(catchError(err => this.handleError(err)));
+            .pipe(catchError(this.handleError.bind(this)));
     }
 
-    listCompanies(page = 1, limit = 25): Observable<ApiResponse> {
-        let params = new HttpParams().set('page', page).set('limit', limit);
+    listCompanies(page = 1, limit = 25, search = ''): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page.toString()).set('limit', limit.toString());
+        if (search) params = params.set('search', search);
         return this.http.get<ApiResponse>(`${this.BASE_URL}/admin/companies/list`, { params })
-            .pipe(catchError(err => this.handleError(err)));
+            .pipe(catchError(this.handleError.bind(this)));
     }
 
     addCompanyMaster(data: any): Observable<ApiResponse> {
@@ -1250,11 +1253,13 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
-    listStocks(branchId?: string, page = 1, limit = 25): Observable<ApiResponse> {
-        let params = new HttpParams().set('page', page).set('limit', limit);
+    listStocks(branchId?: string, page = 1, limit = 25, search = '', hasStock = false): Observable<ApiResponse> {
+        let params = new HttpParams().set('page', page.toString()).set('limit', limit.toString());
         if (branchId) params = params.set('branchId', branchId);
+        if (search) params = params.set('search', search);
+        if (hasStock) params = params.set('hasStock', 'true');
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/list`, { params })
-            .pipe(catchError(err => this.handleError(err)));
+            .pipe(catchError(this.handleError.bind(this)));
     }
 
     deleteStock(id: string | number): Observable<ApiResponse> {

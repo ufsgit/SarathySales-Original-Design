@@ -6,6 +6,7 @@ import { UserNav } from '../user-nav/user-nav';
 import { UserFooter } from '../user-footer/user-footer';
 import { ApiService } from '../services/api.service';
 import { UppercaseDirective } from '../uppercase.directive';
+import * as XLSX from 'xlsx';
 
 
 @Component({
@@ -86,10 +87,35 @@ import { UppercaseDirective } from '../uppercase.directive';
                 </div>
                 <div class="form-col">
                     <label>Institution:</label>
-                    <select class="form-control" [ngModel]="institutionId()" (ngModelChange)="institutionId.set($event); onInstitutionChange()" name="institutionId">
-                        <option value="">--Select--</option>
-                        <option *ngFor="let b of institutionOptions()" [value]="b.b_id">{{ b.branch_name }}</option>
-                    </select>
+                    <div class="custom-dropdown" #institutionDropdownRef>
+                        <div class="dropdown-toggle" [class.placeholder]="!institution()" (click)="toggleInstitutionDropdown()">
+                            {{ institution() || '--Select--' }}
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="dropdown-menu" *ngIf="isInstitutionDropdownOpen()">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Search institution..."
+                                    [ngModel]="institutionSearchTerm()"
+                                    (ngModelChange)="institutionSearchTerm.set($event)"
+                                    name="institutionSearch" #institutionSearchInput
+                                    (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="dropdown-options-list">
+                                <div class="dropdown-option" (click)="onInstitutionSelect(null)">
+                                    --Select--
+                                </div>
+                                <div class="dropdown-option"
+                                    *ngFor="let b of searchableInstitutionOptionsList()"
+                                    (click)="onInstitutionSelect(b)">
+                                    {{ b.branch_name }}
+                                </div>
+                                <div class="dropdown-option no-results"
+                                    *ngIf="searchableInstitutionOptionsList().length === 0">
+                                    No institutions found
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-col">
                     <label>RC No(supplier):</label>
@@ -574,13 +600,30 @@ export class PurchaseUploadComponent implements OnInit {
 
     searchableBranchOptionsList = computed(() => {
         const term = this.branchSearchTerm().toLowerCase();
+        const selectedInstId = this.institutionId() ? this.institutionId().toString() : '';
         return this.branches().filter(b =>
-            (b.branch_name || '').toLowerCase().includes(term)
+            (b.branch_name || '').toLowerCase().includes(term) &&
+            b.b_id.toString() !== selectedInstId
         );
     });
 
     @ViewChild('branchDropdownRef') branchDropdownRef!: ElementRef;
     @ViewChild('branchSearchInput') branchSearchInput!: ElementRef;
+
+    isInstitutionDropdownOpen = signal(false);
+    institutionSearchTerm = signal('');
+
+    searchableInstitutionOptionsList = computed(() => {
+        const term = this.institutionSearchTerm().toLowerCase();
+        const selectedBranchId = this.branchId() ? this.branchId().toString() : '';
+        return this.institutionOptions().filter(b =>
+            (b.branch_name || '').toLowerCase().includes(term) &&
+            b.b_id.toString() !== selectedBranchId
+        );
+    });
+
+    @ViewChild('institutionDropdownRef') institutionDropdownRef!: ElementRef;
+    @ViewChild('institutionSearchInput') institutionSearchInput!: ElementRef;
 
     invNo = signal('');
     institution = signal('');
@@ -657,6 +700,32 @@ export class PurchaseUploadComponent implements OnInit {
         if (this.branchDropdownRef && !this.branchDropdownRef.nativeElement.contains(event.target)) {
             this.isBranchDropdownOpen.set(false);
         }
+        if (this.institutionDropdownRef && !this.institutionDropdownRef.nativeElement.contains(event.target)) {
+            this.isInstitutionDropdownOpen.set(false);
+        }
+    }
+
+    toggleInstitutionDropdown() {
+        this.isInstitutionDropdownOpen.update(v => !v);
+        if (this.isInstitutionDropdownOpen()) {
+            this.institutionSearchTerm.set('');
+            setTimeout(() => this.institutionSearchInput?.nativeElement.focus(), 0);
+        }
+    }
+
+    onInstitutionSelect(branch: any) {
+        if (!branch) {
+            this.institutionId.set('');
+            this.institution.set('');
+            this.address.set('');
+            this.gstin.set('');
+        } else {
+            this.institutionId.set(branch.b_id.toString());
+            this.institution.set(branch.branch_name);
+            this.address.set(branch.branch_address || '');
+            this.gstin.set(branch.branch_gstin || '');
+        }
+        this.isInstitutionDropdownOpen.set(false);
     }
 
     private loadInstitutionOptions(): void {
@@ -692,7 +761,7 @@ export class PurchaseUploadComponent implements OnInit {
         this.uploadError.set('');
     }
 
-    onImport(): void {
+    async onImport(): Promise<void> {
         this.uploadMessage.set('');
         this.uploadError.set('');
         if (!this.branchId()) {
@@ -705,6 +774,12 @@ export class PurchaseUploadComponent implements OnInit {
         }
 
         this.isUploading.set(true);
+
+        const isValid = await this.validateExcelFile(this.selectedFile);
+        if (!isValid) {
+            this.isUploading.set(false);
+            return;
+        }
         const uiFields = {
             invNo: this.invNo(),
             invoiceDate: this.invoiceDate(),
@@ -750,4 +825,117 @@ export class PurchaseUploadComponent implements OnInit {
     }
 
     navigate(path: string) { this.router.navigate([path]); }
+
+    private validateExcelFile(file: File): Promise<boolean> {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, dateNF: 'dd-mm-yyyy' }) as any[];
+
+                    if (!rows || rows.length === 0) {
+                        this.uploadError.set('Upload aborted: Excel file is empty or has no data rows.');
+                        resolve(false);
+                        return;
+                    }
+
+                    const refInvNo = String(rows[0]['Supplier Invoice No'] || '').trim();
+                    const refInvDate = String(rows[0]['Supplier Invoice Date'] || '').trim();
+                    const refBranch = String(rows[0]['Branch'] || '').trim();
+
+                    if (!refInvNo || !refInvDate) {
+                        this.uploadError.set('Upload aborted: First row is missing Supplier Invoice No or Supplier Invoice Date.');
+                        resolve(false);
+                        return;
+                    }
+
+                    const selectedBranchName = this.branchName().trim().toLowerCase();
+                    if (refBranch.toLowerCase() !== selectedBranchName) {
+                        this.uploadError.set(`Upload aborted: The Branch in the Excel file ('${refBranch}') does not match the selected Branch ('${this.branchName()}').`);
+                        resolve(false);
+                        return;
+                    }
+
+                    const mandatoryFields = [
+                        'Branch', 'HSN Code', 'Model Family', 'Model',
+                        'Chassis No', 'Engine No', 'CCODE', 'Color',
+                        'Supplier Invoice No', 'Supplier Invoice Date', 'Mfg Date'
+                    ];
+
+                    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+                    const chassisSet = new Set<string>();
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        const rowNum = i + 2;
+
+                        for (const field of mandatoryFields) {
+                            let val = '';
+                            if (field === 'Model') {
+                                val = String(row['Model'] || row['Model Name'] || '').trim();
+                            } else {
+                                val = String(row[field] || '').trim();
+                            }
+
+                            if (!val) {
+                                this.uploadError.set(`Upload aborted: Missing '${field}' at row ${rowNum}.`);
+                                resolve(false);
+                                return;
+                            }
+                        }
+
+                        const invNo = String(row['Supplier Invoice No'] || '').trim();
+                        const invDate = String(row['Supplier Invoice Date'] || '').trim();
+                        const rowBranch = String(row['Branch'] || '').trim();
+
+                        if (invNo !== refInvNo || invDate !== refInvDate) {
+                            this.uploadError.set(`Upload aborted: Multiple invoices detected. Row ${rowNum} has different Supplier Invoice No/Date.`);
+                            resolve(false);
+                            return;
+                        }
+
+                        if (rowBranch.toLowerCase() !== refBranch.toLowerCase()) {
+                            this.uploadError.set(`Upload aborted: Multiple branches detected. Row ${rowNum} has a different Branch ('${rowBranch}'). All rows must have the same Branch.`);
+                            resolve(false);
+                            return;
+                        }
+
+                        const mfgDate = String(row['Mfg Date'] || '').trim();
+                        if (mfgDate && !dateRegex.test(mfgDate)) {
+                            this.uploadError.set(`Upload aborted: Invalid 'Mfg Date' format at row ${rowNum}. Please use dd/mm/yyyy or dd-mm-yyyy.`);
+                            resolve(false);
+                            return;
+                        }
+
+                        if (invDate && !dateRegex.test(invDate)) {
+                            this.uploadError.set(`Upload aborted: Invalid 'Supplier Invoice Date' format at row ${rowNum}. Please use dd/mm/yyyy or dd-mm-yyyy.`);
+                            resolve(false);
+                            return;
+                        }
+
+                        const chassisNo = String(row['Chassis No'] || '').trim();
+                        if (chassisSet.has(chassisNo)) {
+                            this.uploadError.set(`Upload aborted: Duplicate Chassis No '${chassisNo}' found at row ${rowNum}.`);
+                            resolve(false);
+                            return;
+                        }
+                        chassisSet.add(chassisNo);
+                    }
+                    resolve(true);
+                } catch (err: any) {
+                    this.uploadError.set('Error validating file: ' + err.message);
+                    resolve(false);
+                }
+            };
+            reader.onerror = () => {
+                this.uploadError.set('Failed to read file.');
+                resolve(false);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
 }

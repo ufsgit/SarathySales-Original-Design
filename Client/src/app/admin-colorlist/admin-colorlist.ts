@@ -51,6 +51,9 @@ import { ApiService } from '../services/api.service';
               </select>
               <label>entries</label>
             </div>
+            <div class="search-group">
+              <input type="text" class="search-input" placeholder="Search Color Code or Name..." [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)">
+            </div>
           </div>
 
           <div class="table-container">
@@ -141,6 +144,8 @@ import { ApiService } from '../services/api.service';
     .controls-row { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
     .entries-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
     .entries-select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+    .search-group { display: flex; align-items: center; }
+    .search-input { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; outline: none; font-size: 13px; width: 220px; }
     
     .table-container { overflow-x: auto; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -179,6 +184,7 @@ export class AdminColorlist implements OnInit {
   total = signal(0);
   page = signal(1);
   limit = signal(25);
+  searchTerm = signal('');
   openDropdownIndex: number | null = null;
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
@@ -212,7 +218,7 @@ export class AdminColorlist implements OnInit {
   }
 
   loadColors() {
-    this.apiService.listColors(this.page(), this.limit()).subscribe({
+    this.apiService.listColors(this.page(), this.limit(), this.searchTerm()).subscribe({
       next: (res: any) => {
         if (res.success) {
           this.colors.set(res.data || []);
@@ -221,6 +227,12 @@ export class AdminColorlist implements OnInit {
       },
       error: (err: any) => console.error('Error loading colors', err)
     });
+  }
+
+  onSearchChange(value: string) {
+    this.searchTerm.set(value);
+    this.page.set(1);
+    this.loadColors();
   }
 
   onLimitChange(value: string): void {
