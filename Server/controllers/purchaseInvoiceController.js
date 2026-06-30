@@ -158,7 +158,7 @@ const savePurchaseInvoice = async (req, res) => {
                 supplierName || '',
                 address || '',
                 rcNo || '',
-                rcDate || invoiceDate || new Date(),
+                rcDate || null,
                 0,
                 totalMasterCost, // <--- calculated from master costs
                 hsnCode || '',
@@ -594,7 +594,7 @@ const updatePurchaseInvoice = async (req, res) => {
                 purc_grand_total = ?, total_bill_amount = ?, purc_gstin = ?, hsn_code = ?
              WHERE purchaseItemBillId = ?`,
             [
-                branchId, invoiceDate, supplierName, address, rcNo, rcDate,
+                branchId, invoiceDate, supplierName, address, rcNo, rcDate || null,
                 basicTotal || 0, taxTotal || 0, grandTotal || 0, totalMasterCost, gstin, hsnCode, billId
             ]
         );
