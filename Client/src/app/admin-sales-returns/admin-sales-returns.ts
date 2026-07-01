@@ -5,13 +5,14 @@ import { RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { ApiService } from '../services/api.service';
+import { BranchFilterDropdownComponent } from '../components/branch-filter-dropdown/branch-filter-dropdown.component';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { UserFooter } from '../user-footer/user-footer';
 
 @Component({
     selector: 'app-admin-sales-returns',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, AdminNav, UserFooter],
+    imports: [CommonModule, FormsModule, RouterLink, AdminNav, UserFooter, BranchFilterDropdownComponent],
     templateUrl: './admin-sales-returns.html',
     styleUrl: './admin-sales-returns.css'
 })
@@ -23,6 +24,8 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
     limit = signal(10);
     searchTerm = signal('');
     isLoading = signal(false);
+    branches = signal<any[]>([]);
+    selectedBranchId = signal<string | number>('');
     errorMsg = signal('');
 
     // Pagination computed signals
@@ -96,6 +99,24 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
             this.page.set(1);
             this.loadData();
         });
+        this.loadBranches();
+        this.loadData();
+    }
+
+    loadBranches() {
+        this.api.listBranches().subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    this.branches.set(res.data || []);
+                }
+            },
+            error: (err: any) => console.error('Error loading branches', err)
+        });
+    }
+
+    onBranchChange(id: string | number) {
+        this.selectedBranchId.set(id);
+        this.page.set(1);
         this.loadData();
     }
 
@@ -108,8 +129,9 @@ export class AdminSalesReturnsComponent implements OnInit, OnDestroy {
         this.isLoading.set(true);
         this.errorMsg.set('');
 
-        // For admin view, we pass undefined for branchId to get all branches
-        this.api.getSalesReturnReport(undefined, this.page(), this.limit(), this.searchTerm()).subscribe({
+        // For admin view, we pass the selected branchId or undefined
+        const branchId = this.selectedBranchId() ? String(this.selectedBranchId()) : undefined;
+        this.api.getSalesReturnReport(branchId, this.page(), this.limit(), this.searchTerm()).subscribe({
             next: (res: any) => {
                 this.isLoading.set(false);
                 if (res.success) {

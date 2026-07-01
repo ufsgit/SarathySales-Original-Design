@@ -4,13 +4,14 @@ import { UserFooter } from '../user-footer/user-footer';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
+import { BranchFilterDropdownComponent } from '../components/branch-filter-dropdown/branch-filter-dropdown.component';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-previous-gate-pass',
   standalone: true,
-  imports: [UserNav, UserFooter, RouterLink, FormsModule],
+  imports: [UserNav, UserFooter, RouterLink, FormsModule, BranchFilterDropdownComponent],
   templateUrl: './previous-gate-pass.html',
   styleUrl: './previous-gate-pass.css',
 })
@@ -27,6 +28,8 @@ export class PreviousGatePass implements OnInit, OnDestroy {
     const user = this.api.getCurrentUser();
     return user?.role == 1 || user?.role_des === 'admin';
   });
+  branches = signal<any[]>([]);
+  selectedBranchId = signal<string | number>('');
   errorMsg = signal('');
 
   // Derived computed signals
@@ -71,6 +74,24 @@ export class PreviousGatePass implements OnInit, OnDestroy {
       this.loadData();
     });
 
+    this.loadBranches();
+    this.loadData();
+  }
+
+  loadBranches() {
+    this.api.listBranches().subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.branches.set(res.data || []);
+        }
+      },
+      error: (err: any) => console.error('Error loading branches', err)
+    });
+  }
+
+  onBranchChange(id: string | number) {
+    this.selectedBranchId.set(id);
+    this.page.set(1);
     this.loadData();
   }
 
@@ -87,7 +108,7 @@ export class PreviousGatePass implements OnInit, OnDestroy {
     }
 
     const isAdmin = user.role == 1 || user.role_des === 'admin';
-    const branchId = isAdmin ? undefined : user.branch_id;
+    const branchId = isAdmin ? (this.selectedBranchId() || undefined) : user.branch_id;
 
     if (!isAdmin && !branchId) {
       this.errorMsg.set('Branch info missing. Please re-login.');

@@ -17,6 +17,14 @@
         <div class="data-card">
 
             <div class="controls-row">
+                @if (isAdmin()) {
+                <app-branch-filter-dropdown
+                    [branches]="branches()"
+                    [selectedId]="selectedBranchId()"
+                    label="Institute:"
+                    (branchChange)="onBranchChange($event)">
+                </app-branch-filter-dropdown>
+                }
                 <div class="search-group">
                     <label>Search:</label>
                     <input type="text" class="search-input" title="Debit note, vehicle, chassis…"

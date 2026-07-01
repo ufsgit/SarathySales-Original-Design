@@ -4,13 +4,14 @@ import { UserFooter } from '../user-footer/user-footer';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../services/api.service';
+import { BranchFilterDropdownComponent } from '../components/branch-filter-dropdown/branch-filter-dropdown.component';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
 @Component({
     selector: 'app-previous-proforma-invoice',
     standalone: true,
-    imports: [UserNav, UserFooter, RouterLink, FormsModule],
+    imports: [UserNav, UserFooter, RouterLink, FormsModule, BranchFilterDropdownComponent],
     templateUrl: './previous-proforma-invoice.html',
     styleUrl: './previous-proforma-invoice.css',
 })
@@ -26,6 +27,8 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
         const user = this.api.getCurrentUser();
         return user?.role == 1 || user?.role_des === 'admin';
     });
+    branches = signal<any[]>([]);
+    selectedBranchId = signal<string | number>('');
     errorMsg = signal('');
 
     totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
@@ -67,6 +70,24 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
             this.page.set(1);
             this.loadData();
         });
+        this.loadBranches();
+        this.loadData();
+    }
+
+    loadBranches() {
+        this.api.listBranches().subscribe({
+            next: (res: any) => {
+                if (res.success) {
+                    this.branches.set(res.data || []);
+                }
+            },
+            error: (err: any) => console.error('Error loading branches', err)
+        });
+    }
+
+    onBranchChange(id: string | number) {
+        this.selectedBranchId.set(id);
+        this.page.set(1);
         this.loadData();
     }
 
@@ -80,7 +101,7 @@ export class PreviousProformaInvoice implements OnInit, OnDestroy {
         }
 
         const isAdmin = user.role == 1 || user.role_des === 'admin';
-        const branchId = isAdmin ? undefined : user.branch_id;
+        const branchId = isAdmin ? (this.selectedBranchId() || undefined) : user.branch_id;
 
         if (!isAdmin && !branchId) {
             this.errorMsg.set('Branch info missing. Please re-login.');
