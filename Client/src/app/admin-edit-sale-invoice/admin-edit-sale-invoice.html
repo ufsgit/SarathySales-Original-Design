@@ -49,7 +49,7 @@
                       </div>
                       <div class="form-group">
                           <label>Invoice Date :</label>
-                          <input type="date" class="form-control readonly" [value]="invoiceDate()" name="invoiceDate" readonly>
+                          <input type="date" class="form-control" [ngModel]="invoiceDate()" (ngModelChange)="invoiceDate.set($event)" name="invoiceDate">
                       </div>
                       <div class="form-group">
                           <label>Issue Type :</label>
