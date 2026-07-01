@@ -115,6 +115,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             const chassisNo = String(row['Chassis No'] || '').trim();
             const engineNo = String(row['Engine No'] || '').trim();
             const modelCode = String(row['Model Code'] || '').trim();
+            const excelCost = parseFloat(row['COST'] || row['Cost'] || row['Amount'] || row['Basic Price'] || row['Basic Value'] || 0);
 
             if (!invoiceNo || !branchNameExcel || !chassisNo || !engineNo || !modelCode) {
                 await conn.rollback();
@@ -175,8 +176,15 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             }
             
             const modelInfo = modelCache.get(modelCode);
-            const itemCost = modelInfo ? parseFloat(modelInfo.purchase_cost) || 0 : 0;
-            calculatedTotal += itemCost;
+            
+            if (isNaN(excelCost) || excelCost <= 0) {
+                await conn.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: `Cost/Amount is missing or invalid at row ${rowNum} for Chassis '${chassisNo}'.`
+                });
+            }
+            calculatedTotal += excelCost;
         }
 
         // --- PHASE 2: ATOMIC EXECUTION ---
@@ -210,6 +218,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             const colorCode = String(row['CCODE'] || '').trim();
             const colorName = String(row['Color'] || '').trim();
             const saleType = String(row['Sale Type'] || 'Stock').trim();
+            const excelCost = parseFloat(row['COST'] || row['Cost'] || row['Amount'] || row['Basic Price'] || row['Basic Value'] || 0);
 
             const modelFamily = String(row['Model Family'] || '').trim();
             const overallAge = String(row['Over All Age'] || '').trim();
@@ -260,18 +269,18 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
                 productId = modelInfo.labour_id;
                 // NO UPDATE for existing models as per requirement
             } else {
-                // New Model: Insert with 0 price/gst and default empty values for mandatory metadata
+                // New Model: Insert with excelCost as purchase_cost and default empty values for mandatory metadata
                 const [insModel] = await conn.execute(
                     `INSERT INTO tbl_labour_code 
                     (labour_code, labour_title, discription, repair_type, hsn_code,
                     fa_weight, ra_weight, oa_weight, ta_weight, ul_weight, r_weight, hp, cc, tbody, no_of_cylider, fuel, wheel_base, booking_code, seat_capacity,
                     sale_price, purchase_cost, cgst, sgst, total_price, cess) 
-                    VALUES (?, ?, ?, 'Major', ?, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00')`,
-                    [modelCode, modelName || modelCode, modelName || modelCode, String(row['HSN Code'] || '').trim()]
+                    VALUES (?, ?, ?, 'Major', ?, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '0.00', ?, '0.00', '0.00', '0.00', '0.00')`,
+                    [modelCode, modelName || modelCode, modelName || modelCode, String(row['HSN Code'] || '').trim(), excelCost.toFixed(2)]
                 );
                 productId = insModel.insertId;
                 // Re-fetch to satisfy cache for subsequent rows of same new model
-                modelCache.set(modelCode, { labour_id: productId, purchase_cost: 0 });
+                modelCache.set(modelCode, { labour_id: productId, purchase_cost: excelCost });
             }
 
             // 3. Get or Auto-add Color
@@ -283,7 +292,7 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             }
 
             const itemHsnCode = String(row['HSN Code'] || modelInfo?.hsn_code || '').trim();
-            const itemCost = modelInfo ? parseFloat(modelInfo.purchase_cost) || 0 : 0;
+            const itemCost = excelCost;
 
             // 4. Insert Purchase Item
             await conn.execute(

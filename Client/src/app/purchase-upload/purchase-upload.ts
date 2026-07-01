@@ -843,16 +843,49 @@ export class PurchaseUploadComponent implements OnInit {
                         return;
                     }
 
-                    const refInvNo = String(rows[0]['Supplier Invoice No'] || '').trim();
-                    const refInvDate = String(rows[0]['Supplier Invoice Date'] || '').trim();
-                    const refBranch = String(rows[0]['Branch'] || '').trim();
+                    const getVal = (rowObj: any, keyName: string) => {
+                        const target = keyName.toLowerCase();
+                        for (const k in rowObj) {
+                            if (k.toLowerCase() === target) {
+                                return String(rowObj[k] || '').trim();
+                            }
+                        }
+                        return '';
+                    };
 
-                    if (!refInvNo || !refInvDate) {
-                        this.uploadError.set('Upload aborted: First row is missing Supplier Invoice No or Supplier Invoice Date.');
+                    const mandatoryFields = [
+                        'Branch', 'HSN Code', 'Model Family', 'Model',
+                        'Chassis No', 'Engine No', 'CCODE', 'Color',
+                        'Supplier Invoice No', 'Supplier Invoice Date', 'Mfg Date',
+                        'Model Code'
+                    ];
+
+                    // --- Phase 2: Template & Baseline Checks ---
+                    // 1. Pure Header Check
+                    const actualHeaders = Object.keys(rows[0]).map(h => h.toLowerCase());
+                    for (const field of mandatoryFields) {
+                        if (field === 'Model') {
+                            if (!actualHeaders.includes('model') && !actualHeaders.includes('model name')) {
+                                this.uploadError.set(`Upload aborted: The '${field}' column header is missing from your Excel template.`);
+                                resolve(false);
+                                return;
+                            }
+                        } else {
+                            if (!actualHeaders.includes(field.toLowerCase())) {
+                                this.uploadError.set(`Upload aborted: The '${field}' column header is missing from your Excel template.`);
+                                resolve(false);
+                                return;
+                            }
+                        }
+                    }
+                    if (!actualHeaders.includes('cost') && !actualHeaders.includes('amount') && !actualHeaders.includes('basic price') && !actualHeaders.includes('basic value')) {
+                        this.uploadError.set(`Upload aborted: The 'Cost' column header is missing from your Excel template.`);
                         resolve(false);
                         return;
                     }
 
+                    // 2. The Branch Check
+                    const refBranch = getVal(rows[0], 'Branch');
                     const selectedBranchName = this.branchName().trim().toLowerCase();
                     if (refBranch.toLowerCase() !== selectedBranchName) {
                         this.uploadError.set(`Upload aborted: The Branch in the Excel file ('${refBranch}') does not match the selected Branch ('${this.branchName()}').`);
@@ -860,25 +893,30 @@ export class PurchaseUploadComponent implements OnInit {
                         return;
                     }
 
-                    const mandatoryFields = [
-                        'Branch', 'HSN Code', 'Model Family', 'Model',
-                        'Chassis No', 'Engine No', 'CCODE', 'Color',
-                        'Supplier Invoice No', 'Supplier Invoice Date', 'Mfg Date'
-                    ];
+                    // 3. The Reference Invoice Check
+                    const refInvNo = getVal(rows[0], 'Supplier Invoice No');
+                    const refInvDate = getVal(rows[0], 'Supplier Invoice Date');
+                    if (!refInvNo || !refInvDate) {
+                        this.uploadError.set('Upload aborted: First row is missing Supplier Invoice No or Supplier Invoice Date.');
+                        resolve(false);
+                        return;
+                    }
 
                     const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
                     const chassisSet = new Set<string>();
 
+                    // --- Phase 3: The Data Integrity Loop ---
                     for (let i = 0; i < rows.length; i++) {
                         const row = rows[i];
                         const rowNum = i + 2;
 
+                        // Missing Data Check
                         for (const field of mandatoryFields) {
                             let val = '';
                             if (field === 'Model') {
-                                val = String(row['Model'] || row['Model Name'] || '').trim();
+                                val = getVal(row, 'Model') || getVal(row, 'Model Name');
                             } else {
-                                val = String(row[field] || '').trim();
+                                val = getVal(row, field);
                             }
 
                             if (!val) {
@@ -888,23 +926,33 @@ export class PurchaseUploadComponent implements OnInit {
                             }
                         }
 
-                        const invNo = String(row['Supplier Invoice No'] || '').trim();
-                        const invDate = String(row['Supplier Invoice Date'] || '').trim();
-                        const rowBranch = String(row['Branch'] || '').trim();
+                        // Cost Validation
+                        const costStr = getVal(row, 'COST') || getVal(row, 'Amount') || getVal(row, 'Basic Price') || getVal(row, 'Basic Value') || '0';
+                        const excelCost = parseFloat(costStr);
+                        if (isNaN(excelCost) || excelCost <= 0) {
+                            this.uploadError.set(`Upload aborted: Missing or invalid 'Cost/Amount' at row ${rowNum}.`);
+                            resolve(false);
+                            return;
+                        }
 
+                        // Single Invoice Enforcement
+                        const invNo = getVal(row, 'Supplier Invoice No');
+                        const invDate = getVal(row, 'Supplier Invoice Date');
                         if (invNo !== refInvNo || invDate !== refInvDate) {
                             this.uploadError.set(`Upload aborted: Multiple invoices detected. Row ${rowNum} has different Supplier Invoice No/Date.`);
                             resolve(false);
                             return;
                         }
 
+                        const rowBranch = getVal(row, 'Branch');
                         if (rowBranch.toLowerCase() !== refBranch.toLowerCase()) {
                             this.uploadError.set(`Upload aborted: Multiple branches detected. Row ${rowNum} has a different Branch ('${rowBranch}'). All rows must have the same Branch.`);
                             resolve(false);
                             return;
                         }
 
-                        const mfgDate = String(row['Mfg Date'] || '').trim();
+                        // Date Format Check
+                        const mfgDate = getVal(row, 'Mfg Date');
                         if (mfgDate && !dateRegex.test(mfgDate)) {
                             this.uploadError.set(`Upload aborted: Invalid 'Mfg Date' format at row ${rowNum}. Please use dd/mm/yyyy or dd-mm-yyyy.`);
                             resolve(false);
@@ -917,7 +965,8 @@ export class PurchaseUploadComponent implements OnInit {
                             return;
                         }
 
-                        const chassisNo = String(row['Chassis No'] || '').trim();
+                        // Duplicate Chassis Check
+                        const chassisNo = getVal(row, 'Chassis No');
                         if (chassisSet.has(chassisNo)) {
                             this.uploadError.set(`Upload aborted: Duplicate Chassis No '${chassisNo}' found at row ${rowNum}.`);
                             resolve(false);
