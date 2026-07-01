@@ -988,6 +988,10 @@ export class PurchaseInvoiceComponent implements OnInit {
       item.colorName = selectedColor?.colorName || '';
     }
 
+    if (field === 'mfgDate') {
+      item.saleType = this.calculateAge(value);
+    }
+
     currentItems[index] = item;
     this.items.set(currentItems);
   }
@@ -1003,6 +1007,42 @@ export class PurchaseInvoiceComponent implements OnInit {
     const n = (name || '').toString().trim();
     if (c && n) return `${c}[ ${n}]`;
     return c || n || '';
+  }
+
+  private calculateAge(mfgDate: string): string {
+    if (!mfgDate) return '';
+    const start = new Date(mfgDate);
+    const end = new Date();
+    if (isNaN(start.getTime())) return '';
+
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+    
+    if (days < 0) {
+        months--;
+        const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+        days += prevMonth.getDate();
+    }
+    
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    
+    if (years < 0) {
+        return '0 Days';
+    } else if (years > 0) {
+        let ageStr = `${years} Year${years > 1 ? 's' : ''}`;
+        if (months > 0) {
+            ageStr += ` ${months} Month${months > 1 ? 's' : ''}`;
+        }
+        return ageStr;
+    } else if (months > 0) {
+        return `${months} Month${months > 1 ? 's' : ''}`;
+    } else {
+        return `${days} Day${days !== 1 ? 's' : ''}`;
+    }
   }
 
   onSave(): void {
@@ -1115,21 +1155,27 @@ export class PurchaseInvoiceComponent implements OnInit {
       taxTotal: this.toNumber(this.taxTotal()),
       grandTotal: this.toNumber(this.grandTotal()),
       total_bill_amount: Number(this.items().reduce((sum, item) => sum + this.toNumber(item.amount), 0).toFixed(2)),
-      items: this.items().map((i: any) => ({
-        productId: this.toNumber(i.productId),
-        prodCode: upper(i.prodCode),
-        description: upper(i.description),
-        chassisNo: upper(i.chassisNo),
-        engineNo: upper(i.engineNo),
-        colorCode: upper(i.colorCode),
-        colorName: upper(i.colorName),
-        mfgDate: i.mfgDate || '',
-        saleType: upper(i.saleType),
-        overall_age: upper(i.saleType), // Mapping same as saleType as per user feedback
-        lc_rate: this.toNumber(i.lc_rate || i.amount),
-        item_hsn_code: upper(i.item_hsn_code),
-        amount: this.toNumber(i.amount)
-      })).filter((i: any) => i.prodCode || i.description || i.chassisNo || i.engineNo || i.amount > 0)
+      items: this.items().map((i: any) => {
+        let finalSaleType = upper(i.saleType);
+        if (!finalSaleType && i.mfgDate) {
+          finalSaleType = upper(this.calculateAge(i.mfgDate));
+        }
+        return {
+          productId: this.toNumber(i.productId),
+          prodCode: upper(i.prodCode),
+          description: upper(i.description),
+          chassisNo: upper(i.chassisNo),
+          engineNo: upper(i.engineNo),
+          colorCode: upper(i.colorCode),
+          colorName: upper(i.colorName),
+          mfgDate: i.mfgDate || '',
+          saleType: finalSaleType,
+          overall_age: finalSaleType, // Mapping same as saleType as per user feedback
+          lc_rate: this.toNumber(i.lc_rate || i.amount),
+          item_hsn_code: upper(i.item_hsn_code),
+          amount: this.toNumber(i.amount)
+        };
+      }).filter((i: any) => i.prodCode || i.description || i.chassisNo || i.engineNo || i.amount > 0)
     };
 
     this.isSaving.set(true);

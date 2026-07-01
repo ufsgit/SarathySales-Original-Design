@@ -902,7 +902,6 @@ export class PurchaseUploadComponent implements OnInit {
                         return;
                     }
 
-                    const dateRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
                     const chassisSet = new Set<string>();
 
                     // --- Phase 3: The Data Integrity Loop ---
@@ -951,19 +950,8 @@ export class PurchaseUploadComponent implements OnInit {
                             return;
                         }
 
-                        // Date Format Check
-                        const mfgDate = getVal(row, 'Mfg Date');
-                        if (mfgDate && !dateRegex.test(mfgDate)) {
-                            this.uploadError.set(`Upload aborted: Invalid 'Mfg Date' format at row ${rowNum}. Please use dd/mm/yyyy or dd-mm-yyyy.`);
-                            resolve(false);
-                            return;
-                        }
-
-                        if (invDate && !dateRegex.test(invDate)) {
-                            this.uploadError.set(`Upload aborted: Invalid 'Supplier Invoice Date' format at row ${rowNum}. Please use dd/mm/yyyy or dd-mm-yyyy.`);
-                            resolve(false);
-                            return;
-                        }
+                        // Removed strict frontend date regex checks.
+                        // The backend handles flexible date parsing (e.g. DD-MM-YYYY, YYYY-MM-DD, Excel Serial Dates, etc.)
 
                         // Duplicate Chassis Check
                         const chassisNo = getVal(row, 'Chassis No');

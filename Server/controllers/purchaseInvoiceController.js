@@ -242,7 +242,7 @@ const createPurchasePdf = async (req, res) => {
         doc.pipe(res);
 
         const col = {
-            sl: 40, pcode: 75, pname: 125, chassis: 195, engine: 265, color: 325, ccode: 385, date: 425, stype: 485, amt: 520, end: 565
+            sl: 40, pcode: 75, pname: 125, chassis: 195, engine: 265, color: 325, ccode: 385, date: 425, amt: 495, end: 565
         };
 
         const drawHeaders = (isFirstPage) => {
@@ -320,7 +320,6 @@ const createPurchasePdf = async (req, res) => {
             doc.moveTo(col.color, y).lineTo(col.color, y + height).stroke();
             doc.moveTo(col.ccode, y).lineTo(col.ccode, y + height).stroke();
             doc.moveTo(col.date, y).lineTo(col.date, y + height).stroke();
-            doc.moveTo(col.stype, y).lineTo(col.stype, y + height).stroke();
             doc.moveTo(col.amt, y).lineTo(col.amt, y + height).stroke();
         };
 
@@ -335,7 +334,6 @@ const createPurchasePdf = async (req, res) => {
             doc.text('COLOR', col.color + 1, y + 10);
             doc.text('COLOR\nCODE', col.ccode + 1, y + 5);
             doc.text('DATE', col.date + 1, y + 10);
-            doc.text('SALE TYPE', col.stype + 1, y + 10);
             doc.text('AMOUNT', col.amt + 1, y + 10);
 
             doc.moveTo(col.pcode, y).lineTo(col.pcode, y + 25).stroke();
@@ -345,7 +343,6 @@ const createPurchasePdf = async (req, res) => {
             doc.moveTo(col.color, y).lineTo(col.color, y + 25).stroke();
             doc.moveTo(col.ccode, y).lineTo(col.ccode, y + 25).stroke();
             doc.moveTo(col.date, y).lineTo(col.date, y + 25).stroke();
-            doc.moveTo(col.stype, y).lineTo(col.stype, y + 25).stroke();
             doc.moveTo(col.amt, y).lineTo(col.amt, y + 25).stroke();
             return y + 25;
         };
@@ -374,7 +371,6 @@ const createPurchasePdf = async (req, res) => {
             doc.text(item.color_name || '', col.color + 2, currentY + 7, { width: col.ccode - col.color - 4 });
             doc.text(item.color_id || '', col.ccode + 2, currentY + 7);
             doc.text(item.p_date ? new Date(item.p_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '', col.date + 2, currentY + 7);
-            doc.text(item.sale_type || '', col.stype + 2, currentY + 7);
             doc.text(itemRate.toFixed(2), col.amt, currentY + 7, { width: col.end - col.amt - 2, align: 'right' });
             currentY += rowH;
         });

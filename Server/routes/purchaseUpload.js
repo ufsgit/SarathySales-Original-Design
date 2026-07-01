@@ -221,8 +221,42 @@ router.post('/upload', upload.single('excelFile'), async (req, res) => {
             const excelCost = parseFloat(row['COST'] || row['Cost'] || row['Amount'] || row['Basic Price'] || row['Basic Value'] || 0);
 
             const modelFamily = String(row['Model Family'] || '').trim();
-            const overallAge = String(row['Over All Age'] || '').trim();
+            let overallAge = '';
             const mfgDate = parseExcelDate(row['Mfg Date'] || '');
+
+            if (mfgDate) {
+                const start = new Date(mfgDate);
+                const end = new Date();
+                
+                let years = end.getFullYear() - start.getFullYear();
+                let months = end.getMonth() - start.getMonth();
+                let days = end.getDate() - start.getDate();
+                
+                if (days < 0) {
+                    months--;
+                    const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+                    days += prevMonth.getDate();
+                }
+                
+                if (months < 0) {
+                    years--;
+                    months += 12;
+                }
+                
+                if (years < 0) {
+                    overallAge = '0 Days';
+                } else if (years > 0) {
+                    let ageStr = `${years} Year${years > 1 ? 's' : ''}`;
+                    if (months > 0) {
+                        ageStr += ` ${months} Month${months > 1 ? 's' : ''}`;
+                    }
+                    overallAge = ageStr;
+                } else if (months > 0) {
+                    overallAge = `${months} Month${months > 1 ? 's' : ''}`;
+                } else {
+                    overallAge = `${days} Day${days !== 1 ? 's' : ''}`;
+                }
+            }
 
             // 1. Handle Purchase Bill
             let billId;
