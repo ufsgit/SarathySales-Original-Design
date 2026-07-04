@@ -171,14 +171,18 @@ const createSaleLetterPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Vehicle details not found' });
         const data = records[0];
 
+        const [brandRows] = await db.execute('SELECT brand_title, brand_address FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
+        const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj\nPallimukku\nKollam-10\nKerala';
+
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="SaleLetter_${data.inv_chassis}.pdf"`);
         doc.pipe(res);
 
         // --- Header ---
-        doc.font('Times-Bold').fontSize(9.5).text('SARATHY MOTORS', 40, 40);
-        doc.font('Times-Roman').fontSize(9.5).text('Sarathy Bajaj\nPallimukku\nKollam-10\nKerala', 40, 52);
+        doc.font('Times-Bold').fontSize(9.5).text(brandTitle, 40, 40);
+        doc.font('Times-Roman').fontSize(9.5).text(brandAddress, 40, 52, { width: 300 });
 
         doc.font('Times-Bold').fontSize(11).text('FORM 21', 400, 40, { width: 150, align: 'right' });
         doc.fontSize(12).text('SALES CERTIFICATE', 400, 52, { width: 150, align: 'right' });
@@ -242,7 +246,7 @@ const createSaleLetterPdf = async (req, res) => {
         currentY += 40;
         doc.font('Times-Roman').fontSize(9.5);
         doc.text('Sign of Customer Or His Agent', 40, currentY);
-        doc.font('Times-Bold').text('SARATHY MOTORS', 450, currentY, { width: 120, align: 'center' });
+        doc.font('Times-Bold').text(brandTitle, 450, currentY, { width: 120, align: 'center' });
         doc.text('Authorised Signatory', 450, currentY + 12, { width: 120, align: 'center' });
 
         doc.moveTo(40, currentY + 35).lineTo(550, currentY + 35).dash(2, { space: 2 }).stroke().undash();
@@ -279,6 +283,9 @@ const createPrintEnquiryPdf = async (req, res) => {
 
         if (!records.length) return res.status(404).json({ success: false, message: 'Vehicle not found' });
         const data = records[0];
+
+        const [brandRows] = await db.execute('SELECT brand_title FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
 
         const doc = new PDFDocument({ margin: 30, size: 'A4', bufferPages: true });
         res.setHeader('Content-Type', 'application/pdf');
@@ -345,7 +352,7 @@ const createPrintEnquiryPdf = async (req, res) => {
         });
 
         detailY += 40;
-        doc.font('Times-Bold').fontSize(9).text('SARATHY MOTORS', col.end - 120, detailY, { width: 120, align: 'center' });
+        doc.font('Times-Bold').fontSize(9).text(brandTitle, col.end - 120, detailY, { width: 120, align: 'center' });
         doc.moveTo(col.end - 130, detailY + 12).lineTo(col.end - 10, detailY + 12).stroke();
         doc.font('Times-Bold').fontSize(8.5).text('Authorised Signatory', col.end - 120, detailY + 15, { width: 120, align: 'center' });
 
