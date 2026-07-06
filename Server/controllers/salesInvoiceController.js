@@ -1131,8 +1131,18 @@ const createRtoBillPdf = async (req, res) => {
         doc.font('Times-Bold').fontSize(8.5).text('Tax amount payable on reverse charges (in Rs.) : Nil', col.sl, currentY);
 
         currentY += 60;
+        let rtoSignatoryName = 'SARATHY MOTORS';
+        if (activeBrand === 'bajaj') {
+            rtoSignatoryName = 'SARATHY MOTORS';
+        } else if (activeBrand === 'ktm') {
+            rtoSignatoryName = 'SARATHY BIKES PVT LTD';
+        }
+
         doc.font('Times-Roman').text('Sign of Customer Or His Agent', col.sl, currentY);
-        doc.font('Times-Bold').text('SARATHY BIKES PVT LTD', col.end - 150, currentY, { width: 150, align: 'center' });
+        doc.font('Times-Bold').text(rtoSignatoryName, col.end - 150, currentY, {
+    width: 150,
+    align: 'center'
+});
         doc.font('Times-Bold').fontSize(8.5).text('Authorised Signatory', col.end - 150, currentY + 12, { width: 150, align: 'center' });
 
         doc.moveTo(col.sl, currentY + 35).lineTo(col.end, currentY + 35).dash(2, { space: 2 }).stroke().undash();
