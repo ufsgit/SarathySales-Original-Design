@@ -407,7 +407,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                     .map((name: string) => ({ icompany_name: name })));
 
                 if (this.vehicleName()) this.onVehicleSelect();
-                if (this.adviserId()) this.onAdviserChange();
+                this.onAdviserChange();
             },
             error: () => {
                 this.loadAdvisers();
@@ -495,6 +495,10 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.others1.set(this.toNumber(d.pay_others1_amt));
         this.others2.set(this.toNumber(d.pay_others2_amt));
         this.others3.set(this.toNumber(d.pay_others3_amt));
+
+        // Fetch branch-specific dropdown data
+        this.loadAdvisers();
+        this.loadFormData();
     }
 
     loadAdvisers(): void {

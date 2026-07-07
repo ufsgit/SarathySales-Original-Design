@@ -842,11 +842,12 @@ const createRtoBillPdf = async (req, res) => {
         if (!records.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
         const data = records[0];
 
-        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code, show_branch_address_in_rto_bill FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
         const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
         const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State';
         const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : 'Code: 32 Kerala [State Code :32]';
+        const showBranchAddressInRtoBill = (brandRows && brandRows.length > 0 && brandRows[0].show_branch_address_in_rto_bill === 1);
 
         let rtoLogoFileName = 'KtmLogo.png';
         if (activeBrand === 'bajaj') {
@@ -890,16 +891,22 @@ const createRtoBillPdf = async (req, res) => {
         const drawHeaders = (isFirstPage) => {
             if (isFirstPage) {
                 // --- Header Section ---
-                doc.font('Times-Bold').fontSize(7.5).text('Branch Address:', 40, 30);
-                doc.font('Times-Bold').fontSize(8.5).text(data.branch_name || '', 40, 42);
+                let currentY = 105;
+                if (showBranchAddressInRtoBill) {
+                    doc.font('Times-Bold').fontSize(7.5).text('Branch Address:', 40, 30);
+                    doc.font('Times-Bold').fontSize(8.5).text(data.branch_name || '', 40, 42);
 
-                const branchAddr = data.branch_address ? data.branch_address.replace(/\r/g, '') : '';
-                const branchAddrH = doc.heightOfString(branchAddr, { width: 220, size: 7 });
-                doc.font('Times-Roman').fontSize(7).text(branchAddr, 40, 54, { width: 220, lineGap: -1 });
+                    const branchAddr = data.branch_address ? data.branch_address.replace(/\r/g, '') : '';
+                    const branchAddrH = doc.heightOfString(branchAddr, { width: 220, size: 7 });
+                    doc.font('Times-Roman').fontSize(7).text(branchAddr, 40, 54, { width: 220, lineGap: -1 });
 
-                let currentY = 54 + branchAddrH + 2;
-                doc.text(`PH : ${data.branch_ph || ''}`, 40, currentY);
-                currentY += 10;
+                    let phY = 54 + branchAddrH + 2;
+                    doc.text(`PH : ${data.branch_ph || ''}`, 40, phY);
+
+                    if (phY + 15 > currentY) {
+                        currentY = phY + 15;
+                    }
+                }
 
                 doc.font('Times-Bold').fontSize(10).text(brandTitle, 30, 30, { width: 535, align: 'center' });
                 doc.font('Times-Roman').fontSize(7.5).text(`${brandAddress}\n${brandStateCode}`, 30, 42, { width: 535, align: 'center' });
@@ -911,15 +918,15 @@ const createRtoBillPdf = async (req, res) => {
                     doc.fontSize(25).font('Times-Bold').text(activeBrand.toUpperCase(), 450, 30, { width: 125, align: 'right' });
                 }
 
-                doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, 105);
-                doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '32ABECS8915L1Z0', 40, 116);
+                doc.font('Times-Bold').fontSize(7.5).text(`GSTIN:`, 40, currentY);
+                doc.font('Times-Bold').fontSize(9).text(data.branch_gstin || '32ABECS8915L1Z0', 40, currentY + 11);
 
-                doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, 105, { width: 535, align: 'center' });
+                doc.fontSize(16).font('Times-Bold').text('TAX INVOICE', 30, currentY, { width: 535, align: 'center' });
 
-                doc.moveTo(40, 130).lineTo(575, 130).lineWidth(1).stroke();
+                doc.moveTo(40, currentY + 25).lineTo(575, currentY + 25).lineWidth(1).stroke();
 
                 // --- Details Section ---
-                let detailY = 140;
+                let detailY = currentY + 35;
                 const fieldX1 = 40, fieldX2 = 120, fieldX3 = 390, fieldX4 = 475;
                 doc.font('Times-Bold').fontSize(7.5);
 
@@ -1131,12 +1138,7 @@ const createRtoBillPdf = async (req, res) => {
         doc.font('Times-Bold').fontSize(8.5).text('Tax amount payable on reverse charges (in Rs.) : Nil', col.sl, currentY);
 
         currentY += 60;
-        let rtoSignatoryName = 'SARATHY MOTORS';
-        if (activeBrand === 'bajaj') {
-            rtoSignatoryName = 'SARATHY MOTORS';
-        } else if (activeBrand === 'ktm') {
-            rtoSignatoryName = 'SARATHY BIKES PVT LTD';
-        }
+        let rtoSignatoryName = brandTitle;
 
         doc.font('Times-Roman').text('Sign of Customer Or His Agent', col.sl, currentY);
         doc.font('Times-Bold').text(rtoSignatoryName, col.end - 150, currentY, {
