@@ -155,10 +155,15 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
+DROP PROCEDURE IF EXISTS `sp5_create_brand_config`$$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp5_create_brand_config`()
 BEGIN
 
-    CREATE TABLE IF NOT EXISTS tbl_brand_config (
+    -- Drop the existing table
+    DROP TABLE IF EXISTS tbl_brand_config;
+
+    -- Recreate the table with new columns for bank details
+    CREATE TABLE tbl_brand_config (
         brand_id                          INT          NOT NULL AUTO_INCREMENT,
         brand_name                        VARCHAR(100) NOT NULL,
         brand_title                       VARCHAR(200) NULL,
@@ -167,10 +172,16 @@ BEGIN
         brand_color                       VARCHAR(10)  NOT NULL DEFAULT '#3e424b' COMMENT 'Hex color code e.g. #f36f21',
         show_branch_address_in_rto_bill   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '0=No, 1=Yes',
         brand_status                      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
+        bank_account_name                 VARCHAR(200) NULL,
+        bank_name                         VARCHAR(200) NULL,
+        bank_account_number               VARCHAR(100) NULL,
+        bank_ifsc_code                    VARCHAR(100) NULL,
+        bank_branch                       VARCHAR(200) NULL,
         PRIMARY KEY (brand_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-    INSERT IGNORE INTO tbl_brand_config
+    -- Insert KTM details
+    INSERT INTO tbl_brand_config
     (
         brand_id,
         brand_name,
@@ -179,7 +190,12 @@ BEGIN
         brand_state_code,
         brand_color,
         show_branch_address_in_rto_bill,
-        brand_status
+        brand_status,
+        bank_account_name,
+        bank_name,
+        bank_account_number,
+        bank_ifsc_code,
+        bank_branch
     )
     VALUES
     (
@@ -190,10 +206,16 @@ BEGIN
         'Code: 32 Kerala [State Code : 32]',
         '#ff5a00',
         0,
-        1
+        1,
+        'Sarathy Bikes',
+        'BANK OF BARODA',
+        '05580500008538',
+        'BARB0QUILON',
+        'kollam'
     );
 
-    INSERT IGNORE INTO tbl_brand_config
+    -- Insert Bajaj details
+    INSERT INTO tbl_brand_config
     (
         brand_id,
         brand_name,
@@ -202,7 +224,12 @@ BEGIN
         brand_state_code,
         brand_color,
         show_branch_address_in_rto_bill,
-        brand_status
+        brand_status,
+        bank_account_name,
+        bank_name,
+        bank_account_number,
+        bank_ifsc_code,
+        bank_branch
     )
     VALUES
     (
@@ -213,7 +240,12 @@ BEGIN
         'Code: 32 Kerala [State Code : 32]',
         '#0b5ed7',
         1,
-        0
+        1, 
+        'Sarathy Motors',
+        'Bank of Baroda',
+        '05580500008535',
+        'BARB0QUILON',
+        'Kollam'
     );
 
     SELECT * FROM tbl_brand_config;
@@ -221,33 +253,6 @@ BEGIN
 END$$
 DELIMITER ;
 
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp6_create_logo_master_table`()
-BEGIN
-
-    -- 1. Create the logo_master table
-    CREATE TABLE IF NOT EXISTS logo_master (
-        logo_id INT AUTO_INCREMENT PRIMARY KEY,
-        logo_title VARCHAR(255) NOT NULL,
-        logo_url VARCHAR(500) NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ON UPDATE CURRENT_TIMESTAMP
-    );
-
-    -- 2. Safely add the logo_id column to tbl_branch if it doesn't already exist
-    IF NOT EXISTS (
-        SELECT * FROM information_schema.columns 
-        WHERE table_schema = DATABASE() 
-        AND table_name = 'tbl_branch' 
-        AND column_name = 'logo_id'
-    ) THEN
-        ALTER TABLE tbl_branch ADD COLUMN logo_id INT NULL;
-    END IF;
-
-END$$
-DELIMITER ;
 
 DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_clear_all_data`()

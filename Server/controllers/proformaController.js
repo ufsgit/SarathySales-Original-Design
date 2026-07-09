@@ -233,11 +233,17 @@ const createProformaPdf = async (req, res) => {
 
         const [items] = await db.execute('SELECT * FROM tbl_proforma_item WHERE proforma_id = ?', [req.params.id]);
 
-        const [brandRows] = await db.execute('SELECT brand_name, brand_title, brand_address, brand_state_code FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
+        const [brandRows] = await db.execute('SELECT * FROM tbl_brand_config WHERE brand_status = 1 LIMIT 1');
         const activeBrand = (brandRows && brandRows.length > 0) ? String(brandRows[0].brand_name).toLowerCase().trim() : 'ktm';
         const brandTitle = (brandRows && brandRows.length > 0 && brandRows[0].brand_title) ? brandRows[0].brand_title : 'SARATHY MOTORS';
         const brandAddress = (brandRows && brandRows.length > 0 && brandRows[0].brand_address) ? brandRows[0].brand_address : 'Sarathy Bajaj Pallimukku Kollam Kerala State';
         const brandStateCode = (brandRows && brandRows.length > 0 && brandRows[0].brand_state_code) ? brandRows[0].brand_state_code : 'Code: 32 Kerala [State Code : 32]';
+
+        const bankAccountName = (brandRows && brandRows.length > 0 && brandRows[0].bank_account_name) ? brandRows[0].bank_account_name : brandTitle;
+        const bankName = (brandRows && brandRows.length > 0 && brandRows[0].bank_name) ? brandRows[0].bank_name : 'SBI Commercial Branch';
+        const bankAccountNumber = (brandRows && brandRows.length > 0 && brandRows[0].bank_account_number) ? brandRows[0].bank_account_number : '0000 037 740 159725';
+        const bankIfscCode = (brandRows && brandRows.length > 0 && brandRows[0].bank_ifsc_code) ? brandRows[0].bank_ifsc_code : 'SBIN0004063';
+        const bankBranch = (brandRows && brandRows.length > 0 && brandRows[0].bank_branch) ? brandRows[0].bank_branch : 'Kollam';
 
         const doc = new PDFDocument({ margin: 30, size: 'A4' });
         let filename = `Proforma_${data.pro_quot_no}.pdf`;
@@ -307,14 +313,17 @@ const createProformaPdf = async (req, res) => {
 
         detailY += 12;
         doc.font('Times-Roman').text(`  ${data.pro_cus_address ? data.pro_cus_address.replace(/\r/g, '').replace(/\n/g, ' ') : ''}`, 120, detailY, { width: 250 });
+        let afterAddressY = doc.y;
+        
         doc.font('Times-Bold').text('Executive.', 380, detailY);
         doc.font('Times-Roman').text(`: ${data.pro_executive || ''}`, 480, detailY);
 
-        // Position INDIA after the address block dynamically
-        doc.font('Times-Roman').moveDown(1).text(`  INDIA`, 120, Math.max(detailY + 12, doc.y));
+        // Position INDIA after the address block dynamically using the captured Y position
+        doc.font('Times-Roman').text(`  INDIA`, 120, Math.max(detailY + 12, afterAddressY));
 
-        doc.moveTo(40, Math.max(detailY + 25, doc.y + 5)).lineTo(560, Math.max(detailY + 25, doc.y + 5)).stroke();
-        let tableDividerY = Math.max(detailY + 25, doc.y + 5);
+        let bottomOfHeaderY = Math.max(afterAddressY + 15, doc.y + 5);
+        doc.moveTo(40, bottomOfHeaderY).lineTo(560, bottomOfHeaderY).stroke();
+        let tableDividerY = bottomOfHeaderY;
 
         // --- Table Section ---
         let tableY = tableDividerY + 10;
@@ -459,7 +468,7 @@ const createProformaPdf = async (req, res) => {
         doc.fontSize(8);
         doc.text('Sign of Customer Or His Agent', col.sl, tableY);
 
-        doc.font('Times-Bold').fontSize(9).text(`Note :The Finance amount may please be raised\nvide DD or cheque in favour of ${brandTitle}\npayable at Kollam.\nA/c No : 0000 037 740 159725\nBranch : SBI Commercial Branch, Kollam\nIFS Code : SBIN0004063`, 180, tableY, { align: 'center', width: 250 });
+        doc.font('Times-Bold').fontSize(9).text(`Note :The Finance amount may please be raised\nvide DD or cheque in favour of ${brandTitle}\npayable at ${bankBranch}.\nAccount Name : ${bankAccountName}\nBank Name : ${bankName}\nAccount Number : ${bankAccountNumber}\nIFSC Code : ${bankIfscCode}\nBranch : ${bankBranch}`, 180, tableY - 15, { align: 'center', width: 250 });
 
         doc.font('Times-Bold').fontSize(9).text(brandTitle, col.end - 120, tableY, { width: 120, align: 'center' });
         doc.font('Times-Roman').fontSize(8).text('Authorised Signatory', col.end - 120, tableY + 12, { width: 120, align: 'center' });
