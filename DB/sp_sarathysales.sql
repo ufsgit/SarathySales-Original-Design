@@ -155,14 +155,13 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
-DROP PROCEDURE IF EXISTS `sp5_create_brand_config`$$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp5_create_brand_config`()
 BEGIN
 
     -- Drop the existing table
     DROP TABLE IF EXISTS tbl_brand_config;
 
-    -- Recreate the table with new columns for bank details
+    -- Recreate the table with brand_status as the last field
     CREATE TABLE tbl_brand_config (
         brand_id                          INT          NOT NULL AUTO_INCREMENT,
         brand_name                        VARCHAR(100) NOT NULL,
@@ -171,12 +170,12 @@ BEGIN
         brand_state_code                  VARCHAR(100) NULL,
         brand_color                       VARCHAR(10)  NOT NULL DEFAULT '#3e424b' COMMENT 'Hex color code e.g. #f36f21',
         show_branch_address_in_rto_bill   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '0=No, 1=Yes',
-        brand_status                      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
         bank_account_name                 VARCHAR(200) NULL,
         bank_name                         VARCHAR(200) NULL,
         bank_account_number               VARCHAR(100) NULL,
         bank_ifsc_code                    VARCHAR(100) NULL,
         bank_branch                       VARCHAR(200) NULL,
+        brand_status                      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1=Active, 0=Inactive',
         PRIMARY KEY (brand_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -190,12 +189,12 @@ BEGIN
         brand_state_code,
         brand_color,
         show_branch_address_in_rto_bill,
-        brand_status,
         bank_account_name,
         bank_name,
         bank_account_number,
         bank_ifsc_code,
-        bank_branch
+        bank_branch,
+        brand_status
     )
     VALUES
     (
@@ -206,12 +205,12 @@ BEGIN
         'Code: 32 Kerala [State Code : 32]',
         '#ff5a00',
         0,
-        1,
         'Sarathy Bikes',
         'BANK OF BARODA',
         '05580500008538',
         'BARB0QUILON',
-        'kollam'
+        'kollam',
+        1
     );
 
     -- Insert Bajaj details
@@ -224,12 +223,12 @@ BEGIN
         brand_state_code,
         brand_color,
         show_branch_address_in_rto_bill,
-        brand_status,
         bank_account_name,
         bank_name,
         bank_account_number,
         bank_ifsc_code,
-        bank_branch
+        bank_branch,
+        brand_status
     )
     VALUES
     (
@@ -240,19 +239,18 @@ BEGIN
         'Code: 32 Kerala [State Code : 32]',
         '#0b5ed7',
         1,
-        1, 
         'Sarathy Motors',
-        'Bank of Baroda',
+        'BANK OF BARODA',
         '05580500008535',
         'BARB0QUILON',
-        'Kollam'
+        'Kollam',
+        0
     );
 
     SELECT * FROM tbl_brand_config;
 
 END$$
 DELIMITER ;
-
 
 DELIMITER $$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_clear_all_data`()
