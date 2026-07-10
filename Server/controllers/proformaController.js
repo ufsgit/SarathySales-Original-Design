@@ -419,11 +419,11 @@ const createProformaPdf = async (req, res) => {
 
         drawSummaryRow('Round Off', roundOff, tableY);
         tableY += 12;
-        drawSummaryRow(`Misselaneous1-`, data.pro_missal1_amt, tableY);
+        drawSummaryRow(`Misselaneous1- ${data.pro_missal1 || ''}`, data.pro_missal1_amt, tableY);
         tableY += 12;
-        drawSummaryRow(`Misselaneous2-`, data.pro_missal2_amt, tableY);
+        drawSummaryRow(`Misselaneous2- ${data.pro_missal2 || ''}`, data.pro_missal2_amt, tableY);
         tableY += 12;
-        if (data.pro_missal3_amt) drawSummaryRow(`Misselaneous3-`, data.pro_missal3_amt, tableY);
+        if (data.pro_missal3_amt) drawSummaryRow(`Misselaneous3- ${data.pro_missal3 || ''}`, data.pro_missal3_amt, tableY);
         tableY += 12;
         drawSummaryRow('Less', data.pro_less, tableY);
         tableY += 12;
