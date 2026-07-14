@@ -466,7 +466,7 @@ const saveSalesReturn = async (req, res) => {
             inv.inv_hypothication, inv.inv_chassis, inv.in_engine, inv.inv_place, inv.inv_receipt_no,
             inv.inv_regn, inv.inv_advisername, inv.inv_finance_dues, inv.inv_branch, inv.inv_vehicle,
             inv.inv_vehicle_code, inv.inv_color, inv.inv_color_code, inv.inv_total, inv.inv_product_id,
-            inv.status, inv.inv_gstin, inv.inv_basic_amt, inv.inv_discount_amt, inv.inv_hsncode,
+            1, inv.inv_gstin, inv.inv_basic_amt, inv.inv_discount_amt, inv.inv_hsncode,
             inv.inv_taxable_amt, inv.inv_sgst, inv.inv_cgst, inv.inv_cess, returnDate || new Date(),
             inv.inv_pincode
         ];
@@ -510,9 +510,9 @@ const saveSalesReturn = async (req, res) => {
             }
         }
 
-        // 5. Delete original invoice (as per PHP logic)
+        // 5. Soft Delete original invoice (Update status to 0)
         await conn.execute(
-            `DELETE FROM tbl_invoice_labour WHERE inv_id = ?`,
+            `UPDATE tbl_invoice_labour SET status = 0 WHERE inv_id = ?`,
             [inv.inv_id]
         );
 

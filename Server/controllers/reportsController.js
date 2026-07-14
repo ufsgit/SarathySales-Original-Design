@@ -12,7 +12,7 @@ const getSalesReport = async (req, res) => {
 
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "tbl_invoice_labour.status = 1"];
         let params = [from, to];
 
         if (branchId) {
@@ -546,7 +546,7 @@ const exportSalesExcel = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "tbl_invoice_labour.status = 1"];
         let params = [from, to];
 
         if (branchId) {
@@ -680,7 +680,7 @@ const exportSalesPagedExcel = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "tbl_invoice_labour.status = 1"];
         let params = [from, to];
 
         if (branchId) {
@@ -804,7 +804,7 @@ const exportSalesPagedCsv = async (req, res) => {
     if (!from || !to) return res.status(400).json({ success: false, message: 'from and to dates required' });
 
     try {
-        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?"];
+        let conditions = ["DATE(tbl_invoice_labour.inv_inv_date) BETWEEN ? AND ?", "tbl_invoice_labour.status = 1"];
         let params = [from, to];
 
         if (branchId) {

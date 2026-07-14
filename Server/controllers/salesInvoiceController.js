@@ -277,7 +277,7 @@ const listInvoices = async (req, res) => {
     const offset = (page - 1) * limit;
 
     try {
-        let conditions = ["tbl_invoice_labour.inv_type != 'Purchase'"];
+        let conditions = ["tbl_invoice_labour.inv_type != 'Purchase'", "tbl_invoice_labour.status = 1"];
         let params = [];
 
         if (branchId) {
@@ -1259,7 +1259,7 @@ const saveInvoice = async (req, res) => {
                 inv_color_code,
                 inv_product_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
         `;
 
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
