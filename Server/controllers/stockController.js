@@ -102,7 +102,7 @@ const getStockVerificationAll = async (req, res) => {
             ) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_all FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p_all ON v.vehicle_code = p_all.materialsId AND b.b_id = p_all.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour WHERE status != 0 GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_all FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t_all ON v.vehicle_code = t_all.vehicle_code AND b.b_id = t_all.ic_branch
             WHERE (? IS NULL OR b.b_id = ?)
             ${onlyInStock ? 'HAVING stock > 0' : ''}
@@ -127,7 +127,7 @@ const getStockVerificationAll = async (req, res) => {
                     FROM (SELECT materialsId FROM purchaseitem GROUP BY materialsId ${search ? 'HAVING (MAX(materialName) LIKE ? OR materialsId LIKE ?)' : ''}) v
                     CROSS JOIN tbl_branch b
                     LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p ON v.materialsId = p.materialsId AND b.b_id = p.purch_branchId
-                    LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s ON v.materialsId = s.inv_vehicle_code AND b.b_id = s.inv_branch
+                    LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales FROM tbl_invoice_labour WHERE status != 0 GROUP BY inv_vehicle_code, inv_branch) s ON v.materialsId = s.inv_vehicle_code AND b.b_id = s.inv_branch
                     LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS trans FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t ON v.materialsId = t.vehicle_code AND b.b_id = t.ic_branch
                     WHERE (? IS NULL OR b.b_id = ?)
                     HAVING stock > 0
@@ -230,7 +230,7 @@ const getStockVerification = async (req, res) => {
             LEFT JOIN (
                 SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open
                 FROM tbl_invoice_labour
-                WHERE inv_inv_date < ?
+                WHERE inv_inv_date < ? AND status != 0
                 GROUP BY inv_vehicle_code, inv_branch
             ) s_open 
                 ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
@@ -259,7 +259,7 @@ const getStockVerification = async (req, res) => {
             LEFT JOIN (
                 SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur
                 FROM tbl_invoice_labour
-                WHERE inv_inv_date BETWEEN ? AND ?
+                WHERE inv_inv_date BETWEEN ? AND ? AND status != 0
                 GROUP BY inv_vehicle_code, inv_branch
             ) s_cur 
                 ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
@@ -411,7 +411,7 @@ const getStockSplitup = async (req, res) => {
                 ON b.b_id = stock_base.branch_id
             LEFT JOIN tbl_invoice_labour si
                 ON si.inv_chassis = stock_base.chassis_no
-                AND si.inv_inv_date <= ?
+                AND si.inv_inv_date <= ? AND si.status != 0
         `;
 
         const mainSql = `
@@ -541,10 +541,10 @@ const exportStockVerificationExcel = async (req, res) => {
             (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_open FROM tbl_branch_transfer WHERE debit_note_date < ? GROUP BY vehicle_code, ic_branch) t_open ON v.vehicle_code = t_open.vehicle_code AND b.b_id = t_open.ic_branch
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_cur FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate BETWEEN ? AND ? GROUP BY pi.materialsId, pb.purch_branchId) p_cur ON v.vehicle_code = p_cur.materialsId AND b.b_id = p_cur.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_cur FROM tbl_branch_transfer WHERE debit_note_date BETWEEN ? AND ? GROUP BY vehicle_code, ic_branch) t_cur ON v.vehicle_code = t_cur.vehicle_code AND b.b_id = t_cur.ic_branch
             WHERE (? IS NULL OR b.b_id = ?)
             ORDER BY v.first_id, b.branch_name
@@ -606,10 +606,10 @@ const exportStockVerificationPagedExcel = async (req, res) => {
             (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_open FROM tbl_branch_transfer WHERE debit_note_date < ? GROUP BY vehicle_code, ic_branch) t_open ON v.vehicle_code = t_open.vehicle_code AND b.b_id = t_open.ic_branch
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_cur FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate BETWEEN ? AND ? GROUP BY pi.materialsId, pb.purch_branchId) p_cur ON v.vehicle_code = p_cur.materialsId AND b.b_id = p_cur.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_cur FROM tbl_branch_transfer WHERE debit_note_date BETWEEN ? AND ? GROUP BY vehicle_code, ic_branch) t_cur ON v.vehicle_code = t_cur.vehicle_code AND b.b_id = t_cur.ic_branch
             WHERE (? IS NULL OR b.b_id = ?)
             ORDER BY v.first_id, b.branch_name
@@ -671,10 +671,10 @@ const exportStockVerificationPagedCsv = async (req, res) => {
             (SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id FROM purchaseitem pi GROUP BY pi.materialsId ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}) v
             CROSS JOIN tbl_branch b
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate < ? GROUP BY pi.materialsId, pb.purch_branchId) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open FROM tbl_invoice_labour WHERE inv_inv_date < ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_open FROM tbl_branch_transfer WHERE debit_note_date < ? GROUP BY vehicle_code, ic_branch) t_open ON v.vehicle_code = t_open.vehicle_code AND b.b_id = t_open.ic_branch
             LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_cur FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId WHERE pb.invoiceDate BETWEEN ? AND ? GROUP BY pi.materialsId, pb.purch_branchId) p_cur ON v.vehicle_code = p_cur.materialsId AND b.b_id = p_cur.purch_branchId
-            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur FROM tbl_invoice_labour WHERE inv_inv_date BETWEEN ? AND ? AND status != 0 GROUP BY inv_vehicle_code, inv_branch) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
             LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_cur FROM tbl_branch_transfer WHERE debit_note_date BETWEEN ? AND ? GROUP BY vehicle_code, ic_branch) t_cur ON v.vehicle_code = t_cur.vehicle_code AND b.b_id = t_cur.ic_branch
             WHERE (? IS NULL OR b.b_id = ?)
             ORDER BY v.first_id, b.branch_name
@@ -769,7 +769,7 @@ const getStockSplitupQuery = (req) => {
         FROM purchaseitem pi
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date BETWEEN pb.invoiceDate AND ?
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date BETWEEN pb.invoiceDate AND ? AND si.status != 0
         LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date BETWEEN pb.invoiceDate AND ?
         ${where} 
         ORDER BY pb.invoiceDate DESC 
@@ -966,7 +966,7 @@ const getStockSplitupAll = async (req, res) => {
                 ON b.b_id = stock_base.branch_id
             LEFT JOIN tbl_invoice_labour si
                 ON si.inv_chassis = stock_base.chassis_no
-                AND si.inv_inv_date <= ?
+                AND si.inv_inv_date <= ? AND si.status != 0
         `;
 
         const mainSql = `
@@ -1056,7 +1056,7 @@ const getStockSplitupAllQuery = (req) => {
         FROM purchaseitem pi
         JOIN purchaseitembill pb ON pb.purchaseItemBillId = pi.purchaseItemBillId
         LEFT JOIN tbl_branch b ON b.b_id = pb.purch_branchId
-        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ?
+        LEFT JOIN tbl_invoice_labour si ON si.inv_chassis = pi.chassis_no AND si.inv_inv_date <= ? AND si.status != 0
         LEFT JOIN tbl_branch_transfer bt ON bt.chassis_no = pi.chassis_no AND bt.ic_branch = pb.purch_branchId AND bt.debit_note_date <= ?
         ${where} ORDER BY pb.invoiceDate DESC 
     `;
@@ -1141,7 +1141,7 @@ const getExcelStockSplitupAllQuery = (req) => {
             ON b.b_id = stock_base.branch_id
         LEFT JOIN tbl_invoice_labour si
             ON si.inv_chassis = stock_base.chassis_no
-            AND si.inv_inv_date <= ?
+            AND si.inv_inv_date <= ? AND si.status != 0
     `;
 
     const sql = `
@@ -1270,7 +1270,7 @@ const getStockVerificationAllQuery = (req) => {
         ) v
         CROSS JOIN tbl_branch b
         LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_all FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p_all ON v.vehicle_code = p_all.materialsId AND b.b_id = p_all.purch_branchId
-        LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
+        LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour WHERE status != 0 GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
         LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_all FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t_all ON v.vehicle_code = t_all.vehicle_code AND b.b_id = t_all.ic_branch
         WHERE (? IS NULL OR b.b_id = ?)
         ${onlyInStock ? 'HAVING stock > 0' : ''}
