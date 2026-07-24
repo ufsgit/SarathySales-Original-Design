@@ -397,8 +397,10 @@ const saveBranchTransfer = async (req, res) => {
         if (chassisNo) {
             // 1. Fetch source purchaseitem record
             const [sourceItems] = await conn.execute(
-                `SELECT * FROM purchaseitem 
-                 WHERE chassis_no = ? AND item_status = 'Available'
+                `SELECT pi.*, pb.invoiceTime, pb.purcha_vend_addrs, pb.rc_no, pb.rac_date, pb.hsn_code, pb.purc_gstin, pb.purc_basic_total, pb.purc_tax_total, pb.purc_grand_total 
+                 FROM purchaseitem pi 
+                 LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId 
+                 WHERE pi.chassis_no = ? AND pi.item_status = 'Available'
                  LIMIT 1`,
                 [chassisNo]
             );
@@ -428,15 +430,25 @@ const saveBranchTransfer = async (req, res) => {
                 // 4. Create new purchaseitembill for destination
                 const [billResult] = await conn.execute(
                     `INSERT INTO purchaseitembill (
-                        invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount
-                    ) VALUES (?, ?, ?, ?, ?, ?)`,
+                        invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount,
+                        invoiceTime, purcha_vend_addrs, rc_no, rac_date, hsn_code, purc_gstin, purc_basic_total, purc_tax_total, purc_grand_total
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         finalTransferNo,
                         toBranchId,
                         transferDate || new Date(),
                         fromBranchName,
                         0, // Open
-                        amount || 0
+                        amount || 0,
+                        sourceItem.invoiceTime || '',
+                        sourceItem.purcha_vend_addrs || '',
+                        sourceItem.rc_no || '',
+                        sourceItem.rac_date || null,
+                        sourceItem.hsn_code || '',
+                        sourceItem.purc_gstin || '',
+                        sourceItem.purc_basic_total || 0,
+                        sourceItem.purc_tax_total || 0,
+                        sourceItem.purc_grand_total || 0
                     ]
                 );
                 const newBillId = billResult.insertId;
@@ -445,8 +457,8 @@ const saveBranchTransfer = async (req, res) => {
                 await conn.execute(
                     `INSERT INTO purchaseitem (
                         purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-                        engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
+                        engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, model_family, item_hsn_code, overall_age
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?, ?)`,
                     [
                         newBillId,
                         sourceItem.product_id,
@@ -459,7 +471,10 @@ const saveBranchTransfer = async (req, res) => {
                         sourceItem.p_date || transferDate || new Date(),
                         sourceItem.sale_type,
                         amount || sourceItem.lc_rate || 0,
-                        toBranchId
+                        toBranchId,
+                        sourceItem.model_family || null,
+                        sourceItem.item_hsn_code || null,
+                        sourceItem.overall_age || ''
                     ]
                 );
             }
@@ -806,7 +821,10 @@ const updateBranchTransfer = async (req, res) => {
             // Apply new transfer logic (similar to save)
             if (chassisNo) {
                 const [sourceItems] = await conn.execute(
-                    `SELECT * FROM purchaseitem WHERE chassis_no = ? AND item_status = 'Available' LIMIT 1`,
+                    `SELECT pi.*, pb.invoiceTime, pb.purcha_vend_addrs, pb.rc_no, pb.rac_date, pb.hsn_code, pb.purc_gstin, pb.purc_basic_total, pb.purc_tax_total, pb.purc_grand_total 
+                     FROM purchaseitem pi 
+                     LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId 
+                     WHERE pi.chassis_no = ? AND pi.item_status = 'Available' LIMIT 1`,
                     [chassisNo]
                 );
                 if (sourceItems.length > 0) {
@@ -819,16 +837,22 @@ const updateBranchTransfer = async (req, res) => {
                     const fromBranchName = branchRows?.[0]?.branch_name || 'Source Branch';
 
                     const [billResult] = await conn.execute(
-                        `INSERT INTO purchaseitembill (invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount) 
-                         VALUES (?, ?, ?, ?, ?, ?)`,
-                        [transferNo || oldData.debit_note_no, toBranchId, transferDate || new Date(), fromBranchName, 0, Number(firstItem.amount || 0)]
+                        `INSERT INTO purchaseitembill (
+                            invoiceNo, purch_branchId, invoiceDate, pucha_vendorName, bill_status, total_bill_amount,
+                            invoiceTime, purcha_vend_addrs, rc_no, rac_date, hsn_code, purc_gstin, purc_basic_total, purc_tax_total, purc_grand_total
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            transferNo || oldData.debit_note_no, toBranchId, transferDate || new Date(), fromBranchName, 0, Number(firstItem.amount || 0),
+                            sourceItem.invoiceTime || '', sourceItem.purcha_vend_addrs || '', sourceItem.rc_no || '', sourceItem.rac_date || null,
+                            sourceItem.hsn_code || '', sourceItem.purc_gstin || '', sourceItem.purc_basic_total || 0, sourceItem.purc_tax_total || 0, sourceItem.purc_grand_total || 0
+                        ]
                     );
                     const newBillId = billResult.insertId;
 
                     await conn.execute(
-                        `INSERT INTO purchaseitem (purchaseItemBillId, product_id, materialsId, materialName, chassis_no, engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')`,
-                        [newBillId, sourceItem.product_id, sourceItem.materialsId, sourceItem.materialName, sourceItem.chassis_no, sourceItem.engine_no, sourceItem.color_name, sourceItem.color_id, sourceItem.p_date || transferDate || new Date(), sourceItem.sale_type, Number(firstItem.amount || 0), toBranchId]
+                        `INSERT INTO purchaseitem (purchaseItemBillId, product_id, materialsId, materialName, chassis_no, engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, model_family, item_hsn_code, overall_age) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?, ?)`,
+                        [newBillId, sourceItem.product_id, sourceItem.materialsId, sourceItem.materialName, sourceItem.chassis_no, sourceItem.engine_no, sourceItem.color_name, sourceItem.color_id, sourceItem.p_date || transferDate || new Date(), sourceItem.sale_type, Number(firstItem.amount || 0), toBranchId, sourceItem.model_family || null, sourceItem.item_hsn_code || null, sourceItem.overall_age || '']
                     );
                 }
             }

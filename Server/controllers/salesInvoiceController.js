@@ -553,7 +553,7 @@ const createSalesPdf = async (req, res) => {
 
         doc.font('Times-Roman').fontSize(7.5);
         items.forEach((item, idx) => {
-            const desc = (item.desc || '') + (item.hsn ? ` / ${item.hsn}` : '');
+            const desc = item.hsn ? `${item.desc || ''} / ${item.hsn}` : (item.desc || '');
             const descH = doc.heightOfString(desc, { width: col.rate - col.desc - 4, size: 7.5 });
             let rowH = Math.max(25, descH + 10);
 
@@ -1051,7 +1051,7 @@ const createRtoBillPdf = async (req, res) => {
 
         doc.font('Times-Roman').fontSize(7.5);
         items.forEach((item, idx) => {
-            const desc = (item.desc || '') + (item.hsn ? ` / ${item.hsn}` : '');
+            const desc = item.hsn ? `${item.desc || ''} / ${item.hsn}` : (item.desc || '');
             const descH = doc.heightOfString(desc, { width: col.rate - col.desc - 4, size: 7.5 });
             let rowH = Math.max(25, descH + 10);
 
