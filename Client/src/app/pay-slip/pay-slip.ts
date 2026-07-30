@@ -349,7 +349,8 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         if (this.currentId) return;
         if (!this.branchId()) return;
         if (this.paySlipNo() && this.paySlipNo() !== 'Error' && this.paySlipNo() !== 'Fetching...') return;
-        if (this.isLoadingSlipNo) return;
+        
+        // Removed `if (this.isLoadingSlipNo) return;` to allow refetching if branch changes rapidly
 
         const branchId = this.branchId();
         const branchName = this.branchName();
@@ -359,6 +360,9 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
         this.api.getPaySlipNextNo(branchId || undefined, branchName || undefined).subscribe({
             next: (res: any) => {
+                // If branch changed while this request was in flight, discard the stale response
+                if (this.branchId() !== branchId) return;
+                
                 this.isLoadingSlipNo = false;
                 console.log('[PaySlip] loadSlipNo response:', res);
                 if (res.success && res.paySlipNo) {
