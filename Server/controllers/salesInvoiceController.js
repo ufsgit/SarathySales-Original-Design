@@ -1171,6 +1171,194 @@ const createRtoBillPdf = async (req, res) => {
     }
 }
 
+// saveInvoice
+// const saveInvoice = async (req, res) => {
+//     console.log(req.body);
+
+//     let {
+//         invoiceNo, branchId, invoiceDate, customerName, chassisNo, engineNo,
+//         regNo, adviserId, totalAmount, mobileNo, guardian, address,
+//         issueType, age, cdmsNo, area, hypothication, place, receiptNo,
+//         financeDues, vehicle, pCode, color, gstin, basicAmount,
+//         discountAmount, hsnCode, taxableAmount, sgst, cgst, cess, pincode, proformaId
+//     } = req.body;
+
+//     // Enforce branch scoping for non-admins
+//     if (req.user && req.user.role == 2) {
+//         branchId = req.user.branch_id;
+//     }
+
+//     if (!invoiceNo) {
+//         return res.status(400).json({
+//             success: false,
+//             message: "Invoice number required"
+//         });
+//     }
+
+//     const conn = await db.getConnection();
+
+//     try {
+
+//         await conn.beginTransaction();
+
+//         // 🔹 Fetch vehicle details using chassis number, scoped to the current branch
+//         const [purchaseRows] = await conn.execute(
+//             `SELECT pi.materialsId, pi.color_id, pi.product_id, pi.purchaseItemBillId
+//              FROM purchaseitem pi
+//              LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
+//              WHERE pi.chassis_no = ?
+//                AND pi.item_status = 'Available'
+//                AND pb.purch_branchId = ?
+//              LIMIT 1`,
+//             [chassisNo, branchId]
+//         );
+
+//         if (purchaseRows.length === 0) {
+//             throw new Error("Vehicle not found for this chassis number in this branch");
+//         }
+
+//         const vehicleCode = purchaseRows[0].materialsId;
+//         const colorCode = purchaseRows[0].color_id;
+//         const productId = purchaseRows[0].product_id;
+//         const purchaseItemBillId = purchaseRows[0].purchaseItemBillId;
+
+//         const insertSql = `
+//             INSERT INTO tbl_invoice_labour (
+//                 inv_no,
+//                 inv_branch,
+//                 inv_inv_date,
+//                 inv_cus,
+//                 inv_chassis,
+//                 in_engine,
+//                 inv_regn,
+//                 inv_advisername,
+//                 inv_total,
+//                 inv_pho,
+//                 inv_cus_father_hus,
+//                 inv_cus_addres,
+//                 inv_type,
+//                 inv_age,
+//                 inv_cdms_no,
+//                 inv_area,
+//                 inv_hypothication,
+//                 inv_place,
+//                 inv_receipt_no,
+//                 inv_finance_dues,
+//                 inv_vehicle,
+//                 inv_vehicle_code,
+//                 inv_color,
+//                 inv_gstin,
+//                 inv_basic_amt,
+//                 inv_discount_amt,
+//                 inv_hsncode,
+//                 inv_taxable_amt,
+//                 inv_sgst,
+//                 inv_cgst,
+//                 inv_cess,
+//                 inv_pincode,
+//                 status,
+//                 inv_color_code,
+//                 inv_product_id
+//             )
+//             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+//         `;
+
+//         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
+
+//         let finalAdviserName = adviserId || '';
+//         if (adviserId) {
+//             const [empRows] = await conn.execute(`SELECT e_first_name FROM tbl_employee WHERE emp_id = ?`, [adviserId]);
+//             if (empRows.length > 0) {
+//                 finalAdviserName = empRows[0].e_first_name;
+//             }
+//         }
+
+//         const params = [
+//             invoiceNo,
+//             branchId,
+//             parsedDate,
+//             customerName || '',
+//             chassisNo || '',
+//             engineNo || '',
+//             regNo || '',
+//             finalAdviserName,
+//             totalAmount || 0,
+//             mobileNo || '',
+//             guardian || '',
+//             address || '',
+//             issueType || '',
+//             age || '',
+//             cdmsNo || '',
+//             area || '',
+//             hypothication || '',
+//             place || '',
+//             receiptNo || '',
+//             financeDues || '',
+//             vehicle || '',
+//             vehicleCode,      // inv_vehicle_code ← materialsId
+//             color || '',
+//             gstin || '',
+//             basicAmount || 0,
+//             discountAmount || 0,
+//             hsnCode || '',
+//             taxableAmount || 0,
+//             sgst || 0,
+//             cgst || 0,
+//             cess || 0,
+//             pincode || '',
+//             colorCode,        // inv_color_code ← color_id
+//             productId         // inv_product_id ← product_id
+//         ];
+
+//         const [result] = await conn.execute(insertSql, params);
+
+//         if (proformaId) {
+//             await conn.execute(
+//                 `UPDATE tbl_proforma SET pro_status = 2 WHERE pro_id = ?`,
+//                 [proformaId]
+//             );
+//         }
+
+//         if (chassisNo && purchaseItemBillId) {
+//             // 🔹 Only mark THIS specific purchaseitem record as Delivered.
+//             // Using purchaseItemBillId + chassis_no ensures we do NOT affect
+//             // other entries with the same chassis_no on different branches
+//             // or past entries of the same chassis_no on this branch.
+//             await conn.execute(
+//                 `UPDATE purchaseitem 
+//                  SET item_status = 'Delivered' 
+//                  WHERE chassis_no = ? AND purchaseItemBillId = ?`,
+//                 [chassisNo, purchaseItemBillId]
+//             );
+
+//             // 🔹 Decrement stock in tbl_stock
+//             await updateStockQuantity(conn, productId, branchId, -1);
+//         }
+
+//         await conn.commit();
+
+//         res.json({
+//             success: true,
+//             message: "Sales invoice saved successfully",
+//             inv_id: result.insertId
+//         });
+
+//     } catch (err) {
+
+//         await conn.rollback();
+//         console.error("Failed to save sales invoice:", err);
+
+//         res.status(500).json({
+//             success: false,
+//             message: "Failed to save sales invoice"
+//         });
+
+//     } finally {
+//         conn.release();
+//     }
+// };
+
+// saveInvoice SP
 const saveInvoice = async (req, res) => {
     console.log(req.body);
 
@@ -1197,161 +1385,44 @@ const saveInvoice = async (req, res) => {
     const conn = await db.getConnection();
 
     try {
-
-        await conn.beginTransaction();
-
-        // 🔹 Fetch vehicle details using chassis number, scoped to the current branch
-        const [purchaseRows] = await conn.execute(
-            `SELECT pi.materialsId, pi.color_id, pi.product_id, pi.purchaseItemBillId
-             FROM purchaseitem pi
-             LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
-             WHERE pi.chassis_no = ?
-               AND pi.item_status = 'Available'
-               AND pb.purch_branchId = ?
-             LIMIT 1`,
-            [chassisNo, branchId]
-        );
-
-        if (purchaseRows.length === 0) {
-            throw new Error("Vehicle not found for this chassis number in this branch");
-        }
-
-        const vehicleCode = purchaseRows[0].materialsId;
-        const colorCode = purchaseRows[0].color_id;
-        const productId = purchaseRows[0].product_id;
-        const purchaseItemBillId = purchaseRows[0].purchaseItemBillId;
-
-        const insertSql = `
-            INSERT INTO tbl_invoice_labour (
-                inv_no,
-                inv_branch,
-                inv_inv_date,
-                inv_cus,
-                inv_chassis,
-                in_engine,
-                inv_regn,
-                inv_advisername,
-                inv_total,
-                inv_pho,
-                inv_cus_father_hus,
-                inv_cus_addres,
-                inv_type,
-                inv_age,
-                inv_cdms_no,
-                inv_area,
-                inv_hypothication,
-                inv_place,
-                inv_receipt_no,
-                inv_finance_dues,
-                inv_vehicle,
-                inv_vehicle_code,
-                inv_color,
-                inv_gstin,
-                inv_basic_amt,
-                inv_discount_amt,
-                inv_hsncode,
-                inv_taxable_amt,
-                inv_sgst,
-                inv_cgst,
-                inv_cess,
-                inv_pincode,
-                status,
-                inv_color_code,
-                inv_product_id
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-        `;
-
         const parsedDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
-        let finalAdviserName = adviserId || '';
-        if (adviserId) {
-            const [empRows] = await conn.execute(`SELECT e_first_name FROM tbl_employee WHERE emp_id = ?`, [adviserId]);
-            if (empRows.length > 0) {
-                finalAdviserName = empRows[0].e_first_name;
-            }
-        }
-
         const params = [
-            invoiceNo,
-            branchId,
-            parsedDate,
-            customerName || '',
-            chassisNo || '',
-            engineNo || '',
-            regNo || '',
-            finalAdviserName,
-            totalAmount || 0,
-            mobileNo || '',
-            guardian || '',
-            address || '',
-            issueType || '',
-            age || '',
-            cdmsNo || '',
-            area || '',
-            hypothication || '',
-            place || '',
-            receiptNo || '',
-            financeDues || '',
-            vehicle || '',
-            vehicleCode,      // inv_vehicle_code ← materialsId
-            color || '',
-            gstin || '',
-            basicAmount || 0,
-            discountAmount || 0,
-            hsnCode || '',
-            taxableAmount || 0,
-            sgst || 0,
-            cgst || 0,
-            cess || 0,
-            pincode || '',
-            colorCode,        // inv_color_code ← color_id
-            productId         // inv_product_id ← product_id
+            invoiceNo, branchId, parsedDate, customerName || '', chassisNo || '', engineNo || '',
+            regNo || '', adviserId || null, totalAmount || 0, mobileNo || '', guardian || '',
+            address || '', issueType || '', age || '', cdmsNo || '', area || '',
+            hypothication || '', place || '', receiptNo || '', financeDues || '',
+            vehicle || '', color || '', gstin || '', basicAmount || 0, discountAmount || 0,
+            hsnCode || '', taxableAmount || 0, sgst || 0, cgst || 0, cess || 0, pincode || '',
+            proformaId || null
         ];
 
-        const [result] = await conn.execute(insertSql, params);
+        const [rows] = await conn.execute(`CALL saveSalesInvoice(
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )`, params);
 
-        if (proformaId) {
-            await conn.execute(
-                `UPDATE tbl_proforma SET pro_status = 2 WHERE pro_id = ?`,
-                [proformaId]
-            );
+        const spResult = rows[0][0];
+
+        if (spResult.invId === 0) {
+            return res.status(400).json({
+                success: false,
+                message: spResult.message 
+            });
         }
-
-        if (chassisNo && purchaseItemBillId) {
-            // 🔹 Only mark THIS specific purchaseitem record as Delivered.
-            // Using purchaseItemBillId + chassis_no ensures we do NOT affect
-            // other entries with the same chassis_no on different branches
-            // or past entries of the same chassis_no on this branch.
-            await conn.execute(
-                `UPDATE purchaseitem 
-                 SET item_status = 'Delivered' 
-                 WHERE chassis_no = ? AND purchaseItemBillId = ?`,
-                [chassisNo, purchaseItemBillId]
-            );
-
-            // 🔹 Decrement stock in tbl_stock
-            await updateStockQuantity(conn, productId, branchId, -1);
-        }
-
-        await conn.commit();
 
         res.json({
             success: true,
-            message: "Sales invoice saved successfully",
-            inv_id: result.insertId
+            message: spResult.message,
+            inv_id: spResult.invId
         });
 
     } catch (err) {
-
-        await conn.rollback();
         console.error("Failed to save sales invoice:", err);
-
         res.status(500).json({
             success: false,
             message: "Failed to save sales invoice"
         });
-
     } finally {
         conn.release();
     }
