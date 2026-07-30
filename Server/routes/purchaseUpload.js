@@ -34,6 +34,7 @@ const upload = multer({
  */
 
 // purchase upload old 
+
 // router.post('/upload', upload.single('excelFile'), async (req, res) => {
 //     if (!req.file) {
 //         return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -378,15 +379,15 @@ const upload = multer({
 // });
 
 // purchase upload sp 
-const uploadExcel = (req, res, next) => {
-    const uploadSingle = upload.single('excelFile');
-    uploadSingle(req, res, (err) => {
-        if (err) {
-            return res.status(400).json({ success: false, message: err.message });
-        }
-        next();
-    });
-};
+// const uploadExcel = (req, res, next) => {
+//     const uploadSingle = upload.single('excelFile');
+//     uploadSingle(req, res, (err) => {
+//         if (err) {
+//             return res.status(400).json({ success: false, message: err.message });
+//         }
+//         next();
+//     });
+// };
 
 router.post('/upload', uploadExcel, async (req, res) => {
     if (!req.file) {

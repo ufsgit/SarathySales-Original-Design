@@ -201,77 +201,77 @@ const getPurchaseInvoice = async (req, res) => {
 // };
 
 // new sp for save purchase invoice
-const savePurchaseInvoice = async (req, res) => {
-    try {
-        const d = req.body;
+// const savePurchaseInvoice = async (req, res) => {
+//     try {
+//         const d = req.body;
         
-        if (!d.invoiceNo) {
-            return res.status(400).json({ success: false, message: 'Invoice number required' });
-        }
+//         if (!d.invoiceNo) {
+//             return res.status(400).json({ success: false, message: 'Invoice number required' });
+//         }
 
-        const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (d.branchId || req.query.branchId);
+//         const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (d.branchId || req.query.branchId);
 
-        // Preprocess: Filter out items with invalid product IDs (e.g. "null" string, empty string)
-        // This guarantees MySQL's JSON_TABLE will safely parse the remaining items as strict INTs.
-        const validItems = (d.items || []).filter(item => {
-            return item.productId !== null && 
-                   item.productId !== undefined && 
-                   item.productId !== "" && 
-                   item.productId !== "null";
-        });
+//         // Preprocess: Filter out items with invalid product IDs (e.g. "null" string, empty string)
+//         // This guarantees MySQL's JSON_TABLE will safely parse the remaining items as strict INTs.
+//         const validItems = (d.items || []).filter(item => {
+//             return item.productId !== null && 
+//                    item.productId !== undefined && 
+//                    item.productId !== "" && 
+//                    item.productId !== "null";
+//         });
 
-        const [result] = await db.execute(
-            "CALL savePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                d.invoiceNo || "",
-                effectiveBranchId || null,
-                d.invoiceDate || null,
-                d.invoiceTime || "",
-                d.supplierName || "",
-                d.address || "",
-                d.rcNo || "",
-                d.rcDate || null,
-                d.hsnCode || "",
-                d.gstin || "",
-                d.basicTotal || 0,
-                d.taxTotal || 0,
-                d.grandTotal || 0,
-                d.totalAmount || 0,
-                JSON.stringify(validItems)
-            ]
-        );
+//         const [result] = await db.execute(
+//             "CALL savePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+//             [
+//                 d.invoiceNo || "",
+//                 effectiveBranchId || null,
+//                 d.invoiceDate || null,
+//                 d.invoiceTime || "",
+//                 d.supplierName || "",
+//                 d.address || "",
+//                 d.rcNo || "",
+//                 d.rcDate || null,
+//                 d.hsnCode || "",
+//                 d.gstin || "",
+//                 d.basicTotal || 0,
+//                 d.taxTotal || 0,
+//                 d.grandTotal || 0,
+//                 d.totalAmount || 0,
+//                 JSON.stringify(validItems)
+//             ]
+//         );
 
-        const responseRow = result[0][0];
-        const invId = responseRow.inv_id;
-        const message = responseRow.message;
+//         const responseRow = result[0][0];
+//         const invId = responseRow.inv_id;
+//         const message = responseRow.message;
 
-        if (invId === -1) {
-            return res.status(500).json({ success: false, message: message });
-        }
+//         if (invId === -1) {
+//             return res.status(500).json({ success: false, message: message });
+//         }
 
-        if (invId === -2) {
-            return res.status(400).json({ success: false, message: message });
-        }
+//         if (invId === -2) {
+//             return res.status(400).json({ success: false, message: message });
+//         }
 
-        if (invId === -3) {
-            return res.status(400).json({ success: false, message: message });
-        }
+//         if (invId === -3) {
+//             return res.status(400).json({ success: false, message: message });
+//         }
 
-        return res.status(200).json({
-            success: true,
-            message: message,
-            inv_id: invId
-        });
+//         return res.status(200).json({
+//             success: true,
+//             message: message,
+//             inv_id: invId
+//         });
 
-    } catch (err) {
-        console.error("savePurchaseInvoice error:", err);
-        res.status(500).json({
-            success: false,
-            message: "Failed to save purchase invoice",
-            error: err.message
-        });
-    }
-};
+//     } catch (err) {
+//         console.error("savePurchaseInvoice error:", err);
+//         res.status(500).json({
+//             success: false,
+//             message: "Failed to save purchase invoice",
+//             error: err.message
+//         });
+//     }
+// };
 
 const createPurchasePdf = async (req, res) => {
     try {
@@ -701,83 +701,83 @@ const getPurchaseInvoiceByNo = async (req, res) => {
 // };
 
 // new sp for update purchase invoice
-const updatePurchaseInvoice = async (req, res) => {
-    try {
-        const invoiceNo = req.params.no;
-        const d = req.body;
+// const updatePurchaseInvoice = async (req, res) => {
+//     try {
+//         const invoiceNo = req.params.no;
+//         const d = req.body;
         
-        // Check for internal duplicates in items list
-        const internalChassisSet = new Set();
-        const duplicateChassisList = [];
-        for (const item of (d.items || [])) {
-            const c = (item.chassisNo || '').trim();
-            if (c) {
-                if (internalChassisSet.has(c)) {
-                    duplicateChassisList.push(c);
-                }
-                internalChassisSet.add(c);
-            }
-        }
-        if (duplicateChassisList.length > 0) {
-            return res.status(400).json({ success: false, message: `Duplicate Chassis Number found in this bill: ${duplicateChassisList[0]}` });
-        }
+//         // Check for internal duplicates in items list
+//         const internalChassisSet = new Set();
+//         const duplicateChassisList = [];
+//         for (const item of (d.items || [])) {
+//             const c = (item.chassisNo || '').trim();
+//             if (c) {
+//                 if (internalChassisSet.has(c)) {
+//                     duplicateChassisList.push(c);
+//                 }
+//                 internalChassisSet.add(c);
+//             }
+//         }
+//         if (duplicateChassisList.length > 0) {
+//             return res.status(400).json({ success: false, message: `Duplicate Chassis Number found in this bill: ${duplicateChassisList[0]}` });
+//         }
 
-        const validItems = (d.items || []).filter(item => {
-            return item.productId !== null && 
-                   item.productId !== undefined && 
-                   item.productId !== "" && 
-                   item.productId !== "null";
-        });
+//         const validItems = (d.items || []).filter(item => {
+//             return item.productId !== null && 
+//                    item.productId !== undefined && 
+//                    item.productId !== "" && 
+//                    item.productId !== "null";
+//         });
 
-        const [result] = await db.execute(
-            "CALL updatePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                invoiceNo || "",
-                d.branchId || null,
-                d.invoiceDate || null,
-                d.supplierName || "",
-                d.address || "",
-                d.rcNo || "",
-                d.rcDate || null,
-                d.hsnCode || "",
-                d.gstin || "",
-                d.basicTotal || 0,
-                d.taxTotal || 0,
-                d.grandTotal || 0,
-                JSON.stringify(validItems)
-            ]
-        );
+//         const [result] = await db.execute(
+//             "CALL updatePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+//             [
+//                 invoiceNo || "",
+//                 d.branchId || null,
+//                 d.invoiceDate || null,
+//                 d.supplierName || "",
+//                 d.address || "",
+//                 d.rcNo || "",
+//                 d.rcDate || null,
+//                 d.hsnCode || "",
+//                 d.gstin || "",
+//                 d.basicTotal || 0,
+//                 d.taxTotal || 0,
+//                 d.grandTotal || 0,
+//                 JSON.stringify(validItems)
+//             ]
+//         );
 
-        const responseRow = result[0][0];
-        const invId = responseRow.inv_id;
-        const message = responseRow.message;
+//         const responseRow = result[0][0];
+//         const invId = responseRow.inv_id;
+//         const message = responseRow.message;
 
-        if (invId === -1) {
-            return res.status(500).json({ success: false, message: message });
-        }
+//         if (invId === -1) {
+//             return res.status(500).json({ success: false, message: message });
+//         }
 
-        if (invId === -2) {
-            return res.status(404).json({ success: false, message: message });
-        }
+//         if (invId === -2) {
+//             return res.status(404).json({ success: false, message: message });
+//         }
 
-        if (invId === -3) {
-            return res.status(400).json({ success: false, message: message });
-        }
+//         if (invId === -3) {
+//             return res.status(400).json({ success: false, message: message });
+//         }
 
-        return res.status(200).json({
-            success: true,
-            message: message
-        });
+//         return res.status(200).json({
+//             success: true,
+//             message: message
+//         });
 
-    } catch (err) {
-        console.error("updatePurchaseInvoice error:", err);
-        res.status(500).json({
-            success: false,
-            message: "Failed to update purchase invoice",
-            error: err.message
-        });
-    }
-};
+//     } catch (err) {
+//         console.error("updatePurchaseInvoice error:", err);
+//         res.status(500).json({
+//             success: false,
+//             message: "Failed to update purchase invoice",
+//             error: err.message
+//         });
+//     }
+// };
 
 const createPurchasePdfByNo = async (req, res) => {
     try {
