@@ -89,114 +89,188 @@ const getPurchaseInvoice = async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Failed to fetch purchase invoice' }); }
 };
 
+//save inovice old
+// const savePurchaseInvoice = async (req, res) => {
+//     const {
+//         invoiceNo, branchId, invoiceDate, invoiceTime, supplierName, address,
+//         rcNo, rcDate, hsnCode, gstin, basicTotal, taxTotal, grandTotal, totalAmount, items
+//     } = req.body;
+
+//     if (!invoiceNo) return res.status(400).json({ success: false, message: 'Invoice number required' });
+//     const conn = await db.getConnection();
+//     try {
+//         await conn.beginTransaction();
+
+//         // 1. Check for duplicate Invoice Number
+//         const [existingBill] = await conn.execute(
+//             'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?',
+//             [invoiceNo]
+//         );
+//         if (existingBill.length > 0) {
+//             await conn.rollback();
+//             return res.status(400).json({ success: false, message: `Invoice number ${invoiceNo} already exists.` });
+//         }
+
+//         // 2. Check for duplicate Chassis Numbers in items
+//         const chassisNos = (items || []).map(i => i.chassisNo).filter(c => !!c);
+//         if (chassisNos.length > 0) {
+//             // Check within the database
+//             for (const chassis of chassisNos) {
+//                 const [existingChassis] = await conn.execute(
+//                     'SELECT purchaseItemId FROM purchaseitem WHERE chassis_no = ?',
+//                     [chassis]
+//                 );
+//                 if (existingChassis.length > 0) {
+//                     await conn.rollback();
+//                     return res.status(400).json({ success: false, message: `Chassis number ${chassis} already exists in the system.` });
+//                 }
+//             }
+//         }
+
+//         // 1. Calculate and map totals
+//         let totalMasterCost = 0;
+//         const productIds = (items || []).map(i => i.productId).filter(id => !!id);
+//         const productCosts = new Map();
+
+//         if (productIds.length > 0) {
+//             const [rows] = await conn.execute(
+//                 `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
+//             );
+//             rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
+//         }
+
+//         (items || []).forEach(item => {
+//             const cost = productCosts.get(item.productId) || 0;
+//             item.masterCost = cost;
+//             totalMasterCost += cost;
+//         });
+
+//         const [result] = await conn.execute(
+//             `INSERT INTO purchaseitembill (
+//                 invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName,
+//                 purcha_vend_addrs, rc_no, rac_date, bill_status, total_bill_amount, hsn_code, purc_gstin,
+//                 purc_basic_total, purc_tax_total, purc_grand_total
+//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//             [
+//                 invoiceNo,
+//                 req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
+//                 invoiceDate || new Date(),
+//                 invoiceTime || '',
+//                 supplierName || '',
+//                 address || '',
+//                 rcNo || '',
+//                 rcDate || null,
+//                 0,
+//                 totalMasterCost, // <--- calculated from master costs
+//                 hsnCode || '',
+//                 gstin || '',
+//                 basicTotal || 0,
+//                 taxTotal || 0,
+//                 grandTotal || 0
+//             ]
+//         );
+//         const invId = result.insertId;
+//         for (const item of (items || [])) {
+//             await conn.execute(
+//                 `INSERT INTO purchaseitem
+//                  (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
+//                   engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
+//                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
+//                 [
+//                     invId, item.productId || null, item.prodCode || '', item.description || '',
+//                     item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
+//                     item.mfgDate || invoiceDate || new Date(), item.saleType || '',
+//                     item.masterCost || 0, // <--- use master cost for lc_rate
+//                     req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
+//                     item.overall_age || '', item.item_hsn_code || ''
+//                 ]
+//             );
+
+//             // 🔹 Increment stock in tbl_stock
+//             const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId);
+//             await updateStockQuantity(conn, item.productId, effectiveBranchId, 1);
+//         }
+//         await conn.commit();
+//         res.json({ success: true, message: 'Purchase invoice saved', inv_id: invId });
+//     } catch (err) {
+//         await conn.rollback();
+//         console.error('savePurchaseInvoice error:', err);
+//         res.status(500).json({ success: false, message: 'Failed to save purchase invoice', error: err.message });
+//     }
+//     finally { conn.release(); }
+// };
+
+// new sp for save purchase invoice
 const savePurchaseInvoice = async (req, res) => {
-    const {
-        invoiceNo, branchId, invoiceDate, invoiceTime, supplierName, address,
-        rcNo, rcDate, hsnCode, gstin, basicTotal, taxTotal, grandTotal, totalAmount, items
-    } = req.body;
-
-    if (!invoiceNo) return res.status(400).json({ success: false, message: 'Invoice number required' });
-    const conn = await db.getConnection();
     try {
-        await conn.beginTransaction();
-
-        // 1. Check for duplicate Invoice Number
-        const [existingBill] = await conn.execute(
-            'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?',
-            [invoiceNo]
-        );
-        if (existingBill.length > 0) {
-            await conn.rollback();
-            return res.status(400).json({ success: false, message: `Invoice number ${invoiceNo} already exists.` });
+        const d = req.body;
+        
+        if (!d.invoiceNo) {
+            return res.status(400).json({ success: false, message: 'Invoice number required' });
         }
 
-        // 2. Check for duplicate Chassis Numbers in items
-        const chassisNos = (items || []).map(i => i.chassisNo).filter(c => !!c);
-        if (chassisNos.length > 0) {
-            // Check within the database
-            for (const chassis of chassisNos) {
-                const [existingChassis] = await conn.execute(
-                    'SELECT purchaseItemId FROM purchaseitem WHERE chassis_no = ?',
-                    [chassis]
-                );
-                if (existingChassis.length > 0) {
-                    await conn.rollback();
-                    return res.status(400).json({ success: false, message: `Chassis number ${chassis} already exists in the system.` });
-                }
-            }
-        }
+        const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (d.branchId || req.query.branchId);
 
-        // 1. Calculate and map totals
-        let totalMasterCost = 0;
-        const productIds = (items || []).map(i => i.productId).filter(id => !!id);
-        const productCosts = new Map();
-
-        if (productIds.length > 0) {
-            const [rows] = await conn.execute(
-                `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
-            );
-            rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
-        }
-
-        (items || []).forEach(item => {
-            const cost = productCosts.get(item.productId) || 0;
-            item.masterCost = cost;
-            totalMasterCost += cost;
+        // Preprocess: Filter out items with invalid product IDs (e.g. "null" string, empty string)
+        // This guarantees MySQL's JSON_TABLE will safely parse the remaining items as strict INTs.
+        const validItems = (d.items || []).filter(item => {
+            return item.productId !== null && 
+                   item.productId !== undefined && 
+                   item.productId !== "" && 
+                   item.productId !== "null";
         });
 
-        const [result] = await conn.execute(
-            `INSERT INTO purchaseitembill (
-                invoiceNo, purch_branchId, invoiceDate, invoiceTime, pucha_vendorName,
-                purcha_vend_addrs, rc_no, rac_date, bill_status, total_bill_amount, hsn_code, purc_gstin,
-                purc_basic_total, purc_tax_total, purc_grand_total
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        const [result] = await db.execute(
+            "CALL savePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                invoiceNo,
-                req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
-                invoiceDate || new Date(),
-                invoiceTime || '',
-                supplierName || '',
-                address || '',
-                rcNo || '',
-                rcDate || null,
-                0,
-                totalMasterCost, // <--- calculated from master costs
-                hsnCode || '',
-                gstin || '',
-                basicTotal || 0,
-                taxTotal || 0,
-                grandTotal || 0
+                d.invoiceNo || "",
+                effectiveBranchId || null,
+                d.invoiceDate || null,
+                d.invoiceTime || "",
+                d.supplierName || "",
+                d.address || "",
+                d.rcNo || "",
+                d.rcDate || null,
+                d.hsnCode || "",
+                d.gstin || "",
+                d.basicTotal || 0,
+                d.taxTotal || 0,
+                d.grandTotal || 0,
+                d.totalAmount || 0,
+                JSON.stringify(validItems)
             ]
         );
-        const invId = result.insertId;
-        for (const item of (items || [])) {
-            await conn.execute(
-                `INSERT INTO purchaseitem
-                 (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
-                [
-                    invId, item.productId || null, item.prodCode || '', item.description || '',
-                    item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
-                    item.mfgDate || invoiceDate || new Date(), item.saleType || '',
-                    item.masterCost || 0, // <--- use master cost for lc_rate
-                    req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId),
-                    item.overall_age || '', item.item_hsn_code || ''
-                ]
-            );
 
-            // 🔹 Increment stock in tbl_stock
-            const effectiveBranchId = req.user && req.user.role == 2 ? req.user.branch_id : (branchId || req.query.branchId);
-            await updateStockQuantity(conn, item.productId, effectiveBranchId, 1);
+        const responseRow = result[0][0];
+        const invId = responseRow.inv_id;
+        const message = responseRow.message;
+
+        if (invId === -1) {
+            return res.status(500).json({ success: false, message: message });
         }
-        await conn.commit();
-        res.json({ success: true, message: 'Purchase invoice saved', inv_id: invId });
+
+        if (invId === -2) {
+            return res.status(400).json({ success: false, message: message });
+        }
+
+        if (invId === -3) {
+            return res.status(400).json({ success: false, message: message });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: message,
+            inv_id: invId
+        });
+
     } catch (err) {
-        await conn.rollback();
-        console.error('savePurchaseInvoice error:', err);
-        res.status(500).json({ success: false, message: 'Failed to save purchase invoice', error: err.message });
+        console.error("savePurchaseInvoice error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to save purchase invoice",
+            error: err.message
+        });
     }
-    finally { conn.release(); }
 };
 
 const createPurchasePdf = async (req, res) => {
@@ -515,112 +589,193 @@ const getPurchaseInvoiceByNo = async (req, res) => {
     }
 };
 
+
+// updatePurchaseInvoice old
+// const updatePurchaseInvoice = async (req, res) => {
+//     const invoiceNo = req.params.no;
+//     const {
+//         branchId, invoiceDate, supplierName, address, rcNo, rcDate, hsnCode, gstin,
+//         basicTotal, taxTotal, grandTotal, items
+//     } = req.body;
+
+//     // Check for internal duplicates in items list
+//     const internalChassisSet = new Set();
+//     const duplicateChassisList = [];
+//     for (const item of (items || [])) {
+//         const c = (item.chassisNo || '').trim();
+//         if (c) {
+//             if (internalChassisSet.has(c)) {
+//                 duplicateChassisList.push(c);
+//             }
+//             internalChassisSet.add(c);
+//         }
+//     }
+//     if (duplicateChassisList.length > 0) {
+//         return res.status(400).json({ success: false, message: `Duplicate Chassis Number found in this bill: ${duplicateChassisList[0]}` });
+//     }
+
+//     const conn = await db.getConnection();
+//     try {
+//         await conn.beginTransaction();
+
+//         const [billRows] = await conn.execute(
+//             'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?', [invoiceNo]
+//         );
+//         if (!billRows.length) {
+//             await conn.rollback();
+//             return res.status(404).json({ success: false, message: 'Invoice not found' });
+//         }
+//         const billId = billRows[0].purchaseItemBillId;
+
+//         // 1. Check for duplicate Chassis Numbers in other items
+//         const chassisNos = (items || []).map(i => i.chassisNo).filter(c => !!c);
+//         for (const chassis of chassisNos) {
+//             const [existingChassis] = await conn.execute(
+//                 'SELECT purchaseItemId FROM purchaseitem WHERE chassis_no = ? AND purchaseItemBillId <> ?',
+//                 [chassis, billId]
+//             );
+//             if (existingChassis.length > 0) {
+//                 await conn.rollback();
+//                 return res.status(400).json({ success: false, message: `Chassis number ${chassis} already exists in another bill.` });
+//             }
+//         }
+
+//         // 1. Calculate and map totals
+//         let totalMasterCost = 0;
+//         const productIds = (items || []).map(i => i.productId).filter(id => !!id);
+//         const productCosts = new Map();
+
+//         if (productIds.length > 0) {
+//             const [rows] = await conn.execute(
+//                 `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
+//             );
+//             rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
+//         }
+
+//         (items || []).forEach(item => {
+//             const cost = productCosts.get(item.productId) || 0;
+//             item.masterCost = cost;
+//             totalMasterCost += cost;
+//         });
+
+//         // 2. Update main bill
+//         await conn.execute(
+//             `UPDATE purchaseitembill SET 
+//                 purch_branchId = ?, invoiceDate = ?, pucha_vendorName = ?, purcha_vend_addrs = ?,
+//                 rc_no = ?, rac_date = ?, purc_basic_total = ?, purc_tax_total = ?,
+//                 purc_grand_total = ?, total_bill_amount = ?, purc_gstin = ?, hsn_code = ?
+//              WHERE purchaseItemBillId = ?`,
+//             [
+//                 branchId, invoiceDate, supplierName, address, rcNo, rcDate || null,
+//                 basicTotal || 0, taxTotal || 0, grandTotal || 0, totalMasterCost, gstin, hsnCode, billId
+//             ]
+//         );
+
+//         // 3. Simplistic update for items: Delete existing and re-insert 
+//         await conn.execute('DELETE FROM purchaseitem WHERE purchaseItemBillId = ?', [billId]);
+
+//         for (const item of (items || [])) {
+//             await conn.execute(
+//                 `INSERT INTO purchaseitem
+//                  (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
+//                   engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
+//                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
+//                 [
+//                     billId, item.productId || null, item.prodCode || '', item.description || '',
+//                     item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
+//                     item.mfgDate || invoiceDate || new Date(), item.saleType || '',
+//                     item.masterCost || 0, branchId, item.overall_age || '', item.item_hsn_code || ''
+//                 ]
+//             );
+//         }
+
+//         await conn.commit();
+//         res.json({ success: true, message: 'Purchase invoice updated successfully' });
+//     } catch (err) {
+//         await conn.rollback();
+//         console.error('updatePurchaseInvoice error:', err);
+//         res.status(500).json({ success: false, message: 'Failed to update purchase invoice' });
+//     } finally {
+//         conn.release();
+//     }
+// };
+
+// new sp for update purchase invoice
 const updatePurchaseInvoice = async (req, res) => {
-    const invoiceNo = req.params.no;
-    const {
-        branchId, invoiceDate, supplierName, address, rcNo, rcDate, hsnCode, gstin,
-        basicTotal, taxTotal, grandTotal, items
-    } = req.body;
-
-    // Check for internal duplicates in items list
-    const internalChassisSet = new Set();
-    const duplicateChassisList = [];
-    for (const item of (items || [])) {
-        const c = (item.chassisNo || '').trim();
-        if (c) {
-            if (internalChassisSet.has(c)) {
-                duplicateChassisList.push(c);
-            }
-            internalChassisSet.add(c);
-        }
-    }
-    if (duplicateChassisList.length > 0) {
-        return res.status(400).json({ success: false, message: `Duplicate Chassis Number found in this bill: ${duplicateChassisList[0]}` });
-    }
-
-    const conn = await db.getConnection();
     try {
-        await conn.beginTransaction();
-
-        const [billRows] = await conn.execute(
-            'SELECT purchaseItemBillId FROM purchaseitembill WHERE invoiceNo = ?', [invoiceNo]
-        );
-        if (!billRows.length) {
-            await conn.rollback();
-            return res.status(404).json({ success: false, message: 'Invoice not found' });
-        }
-        const billId = billRows[0].purchaseItemBillId;
-
-        // 1. Check for duplicate Chassis Numbers in other items
-        const chassisNos = (items || []).map(i => i.chassisNo).filter(c => !!c);
-        for (const chassis of chassisNos) {
-            const [existingChassis] = await conn.execute(
-                'SELECT purchaseItemId FROM purchaseitem WHERE chassis_no = ? AND purchaseItemBillId <> ?',
-                [chassis, billId]
-            );
-            if (existingChassis.length > 0) {
-                await conn.rollback();
-                return res.status(400).json({ success: false, message: `Chassis number ${chassis} already exists in another bill.` });
+        const invoiceNo = req.params.no;
+        const d = req.body;
+        
+        // Check for internal duplicates in items list
+        const internalChassisSet = new Set();
+        const duplicateChassisList = [];
+        for (const item of (d.items || [])) {
+            const c = (item.chassisNo || '').trim();
+            if (c) {
+                if (internalChassisSet.has(c)) {
+                    duplicateChassisList.push(c);
+                }
+                internalChassisSet.add(c);
             }
         }
-
-        // 1. Calculate and map totals
-        let totalMasterCost = 0;
-        const productIds = (items || []).map(i => i.productId).filter(id => !!id);
-        const productCosts = new Map();
-
-        if (productIds.length > 0) {
-            const [rows] = await conn.execute(
-                `SELECT labour_id, purchase_cost FROM tbl_labour_code WHERE labour_id IN (${productIds.join(',')})`
-            );
-            rows.forEach(r => productCosts.set(r.labour_id, parseFloat(r.purchase_cost) || 0));
+        if (duplicateChassisList.length > 0) {
+            return res.status(400).json({ success: false, message: `Duplicate Chassis Number found in this bill: ${duplicateChassisList[0]}` });
         }
 
-        (items || []).forEach(item => {
-            const cost = productCosts.get(item.productId) || 0;
-            item.masterCost = cost;
-            totalMasterCost += cost;
+        const validItems = (d.items || []).filter(item => {
+            return item.productId !== null && 
+                   item.productId !== undefined && 
+                   item.productId !== "" && 
+                   item.productId !== "null";
         });
 
-        // 2. Update main bill
-        await conn.execute(
-            `UPDATE purchaseitembill SET 
-                purch_branchId = ?, invoiceDate = ?, pucha_vendorName = ?, purcha_vend_addrs = ?,
-                rc_no = ?, rac_date = ?, purc_basic_total = ?, purc_tax_total = ?,
-                purc_grand_total = ?, total_bill_amount = ?, purc_gstin = ?, hsn_code = ?
-             WHERE purchaseItemBillId = ?`,
+        const [result] = await db.execute(
+            "CALL updatePurchaseInvoiceSP(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                branchId, invoiceDate, supplierName, address, rcNo, rcDate || null,
-                basicTotal || 0, taxTotal || 0, grandTotal || 0, totalMasterCost, gstin, hsnCode, billId
+                invoiceNo || "",
+                d.branchId || null,
+                d.invoiceDate || null,
+                d.supplierName || "",
+                d.address || "",
+                d.rcNo || "",
+                d.rcDate || null,
+                d.hsnCode || "",
+                d.gstin || "",
+                d.basicTotal || 0,
+                d.taxTotal || 0,
+                d.grandTotal || 0,
+                JSON.stringify(validItems)
             ]
         );
 
-        // 3. Simplistic update for items: Delete existing and re-insert 
-        await conn.execute('DELETE FROM purchaseitem WHERE purchaseItemBillId = ?', [billId]);
+        const responseRow = result[0][0];
+        const invId = responseRow.inv_id;
+        const message = responseRow.message;
 
-        for (const item of (items || [])) {
-            await conn.execute(
-                `INSERT INTO purchaseitem
-                 (purchaseItemBillId, product_id, materialsId, materialName, chassis_no,
-                  engine_no, color_name, color_id, p_date, sale_type, lc_rate, branch_transfer, item_status, overall_age, item_hsn_code)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', ?, ?)`,
-                [
-                    billId, item.productId || null, item.prodCode || '', item.description || '',
-                    item.chassisNo || '', item.engineNo || '', item.colorName || '', item.colorCode || '',
-                    item.mfgDate || invoiceDate || new Date(), item.saleType || '',
-                    item.masterCost || 0, branchId, item.overall_age || '', item.item_hsn_code || ''
-                ]
-            );
+        if (invId === -1) {
+            return res.status(500).json({ success: false, message: message });
         }
 
-        await conn.commit();
-        res.json({ success: true, message: 'Purchase invoice updated successfully' });
+        if (invId === -2) {
+            return res.status(404).json({ success: false, message: message });
+        }
+
+        if (invId === -3) {
+            return res.status(400).json({ success: false, message: message });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: message
+        });
+
     } catch (err) {
-        await conn.rollback();
-        console.error('updatePurchaseInvoice error:', err);
-        res.status(500).json({ success: false, message: 'Failed to update purchase invoice' });
-    } finally {
-        conn.release();
+        console.error("updatePurchaseInvoice error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update purchase invoice",
+            error: err.message
+        });
     }
 };
 
