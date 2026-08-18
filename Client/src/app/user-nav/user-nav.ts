@@ -1,6 +1,7 @@
 import { Component, inject, computed } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ApiService } from '../services/api.service';
+import { BrandService } from '../services/brand.service';
 import { AdminNav } from '../admin-nav/admin-nav';
 import { CommonModule } from '@angular/common';
 
@@ -14,7 +15,20 @@ import { CommonModule } from '@angular/common';
 export class UserNav {
   private api = inject(ApiService);
   private router = inject(Router);
+  private brandService = inject(BrandService);
   menuOpen = false;
+
+  getLogo(): string {
+    const brand = this.brandService.getBrandConfig();
+    if (!brand) return '';
+    if (brand.brand_name.toLowerCase().includes('bajaj')) {
+      return 'BajajLogo.png';
+    }
+    if (brand.brand_name.toLowerCase().includes('ktm')) {
+      return 'KtmLogo.png';
+    }
+    return '';
+  }
 
   isAdmin = computed(() => {
     const user = this.api.getCurrentUser();

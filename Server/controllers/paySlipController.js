@@ -113,11 +113,12 @@ const getNextPaySlipNo = async (req, res) => {
 
     console.log(`[paySlipController] getNextPaySlipNo called with branchId='${branchId}', branchName='${branchName}'`);
 
-    // Enforce branch scoping for non-admins (role 2)
-    if (req.user && req.user.role == 2) {
-        branchId = String(req.user.branch_id || '').trim();
-        console.log(`[paySlipController] Role 2 user, enforced branchId='${branchId}'`);
-    }
+    // Removed: Enforce branch scoping for non-admins (role 2)
+    // to allow frontend to control branchId selection
+    // if (req.user && req.user.role == 2) {
+    //     branchId = String(req.user.branch_id || '').trim();
+    //     console.log(`[paySlipController] Role 2 user, enforced branchId='${branchId}'`);
+    // }
 
     try {
         if (!branchId && branchName) {
@@ -355,9 +356,10 @@ const savePaySlip = async (req, res) => {
 
     if (!paySlipNo) return res.status(400).json({ success: false, message: 'Pay slip number required' });
 
-    if (req.user && req.user.role == 2) {
-        branchId = req.user.branch_id;
-    }
+    // Removed backend override to take branchId from frontend request
+    // if (req.user && req.user.role == 2) {
+    //     branchId = req.user.branch_id;
+    // }
 
     if (!branchId) return res.status(400).json({ success: false, message: 'Branch id required' });
 

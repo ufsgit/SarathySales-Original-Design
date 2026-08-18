@@ -22,9 +22,9 @@
                     </div>
                 </div>
                 
-                <!-- KTM Logo specifically placed here as per image 2 -->
+                <!-- Dynamic Logo placed here as per brand -->
                 <div class="brand-right" style="padding: 0; margin-top: -5px;">
-                    <img src="logo.png" alt="KTM Logo" style="height: 28px; width: auto;">
+                    <img *ngIf="getLogo()" [src]="getLogo()" [alt]="getLogo().includes('Bajaj') ? 'Bajaj Logo' : 'KTM Logo'" style="height: 28px; width: auto;">
                 </div>
             </div>
         </div>

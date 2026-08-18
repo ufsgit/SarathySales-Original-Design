@@ -20,7 +20,7 @@ import { UppercaseDirective } from '../uppercase.directive';
 })
 export class PaySlipComponent implements OnInit, AfterViewInit {
     // ── State Signals ──────────────────────────────────────────
-    branchName = signal('SARATHY KOLLAM KTM');
+    branchName = signal('Select Branch');
     branchId = signal('');
     isAdmin = signal(false);
     branches = signal<any[]>([]);
@@ -302,7 +302,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                     bName = 'Select Branch';
                     this.branchId.set('');
                 } else {
-                    bName = 'SARATHY KOLLAM KTM';
+                    bName = 'Select Branch';
                     this.branchId.set(user.branch_id ? user.branch_id.toString() : '');
                 }
             } else {
@@ -817,7 +817,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.others3.set(null);
 
         this.paySlipNo.set('');
-        this.loadSlipNo();
+        // this.loadSlipNo();
 
         // Uncheck confirmation checkbox
         const checkbox = document.querySelector('.confirm input[type="checkbox"]') as HTMLInputElement | null;
