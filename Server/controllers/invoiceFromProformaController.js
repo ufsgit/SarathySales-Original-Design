@@ -16,21 +16,19 @@ const getAvailableChassisRecords = async (req, res) => {
                 pi.item_hsn_code AS inv_hsncode,
                 tlc.labour_code AS labour_code,
                 tlc.sale_price AS basic_amount,
+                COALESCE(tlc.sale_price, 0) AS labour_sale_price,
                 0 AS discount_amount,
                 0 AS taxable_amount,
-                tlc.sgst AS labour_sgst,
-                tlc.cgst AS labour_cgst,
-                tlc.cess AS labour_cess,
+                COALESCE(tlc.sgst, 0) AS labour_sgst,
+                COALESCE(tlc.cgst, 0) AS labour_cgst,
+                COALESCE(tlc.cess, 0) AS labour_cess,
                 0 AS inv_total,
                 pb.purch_branchId AS inv_branch,
                 pb.pucha_vendorName AS inv_cus,
-                til.inv_no,
-                til.inv_id,
                 tlc.id_tax_slab AS id_tax_slab
             FROM purchaseitem pi
-            LEFT JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
-            LEFT JOIN tbl_labour_code tlc ON pi.product_id = tlc.labour_id
-            LEFT JOIN tbl_invoice_labour til ON pi.chassis_no = til.inv_chassis
+            INNER JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId
+            INNER JOIN tbl_labour_code tlc ON pi.product_id = tlc.labour_id
             WHERE pi.chassis_no IS NOT NULL 
               AND TRIM(pi.chassis_no) <> ''
               AND pi.item_status = 'Available'
@@ -45,17 +43,7 @@ const getAvailableChassisRecords = async (req, res) => {
         sql += ' ORDER BY pi.purchaseItemId DESC';
         const [rows] = params.length ? await db.execute(sql, params) : await db.execute(sql);
 
-        // Attach labour data fields directly so frontend can do Auto tax without extra API call
-        const data = rows.map(r => ({
-            ...r,
-            labour_sale_price: r.basic_amount ?? 0,
-            labour_cgst: r.labour_cgst ?? 0,
-            labour_sgst: r.labour_sgst ?? 0,
-            labour_cess: r.labour_cess ?? 0,
-            id_tax_slab: r.id_tax_slab
-        }));
-
-        res.json({ success: true, data });
+        res.json({ success: true, data: rows });
     } catch (err) {
         console.error('getAvailableChassisRecords error:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch available chassis records' });
