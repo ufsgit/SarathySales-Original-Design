@@ -569,6 +569,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    deletePurchaseInvoice(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/purchase-invoice/delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     savePurchaseInvoice(data: any): Observable<ApiResponse> {
         return this.http.post<ApiResponse>(`${this.BASE_URL}/purchase-invoice/save`, data)
             .pipe(catchError(err => this.handleError(err)));
