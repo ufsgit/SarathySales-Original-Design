@@ -1446,6 +1446,17 @@ const updateInvoice = async (req, res) => {
     try {
         await conn.beginTransaction();
 
+        // Check if invoice number already exists for another invoice
+        const [existingInvoice] = await conn.execute(
+            'SELECT inv_id FROM tbl_invoice_labour WHERE inv_no = ? AND inv_id != ? LIMIT 1',
+            [invoiceNo, id]
+        );
+
+        if (existingInvoice.length > 0) {
+            await conn.rollback();
+            return res.json({ success: false, message: 'Invoice number already exists.' });
+        }
+
         const updateSql = `
             UPDATE tbl_invoice_labour SET
                 inv_no=?, inv_branch=?, inv_inv_date=?, inv_cus=?, inv_chassis=?, in_engine=?, 
