@@ -74,7 +74,6 @@ const getAvailableVehicles = async (req, res) => {
 const getStockVerificationAll = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = '2000-01-01'; // Very old date for "ALL"
     const toDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -157,10 +156,6 @@ const getStockVerification = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') {
         branchId = null;
-    }
-
-    if (req.user && req.user.role == 2) {
-        branchId = req.user.branch_id || null;
     }
 
     const fromDate = req.query.from || '2000-01-01';
@@ -327,9 +322,6 @@ const getStockVerification = async (req, res) => {
 
 const getStockSplitup = async (req, res) => {
     let branchId = req.query.branchId;
-    if (req.user && req.user.role == 2) {
-        branchId = req.user.branch_id;
-    }
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const chassisNo = (req.query.chassisNo || '').trim();
@@ -522,7 +514,6 @@ const deleteStock = async (req, res) => {
 const exportStockVerificationExcel = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -584,7 +575,6 @@ const exportStockVerificationExcel = async (req, res) => {
 const exportStockVerificationPagedExcel = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -649,7 +639,6 @@ const exportStockVerificationPagedExcel = async (req, res) => {
 const exportStockVerificationPagedCsv = async (req, res) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
 
     const fromDate = req.query.from || '2000-01-01';
     const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -706,7 +695,6 @@ const exportStockVerificationPagedCsv = async (req, res) => {
 
 const getStockSplitupQuery = (req) => {
     let branchId = req.query.branchId;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
 
     const fromDate = req.query.from || '2000-01-01';
@@ -884,9 +872,6 @@ const exportStockSplitupPagedCsv = async (req, res) => {
 
 const getStockSplitupAll = async (req, res) => {
     let branchId = req.query.branchId;
-    if (req.user && req.user.role == 2) {
-        branchId = req.user.branch_id;
-    }
     const chassisNo = (req.query.chassisNo || '').trim();
     const search = (req.query.search || '').trim();
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -1010,7 +995,6 @@ const getStockSplitupAll = async (req, res) => {
 
 const getStockSplitupAllQuery = (req) => {
     let branchId = req.query.branchId;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
     const chassisNo = (req.query.chassisNo || '').trim();
     const vehicleCodeStr = req.query.vehicleCode;
@@ -1065,7 +1049,6 @@ const getStockSplitupAllQuery = (req) => {
 
 const getExcelStockSplitupAllQuery = (req) => {
     let branchId = req.query.branchId;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
     const chassisNo = (req.query.chassisNo || '').trim();
     const search = (req.query.search || '').trim();
@@ -1249,7 +1232,6 @@ const exportStockSplitupAllPagedCsv = async (req, res) => {
 const getStockVerificationAllQuery = (req) => {
     let branchId = req.query.branchId;
     if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
-    if (req.user && req.user.role == 2) branchId = req.user.branch_id || null;
     const search = (req.query.search || '').trim();
     const onlyInStock = req.query.onlyInStock === 'true';
 

@@ -28,7 +28,7 @@
         <div class="filters-container">
             <div class="filter-row">
                 <label>Branch</label>
-                <div class="custom-dropdown" [class.active]="isBranchDropdownOpen()" [class.disabled]="!isAdmin()">
+                <div class="custom-dropdown" [class.active]="isBranchDropdownOpen()">
                     <div class="dropdown-selected" (click)="toggleBranchDropdown()">
                         <span [class.placeholder]="branchName() === 'Select Branch'">{{ branchName() || 'Select Branch'
                             }}</span>
@@ -42,11 +42,9 @@
                                 (ngModelChange)="branchSearchTerm.set($event)" (click)="$event.stopPropagation()">
                         </div>
                         <div class="options-container">
-                            @if (isAdmin()) {
                             <div class="option" (click)="selectBranch({b_id: '', branch_name: 'All Branches'})">
                                 <span class="branch-name">All Branches</span>
                             </div>
-                            }
                             @for (branch of filteredBranches(); track branch.b_id) {
                             <div class="option" (click)="selectBranch(branch)">
                                 <span class="branch-name">{{ branch.branch_name }}</span>

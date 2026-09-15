@@ -76,7 +76,6 @@ export class ReportsStockVerification {
     }
 
     toggleBranchDropdown() {
-        if (!this.isAdmin()) return;
         this.isBranchDropdownOpen.set(!this.isBranchDropdownOpen());
         if (this.isBranchDropdownOpen()) {
             this.branchSearchTerm.set('');
