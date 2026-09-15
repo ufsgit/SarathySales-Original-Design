@@ -48,7 +48,20 @@
             </div>
             }
             @if (errorMsg()) {
-            <div class="status-row error-text">{{ errorMsg() }}</div>
+            <div class="custom-modal-backdrop">
+                <div class="custom-modal-box">
+                    <div class="custom-modal-header">
+                        <h3>Error</h3>
+                        <button class="custom-modal-close" (click)="errorMsg.set('')">&times;</button>
+                    </div>
+                    <div class="custom-modal-body">
+                        {{ errorMsg() }}
+                    </div>
+                    <div class="custom-modal-footer">
+                        <button style="padding: 6px 16px; border: none; border-radius: 4px; background-color: #6c757d; color: white; cursor: pointer; font-size: 14px;" (click)="errorMsg.set('')">Close</button>
+                    </div>
+                </div>
+            </div>
             }
 
             <div class="table-responsive">
@@ -99,8 +112,12 @@
                             </td>
                             @if (isAdmin()) {
                             <td>
-                                <button class="edit-bill-btn"
-                                    [routerLink]="['/edit-purchase-previous', row.invoiceNo]">Edit Bill</button>
+                                <div class="action-buttons" style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+                                    <button class="edit-bill-btn"
+                                        [routerLink]="['/edit-purchase-previous', row.invoiceNo]">Edit Bill</button>
+                                    <button class="edit-bill-btn btn-danger" style="background-color: #dc3545; color: white; border-color: #dc3545;"
+                                        (click)="deleteInvoice(row.purchaseItemBillId)">Delete</button>
+                                </div>
                             </td>
                             }
                         </tr>

@@ -337,11 +337,14 @@ export class AdminEditSaleInvoiceComponent implements OnInit {
           setTimeout(() => this.router.navigate(['/previous-sales-invoice']), 1500);
         } else {
           this.errorMsg.set(res.message || 'Update failed');
+          alert(res.message || 'Update failed');
         }
       },
       error: (err) => {
         this.isSaving.set(false);
-        this.errorMsg.set('Server error occurred');
+        const msg = err?.error?.message || 'Server error occurred';
+        this.errorMsg.set(msg);
+        alert(msg);
       }
     });
   }

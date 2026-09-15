@@ -793,6 +793,66 @@ const createPurchasePdfByNo = async (req, res) => {
     }
 };
 
+const deletePurchaseInvoice = async (req, res) => {
+    const id = req.params.id;
+    if (!id) return res.status(400).json({ success: false, message: 'ID required' });
+    const conn = await db.getConnection();
+    try {
+        // 1. Check all vehicles availability first (dirty read is fine as per user)
+        const [items] = await conn.execute(
+            'SELECT purchaseItemId, product_id, branch_transfer, item_status, chassis_no FROM purchaseitem WHERE purchaseItemBillId = ?',
+            [id]
+        );
+
+        if (!items.length) {
+            conn.release();
+            return res.status(404).json({ success: false, message: 'Purchase Invoice not found or has no items.' });
+        }
+
+        const unavailableItems = items.filter(item => item.item_status !== 'Available');
+        if (unavailableItems.length > 0) {
+            conn.release();
+            const chassisNos = unavailableItems.map(item => item.chassis_no || 'Unknown').join(', ');
+            return res.status(400).json({ 
+                success: false, 
+                message: `Cannot delete invoice: The following vehicles are no longer Available (transferred or delivered) - Chassis No: ${chassisNos}` 
+            });
+        }
+
+        // 2. Compute stock updates (decrement) outside transaction
+        const stockUpdates = {};
+        for (const item of items) {
+            if (item.product_id && item.branch_transfer) {
+                const key = `${item.product_id}_${item.branch_transfer}`;
+                stockUpdates[key] = (stockUpdates[key] || 0) + 1;
+            }
+        }
+
+        // 3. Start transaction
+        await conn.beginTransaction();
+
+        for (const key of Object.keys(stockUpdates)) {
+            const [productId, branchId] = key.split('_');
+            const count = stockUpdates[key];
+            await updateStockQuantity(conn, productId, branchId, -count);
+        }
+
+        // 4. Delete items and bill
+        await conn.execute('DELETE FROM purchaseitem WHERE purchaseItemBillId = ?', [id]);
+        await conn.execute('DELETE FROM purchaseitembill WHERE purchaseItemBillId = ?', [id]);
+
+        await conn.commit();
+        res.json({ success: true, message: 'Purchase invoice deleted successfully.' });
+
+    } catch (err) {
+        await conn.rollback();
+        console.error('deletePurchaseInvoice error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete purchase invoice', error: err.message });
+    } finally {
+        conn.release();
+    }
+};
+
 module.exports = {
     listPurchaseInvoices,
     getPurchaseInvoice,
@@ -801,5 +861,6 @@ module.exports = {
     createPurchasePdfByNo,
     getModelColors,
     getPurchaseInvoiceByNo,
-    updatePurchaseInvoice
+    updatePurchaseInvoice,
+    deletePurchaseInvoice
 };

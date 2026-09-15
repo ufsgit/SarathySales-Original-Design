@@ -99,9 +99,9 @@ import { ApiService } from '../services/api.service';
                   <td>{{ emp.e_branch }}</td>
                   <td>{{ emp.e_mobile }}</td>
                   <td>
-                    <span class="status-badge" [ngClass]="emp.status?.toLowerCase() === 'active' ? 'active' : 'inactive'">
-                      {{ emp.status || 'Active' }}
-                    </span>
+                    <button class="status-badge" [ngClass]="emp.status?.toLowerCase() === 'active' ? 'active' : 'inactive'" (click)="openStatusModal(emp)">
+                      <span class="status-text">{{ emp.status || 'Active' }}</span>
+                    </button>
                   </td>
                   <td class="action-cell">
                     <div class="action-wrapper" (click)="$event.stopPropagation()">
@@ -149,6 +149,33 @@ import { ApiService } from '../services/api.service';
   
   <div style="height: 50px;"></div>
   <app-admin-footer></app-admin-footer>
+
+  <!-- Status Modal -->
+  <div class="modal-overlay" *ngIf="isStatusModalOpen" (click)="closeStatusModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Change Status</h3>
+        <button class="close-btn" (click)="closeStatusModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Emp Code:</strong> {{ selectedEmpForStatus?.e_code }}</p>
+        <p><strong>Name:</strong> {{ selectedEmpForStatus?.emp_intial }} {{ selectedEmpForStatus?.e_first_name }}</p>
+        
+        <div class="form-group" style="margin-top: 15px;">
+          <label>Status:</label>
+          <select class="form-control" [value]="newStatusValue" (change)="onStatusChange($any($event.target).value)">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeStatusModal()">Cancel</button>
+        <button class="btn-save" (click)="saveStatus()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
 </div>
   `,
   styles: [`
@@ -210,9 +237,55 @@ import { ApiService } from '../services/api.service';
     .report-table tr:nth-child(even) { background: #fafafa; }
     .no-data { text-align: center; padding: 40px !important; font-style: italic; color: #999; }
 
-    .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-    .status-badge.active { background-color: #e6ffed; color: #28a745; }
-    .status-badge.inactive { background-color: #fff1f0; color: #cf1322; }
+    .status-badge { 
+      padding: 5px 12px; 
+      border-radius: 4px; 
+      font-size: 11px; 
+      font-weight: 600; 
+      text-transform: uppercase; 
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .status-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .status-badge:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .status-badge.active { background-color: #e6ffed; color: #28a745; border-color: #b7ebc6; }
+    .status-badge.inactive { background-color: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    
+    .status-text {
+      animation: pulseText 2s infinite;
+    }
+    
+    @keyframes pulseText {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    /* Modal Styles */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; border-radius: 6px; width: 350px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
+    .modal-header { background: #0b5ed7; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; line-height: 1; }
+    .modal-body { padding: 15px; font-size: 14px; color: #333; }
+    .modal-body p { margin: 5px 0; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+    .form-control { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; outline: none; }
+    .modal-footer { padding: 12px 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-cancel { padding: 6px 12px; background: #f1f1f1; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; color: #333; font-weight: 500; }
+    .btn-save { padding: 6px 12px; background: #0b5ed7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
 
     /* Action Dropdown */
     .action-cell { position: relative; }
@@ -248,6 +321,9 @@ export class AdminEmpolyeelist implements OnInit {
   showInstituteList: boolean = false;
   branches = signal<any[]>([]);
   openDropdownIndex: number | null = null;
+  isStatusModalOpen: boolean = false;
+  selectedEmpForStatus: any = null;
+  newStatusValue: string = '';
 
   filteredBranches = computed(() => {
     const list = this.branches();
@@ -413,6 +489,50 @@ export class AdminEmpolyeelist implements OnInit {
 
   goToAdd() {
     this.router.navigate(['/admin-empolyee']);
+  }
+
+  openStatusModal(emp: any) {
+    this.selectedEmpForStatus = { ...emp };
+    this.newStatusValue = emp.status ? emp.status.toUpperCase() : 'ACTIVE';
+    this.isStatusModalOpen = true;
+  }
+
+  closeStatusModal() {
+    this.isStatusModalOpen = false;
+    this.selectedEmpForStatus = null;
+  }
+
+  onStatusChange(value: string) {
+    this.newStatusValue = value;
+  }
+
+  saveStatus() {
+    if (this.selectedEmpForStatus) {
+      const empId = this.selectedEmpForStatus.emp_id;
+      const newStatus = this.newStatusValue;
+
+      this.apiService.updateEmployeeStatus(empId, newStatus).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            // Find the employee in the current list and update status
+            const updatedEmployees = this.employees().map(e => {
+              if (e.emp_id === empId) {
+                return { ...e, status: newStatus };
+              }
+              return e;
+            });
+            this.employees.set(updatedEmployees);
+            this.closeStatusModal();
+          } else {
+            alert('Failed to update status: ' + res.message);
+          }
+        },
+        error: (err: any) => {
+          console.error(err);
+          alert('Error updating status');
+        }
+      });
+    }
   }
 }
 

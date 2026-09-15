@@ -256,7 +256,65 @@
 }
 
 .error-text {
-    color: #e53935;
+    color: #dc3545;
+}
+
+/* Custom Modal */
+.custom-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.custom-modal-box {
+    background: #fff;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.custom-modal-header {
+    background: #dc3545;
+    color: #fff;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.custom-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.custom-modal-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.custom-modal-body {
+    padding: 20px;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.custom-modal-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #ddd;
+    text-align: right;
+    background: #f9f9f9;
 }
 
 .customer-info,

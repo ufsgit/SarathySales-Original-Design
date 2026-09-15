@@ -8,7 +8,8 @@ const {
     createPurchasePdfByNo,
     getModelColors,
     getPurchaseInvoiceByNo,
-    updatePurchaseInvoice
+    updatePurchaseInvoice,
+    deletePurchaseInvoice
 } = require('../controllers/purchaseInvoiceController');
 
 router.get('/list', listPurchaseInvoices);
@@ -16,6 +17,7 @@ router.get('/model-colors', getModelColors);
 router.post('/save', savePurchaseInvoice);
 router.get('/by-no/:no', getPurchaseInvoiceByNo);
 router.put('/update/:no', updatePurchaseInvoice);
+router.delete('/delete/:id', deletePurchaseInvoice);
 router.get('/create-pdf/:id', createPurchasePdf);
 router.get('/pdf-by-no/:no', createPurchasePdfByNo);
 

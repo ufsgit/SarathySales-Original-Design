@@ -254,6 +254,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    hardDeletePaySlip(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/pay-slip/hard-delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     getPaySlipNumbers(): Observable<ApiResponse<string[]>> {
         const user = this.getCurrentUser();
         const branchId = user?.branch_id ? String(user.branch_id) : undefined;
@@ -561,6 +566,11 @@ export class ApiService {
 
     updatePurchaseInvoice(invoiceNo: string, data: any): Observable<ApiResponse> {
         return this.http.put<ApiResponse>(`${this.BASE_URL}/purchase-invoice/update/${encodeURIComponent(invoiceNo)}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    deletePurchaseInvoice(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/purchase-invoice/delete/${id}`)
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -1114,6 +1124,11 @@ export class ApiService {
 
     updateEmployee(id: string | number, data: any): Observable<ApiResponse> {
         return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/employees/edit/${id}`, data)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    updateEmployeeStatus(id: string | number, status: string): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/employees/update-status/${id}`, { status })
             .pipe(catchError(err => this.handleError(err)));
     }
 

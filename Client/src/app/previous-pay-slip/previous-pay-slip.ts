@@ -223,4 +223,25 @@ export class PreviousPaySlip implements OnInit, OnDestroy {
       }
     });
   }
+
+  deleteSlip(row: any): void {
+    if (!row?.payslip_id) return;
+    const confirmMsg = `Are you sure you want to completely DELETE Pay Slip ${row.pay_slip_no || ''}? This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+    this.isLoading.set(true);
+    this.api.hardDeletePaySlip(row.payslip_id).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        if (res.success) {
+          this.loadData();
+        } else {
+          this.errorMsg.set(res.message || 'Failed to permanently delete pay slip');
+        }
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.errorMsg.set(err?.error?.message || 'Server error deleting pay slip');
+      }
+    });
+  }
 }

@@ -191,6 +191,21 @@ const updateEmployee = async (req, res) => {
     }
 };
 
+const updateEmployeeStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        await db.execute(
+            'UPDATE tbl_employee SET status=? WHERE emp_id=?',
+            [status || 'ACTIVE', id]
+        );
+        res.json({ success: true, message: 'Employee status updated successfully' });
+    } catch (err) {
+        console.error('Update Employee Status Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update employee status' });
+    }
+};
+
 const deleteEmployee = async (req, res) => {
     const { id } = req.params;
     try {
@@ -1063,6 +1078,7 @@ module.exports = {
     listEmployees,
     addEmployee,
     updateEmployee,
+    updateEmployeeStatus,
     deleteEmployee,
     listProducts,
     addProduct,

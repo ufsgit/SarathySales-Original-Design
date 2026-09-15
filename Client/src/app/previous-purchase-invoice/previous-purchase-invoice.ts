@@ -143,4 +143,26 @@ export class PreviousPurchaseInvoice implements OnInit, OnDestroy {
     const url = this.api.getPurchasePdfUrl(invoiceNo);
     window.open(url, '_blank');
   }
+
+  deleteInvoice(id: number): void {
+    if (!id) return;
+    if (!window.confirm('Are you sure you want to delete this purchase invoice? This will permanently remove it and rollback stock for available vehicles.')) return;
+
+    this.isLoading.set(true);
+    this.api.deletePurchaseInvoice(id).subscribe({
+      next: (res) => {
+        this.isLoading.set(false);
+        if (res.success) {
+          alert('Purchase invoice deleted successfully.');
+          this.loadData();
+        } else {
+          this.errorMsg.set(res.message || 'Failed to delete purchase invoice.');
+        }
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.errorMsg.set(err?.error?.message || 'Failed to delete purchase invoice.');
+      }
+    });
+  }
 }
