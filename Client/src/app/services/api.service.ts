@@ -1117,6 +1117,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    updateEmployeeStatus(id: string | number, status: string): Observable<ApiResponse> {
+        return this.http.put<ApiResponse>(`${this.BASE_URL}/admin/employees/update-status/${id}`, { status })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     deleteEmployee(id: string | number): Observable<ApiResponse> {
         return this.http.delete<ApiResponse>(`${this.BASE_URL}/admin/employees/delete/${id}`)
             .pipe(catchError(err => this.handleError(err)));

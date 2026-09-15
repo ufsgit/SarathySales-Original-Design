@@ -26,6 +26,7 @@ const {
     addColor,
     listDesignations,
     updateEmployee,
+    updateEmployeeStatus,
     deleteEmployee,
     updateInstitution,
     deleteInstitution,
@@ -59,6 +60,7 @@ const upload = multer({ storage });
 router.get('/employees/list', adminMiddleware, listEmployees);
 router.post('/employees/add', adminMiddleware, addEmployee);
 router.put('/employees/edit/:id', adminMiddleware, updateEmployee);
+router.put('/employees/update-status/:id', adminMiddleware, updateEmployeeStatus);
 router.delete('/employees/delete/:id', adminMiddleware, deleteEmployee);
 
 // Product Routes
