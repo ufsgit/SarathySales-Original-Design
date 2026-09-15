@@ -254,6 +254,11 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    hardDeletePaySlip(id: number): Observable<ApiResponse> {
+        return this.http.delete<ApiResponse>(`${this.BASE_URL}/pay-slip/hard-delete/${id}`)
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     getPaySlipNumbers(): Observable<ApiResponse<string[]>> {
         const user = this.getCurrentUser();
         const branchId = user?.branch_id ? String(user.branch_id) : undefined;

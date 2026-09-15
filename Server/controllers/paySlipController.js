@@ -431,6 +431,8 @@ const getPaySlip = async (req, res) => {
 
 const updatePaySlip = async (req, res) => {
     const body = req.body || {};
+    const paySlipNo = pick(body, 'paySlipNo', 'pay_slip_no');
+    const branchId = pick(body, 'branchId', 'pay_branch_id');
     const paySlipDate = pick(body, 'paySlipDate', 'pay_slip_date');
     const customerName = pick(body, 'customerName', 'pay_cus_name');
     const vehicleName = pick(body, 'vehicleName', 'pay_slip_reference');
@@ -469,6 +471,15 @@ const updatePaySlip = async (req, res) => {
     try {
         await conn.beginTransaction();
 
+        const [dupCheck] = await conn.execute(
+            'SELECT payslip_id FROM tbl_payslip WHERE pay_slip_no = ? AND payslip_id != ? LIMIT 1',
+            [paySlipNo, req.params.id]
+        );
+        if (dupCheck.length > 0) {
+            await conn.rollback();
+            return res.status(409).json({ success: false, message: 'Pay slip number already exists for another record' });
+        }
+
         const totals = calculateTotals({
             vehicleAmount, roadTax, insuranceAmount, regnFee, vpCharges,
             extendedWarranty, serviceStampCharges, fittingsAmt, bflInsOthers,
@@ -479,7 +490,7 @@ const updatePaySlip = async (req, res) => {
 
         await conn.execute(
             `UPDATE tbl_payslip SET
-                pay_slip_date=?, pay_finance=?, pay_slip_reference=?, pay_regn=?, pay_regn_fee=?,
+                pay_slip_no=?, pay_branch_id=?, pay_slip_date=?, pay_finance=?, pay_slip_reference=?, pay_regn=?, pay_regn_fee=?,
                 pay_cus_name=?, pay_vehil_type=?, pay_vehile_amt=?, pay_remarks=?, pay_vp_charge=?, pay_insurance=?,
                 pay_road_tax=?, pay_dcc=?, pay_exchange=?, pay_discount=?, pay_bfl=?, pay_advance=?, pay_dues=?,
                 pay_exted_wanty=?, pay_service_chrge=?, pay_others=?, pay_advan_install=?, pay_rsa_amt=?,
@@ -488,7 +499,7 @@ const updatePaySlip = async (req, res) => {
                 pay_grand_tot=?, pay_status=?
              WHERE payslip_id=?`,
             [
-                paySlipDate, financeType || 'By Cash', vehicleName || '', executiveName || '', amount(regnFee),
+                paySlipNo, branchId, paySlipDate, financeType || 'By Cash', vehicleName || '', executiveName || '', amount(regnFee),
                 customerName || 'Internal/Employee', vehicleType || '', amount(vehicleAmount), remarks || '',
                 amount(vpCharges), amount(insuranceAmount), amount(roadTax), amount(financeAmount), amount(exchange),
                 amount(discount), amount(bflDiscount), amount(advanceCash), amount(duesAmt), amount(extendedWarranty),
@@ -885,6 +896,16 @@ const deletePaySlip = async (req, res) => {
     }
 };
 
+const hardDeletePaySlip = async (req, res) => {
+    try {
+        await db.execute('DELETE FROM tbl_payslip WHERE payslip_id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Pay slip deleted successfully' });
+    } catch (err) {
+        console.error('hardDeletePaySlip error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete pay slip' });
+    }
+};
+
 module.exports = {
     getNextPaySlipNo,
     getAdvisers,
@@ -894,6 +915,7 @@ module.exports = {
     getPaySlip,
     updatePaySlip,
     deletePaySlip,
+    hardDeletePaySlip,
     createPdf,
     createPdfByNo
 };

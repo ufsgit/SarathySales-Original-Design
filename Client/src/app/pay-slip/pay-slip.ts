@@ -234,8 +234,7 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.errorMessage.set('');
 
         // Reload data for the new branch
-        this.loadSlipNo();
-        this.loadAdvisers();
+        this.loadSlipNo(true);
         this.loadFormData();
     }
 
@@ -313,9 +312,6 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
             if (admin) this.loadBranches();
         }
         this.paySlipDate.set(this.todayIso);
-        this.loadAdvisers();
-        this.loadLabourCodes();
-        this.loadInsuranceCompanies();
         this.loadFormData();
 
         const idParam = this.route.snapshot.paramMap.get('id');
@@ -333,9 +329,6 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
 
     private loadInitialData(): void {
         this.loadSlipNo();
-        this.loadAdvisers();
-        this.loadLabourCodes();
-        this.loadInsuranceCompanies();
         this.loadFormData();
     }
 
@@ -345,10 +338,10 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
     }
 
 
-    loadSlipNo(): void {
-        if (this.currentId) return;
+    loadSlipNo(force: boolean = false): void {
+        if (this.currentId && !force) return;
         if (!this.branchId()) return;
-        if (this.paySlipNo() && this.paySlipNo() !== 'Error' && this.paySlipNo() !== 'Fetching...') return;
+        if (!force && this.paySlipNo() && this.paySlipNo() !== 'Error' && this.paySlipNo() !== 'Fetching...') return;
         
         // Removed `if (this.isLoadingSlipNo) return;` to allow refetching if branch changes rapidly
 
@@ -414,9 +407,9 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
                 this.onAdviserChange();
             },
             error: () => {
-                this.loadAdvisers();
-                this.loadLabourCodes();
-                this.loadInsuranceCompanies();
+                this.advisers.set([]);
+                this.labourCodes.set([]);
+                this.insuranceCompanies.set([]);
             }
         });
     }
@@ -501,63 +494,9 @@ export class PaySlipComponent implements OnInit, AfterViewInit {
         this.others3.set(this.toNumber(d.pay_others3_amt));
 
         // Fetch branch-specific dropdown data
-        this.loadAdvisers();
         this.loadFormData();
     }
 
-    loadAdvisers(): void {
-        const branchName = (this.branchName() || '').toString().trim();
-        this.api.getAdvisers(branchName || undefined).subscribe({
-            next: (res: any) => {
-                if (res.success) {
-                    const list = (res.data || []).map((a: any) => ({
-                        ...a,
-                        e_first_name: (a.e_first_name || a.name || '').toString().trim(),
-                        name: (a.e_first_name || a.name || '').toString().trim()
-                    }));
-                    this.advisers.set(list);
-
-                    // Re-sync ID if name was already loaded from Pay Slip (Edit mode)
-                    if (this.adviserName() && !this.adviserId()) {
-                        const name = this.adviserName().toLowerCase();
-                        const found = list.find((a: any) =>
-                            (a.e_first_name || a.name || '').toString().trim().toLowerCase() === name
-                        );
-                        if (found) this.adviserId.set(found.emp_id);
-                    }
-                }
-            },
-            error: () => { this.advisers.set([]); }
-        });
-    }
-
-    loadLabourCodes(): void {
-        this.api.getAllLabourCodes().subscribe({
-            next: (res: any) => {
-                if (res.success) {
-                    const filtered = (res.data || []).filter((v: any) =>
-                        (v.labour_title || '').trim() !== '' || (v.labour_code || '').trim() !== ''
-                    );
-                    this.labourCodes.set(filtered);
-                    if (this.vehicleName()) {
-                        this.onVehicleSelect();
-                    }
-                }
-            },
-            error: () => { this.labourCodes.set([]); }
-        });
-    }
-
-    loadInsuranceCompanies(): void {
-        this.api.getInsuranceCompanies().subscribe({
-            next: (res: any) => {
-                if (res.success) {
-                    this.insuranceCompanies.set(res.data || []);
-                }
-            },
-            error: () => { this.insuranceCompanies.set([]); }
-        });
-    }
 
     onAdviserChange(): void {
         const id = this.adviserId();

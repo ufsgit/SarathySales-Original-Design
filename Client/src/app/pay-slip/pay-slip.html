@@ -38,7 +38,7 @@
                             <div class="col-stack">
                                 <div class="form-col-vertical">
                                     <label>Branch Name:</label>
-                                    <ng-container *ngIf="isAdmin() && !isEditing(); else branchReadonly">
+                                    <ng-container *ngIf="isAdmin(); else branchReadonly">
                                         <div class="custom-dropdown" #branchDropdownRef>
                                             <div class="dropdown-toggle" (click)="toggleBranchDropdown()"
                                                 [class.placeholder]="branchName() === 'Select Branch'">
@@ -74,7 +74,7 @@
                                 </div>
                                 <div class="form-col-vertical">
                                     <label>Pay Slip No:</label>
-                                    <input type="text" class="form-control" [value]="paySlipNo()" readonly>
+                                    <input type="text" class="form-control" [ngModel]="paySlipNo()" (ngModelChange)="paySlipNo.set($event)" name="paySlipNo" [readonly]="!isAdmin()">
                                 </div>
                                 <div class="form-col-vertical">
                                     <label>Date:</label>
