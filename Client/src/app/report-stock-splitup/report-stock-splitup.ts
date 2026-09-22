@@ -81,7 +81,6 @@ export class ReportStockSplitup {
     }
 
     loadData() {
-        if (!this.branchId() && !this.isAdmin()) return;
         this.loading.set(true);
         const apiCall = this.searchOption() === 'ALL'
             ? this.api.getStockSplitupAll(

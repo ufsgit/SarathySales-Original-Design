@@ -91,7 +91,6 @@ export class ReportsStockVerification {
     }
 
     loadData() {
-        if (!this.branchId() && !this.isAdmin()) return;
         this.loading.set(true);
 
         const obs = this.searchOption() === 'ALL'

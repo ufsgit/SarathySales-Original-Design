@@ -3,10 +3,15 @@ PORT=5000
 
 # Database Configuration
 DB_HOST=localhost
-DB_PORT=3306   
+DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=root123
-DB_NAME=sarathysales
+
+DB_NAME=ktmsale24-08-2026
 
 # CORS - Angular dev server
 CORS_ORIGIN=http://localhost:4200
+
+# JWT Configuration
+JWT_SECRET=sarathy_secret_key_2024_secure_v1
+JWT_EXPIRES_IN=8h

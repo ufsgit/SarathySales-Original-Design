@@ -45,11 +45,9 @@
                                 (ngModelChange)="branchSearchTerm.set($event)" (click)="$event.stopPropagation()">
                         </div>
                         <div class="options-container">
-                            @if (isAdmin()) {
                             <div class="option" (click)="selectBranch({b_id: '', branch_name: 'All Branches'})">
                                 <span class="branch-name">All Branches</span>
                             </div>
-                            }
                             @for (branch of filteredBranches(); track branch.b_id) {
                             <div class="option" (click)="selectBranch(branch)">
                                 <span class="branch-name">{{ branch.branch_name }}</span>
