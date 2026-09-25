@@ -78,11 +78,17 @@ html {
 }
 
 
+@keyframes wipeRight {
+  0% { transform: scaleX(0); transform-origin: left; opacity: 0; }
+  100% { transform: scaleX(1); transform-origin: left; opacity: 1; }
+}
+
 /* --- Theme Strip --- */
 .theme-strip {
   height: 45px;
   display: flex;
   width: 100%;
+  animation: wipeRight 0.5s ease-out forwards;
 }
 
 .strip-orange {
@@ -127,6 +133,11 @@ html {
   /* Space between card and logo */
 }
 
+@keyframes slideUpFadeIn {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 /* --- Login Card --- */
 .login-card {
   background: #f7f7f7;
@@ -138,12 +149,18 @@ html {
   display: flex;
   flex-direction: column;
   position: relative;
+  animation: slideUpFadeIn 0.4s ease-out forwards;
 }
 
 .avatar-header {
   display: flex;
   justify-content: center;
   margin-bottom: 25px;
+}
+
+@keyframes avatarGlow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 .avatar-circle {
@@ -154,6 +171,7 @@ html {
   box-shadow: 0 0 0 4px #d32f2f;
   overflow: hidden;
   background: #e0e0e0;
+  animation: avatarGlow 2s infinite ease-in-out;
 }
 
 .avatar-circle svg {
@@ -203,10 +221,13 @@ html {
   align-self: flex-start;
   /* Left align button */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
 }
 
 .btn-login-red:hover {
   background-color: #a30000;
+  transform: scale(1.03);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 
@@ -220,6 +241,24 @@ html {
 
 .big-logo-container {
   margin-bottom: 10px;
+}
+
+@keyframes cinematicReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(30px);
+    filter: blur(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1));
+  }
+}
+
+.big-logo-container img {
+  opacity: 0;
+  animation: cinematicReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .brand-text-large {
@@ -269,10 +308,26 @@ html {
   font-size: 11px;
   color: #d32f2f;
   text-decoration: none;
+  position: relative;
+}
+
+.footer-links a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: #d32f2f;
+  transition: width 0.2s ease;
+}
+
+.footer-links a:hover::after {
+  width: 100%;
 }
 
 .footer-links a:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .copyright {
