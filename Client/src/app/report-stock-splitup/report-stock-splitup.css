@@ -280,3 +280,8 @@
 .report-table thead th.relative {
     overflow: visible !important;
 }
+
+.table-container.infinite-scroll-active {
+    max-height: 65vh;
+    overflow-y: auto;
+}

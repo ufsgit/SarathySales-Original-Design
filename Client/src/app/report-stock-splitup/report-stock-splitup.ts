@@ -21,6 +21,7 @@ export class ReportStockSplitup {
     total = signal<number>(0);
     page = signal<number>(1);
     limit = signal<number>(25);
+    isInfiniteScroll = signal<boolean>(false);
 
     // Filter signals
     chassisNo = signal<string>('');
@@ -81,7 +82,9 @@ export class ReportStockSplitup {
     }
 
     loadData() {
-        this.loading.set(true);
+        if (this.page() === 1) {
+            this.loading.set(true);
+        }
         const apiCall = this.searchOption() === 'ALL'
             ? this.api.getStockSplitupAll(
                 this.branchId(),
@@ -105,7 +108,11 @@ export class ReportStockSplitup {
         apiCall.subscribe({
             next: (res) => {
                 if (res.success) {
-                    this.records.set(res.data || []);
+                    if (this.isInfiniteScroll() && this.page() > 1) {
+                        this.records.update(curr => [...curr, ...(res.data || [])]);
+                    } else {
+                        this.records.set(res.data || []);
+                    }
                     this.total.set(res.total || 0);
                 }
                 this.loading.set(false);
@@ -129,12 +136,10 @@ export class ReportStockSplitup {
         this.branchName.set(branch.branch_name);
         this.isBranchDropdownOpen.set(false);
         this.page.set(1);
-        this.loadData();
     }
 
     onFilterChange() {
         this.page.set(1);
-        this.loadData();
     }
 
     toggleVehicleDropdown() {
@@ -158,14 +163,32 @@ export class ReportStockSplitup {
     changePage(p: number | string) {
         if (typeof p === 'number' && p !== this.page()) {
             this.page.set(p);
-            this.loadData();
         }
     }
 
     changeLimit(limit: any) {
-        this.limit.set(Number(limit));
+        const numLimit = Number(limit);
+        if (numLimit === 0) {
+            this.isInfiniteScroll.set(true);
+            this.limit.set(250);
+        } else {
+            this.isInfiniteScroll.set(false);
+            this.limit.set(numLimit);
+        }
         this.page.set(1);
-        this.loadData();
+    }
+
+    onTableScroll(event: any) {
+        if (!this.isInfiniteScroll() || this.loading()) return;
+        
+        const target = event.target as HTMLElement;
+        const threshold = 2000; 
+        if (target.scrollHeight - target.scrollTop - target.clientHeight < threshold) {
+            if (this.records().length < this.total()) {
+                this.loading.set(true);
+                this.page.update(p => p + 1);
+            }
+        }
     }
 
     onSearchOptionChange(option: string) {
@@ -224,9 +247,9 @@ export class ReportStockSplitup {
     // Pagination Computeds
     totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit())));
     hasPrev = computed(() => this.page() > 1);
-    hasNext = computed(() => this.page() < this.totalPages());
-    fromEntry = computed(() => this.total() === 0 ? 0 : (this.page() - 1) * this.limit() + 1);
-    toEntry = computed(() => Math.min(this.page() * this.limit(), this.total()));
+    hasNext = computed(() => this.isInfiniteScroll() ? this.records().length < this.total() : this.page() < this.totalPages());
+    fromEntry = computed(() => this.total() === 0 ? 0 : (this.isInfiniteScroll() ? 1 : (this.page() - 1) * this.limit() + 1));
+    toEntry = computed(() => this.isInfiniteScroll() ? this.records().length : Math.min(this.page() * this.limit(), this.total()));
 
     visiblePages = computed(() => {
         const total = this.totalPages();
