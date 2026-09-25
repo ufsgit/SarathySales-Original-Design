@@ -79,6 +79,11 @@ export class ReportStockSplitup {
             // Load data whenever branch, date or other filters change
             this.loadData();
         });
+
+        effect(() => {
+            // Load totals whenever filters change
+            this.loadTotals();
+        });
     }
 
     loadData() {
@@ -121,6 +126,33 @@ export class ReportStockSplitup {
                 console.error(err);
                 this.loading.set(false);
             }
+        });
+    }
+
+    loadTotals() {
+        const obs = this.searchOption() === 'ALL'
+            ? this.api.getStockSplitupTotalsAll(
+                this.branchId(),
+                this.chassisNo(),
+                this.selectedVehicleCodes(),
+                this.searchTerm()
+            )
+            : this.api.getStockSplitupTotals(
+                this.branchId(),
+                this.fromDate(),
+                this.toDate(),
+                this.chassisNo(),
+                this.selectedVehicleCodes(),
+                this.searchTerm()
+            );
+
+        obs.subscribe({
+            next: (res) => {
+                if (res.success && res.grandTotals) {
+                    this.totalInvoiceAmount.set(parseFloat(res.grandTotals.totalInvoiceAmount || 0));
+                }
+            },
+            error: (err) => console.error(err)
         });
     }
 
@@ -269,9 +301,7 @@ export class ReportStockSplitup {
         return pages;
     });
 
-    totalInvoiceAmount = computed(() => {
-        return this.records().reduce((acc, r) => acc + (parseFloat(r.total_amount) || 0), 0);
-    });
+    totalInvoiceAmount = signal<number>(0);
 
     viewPdf(id: string) {
         const url = this.api.getPurchasePdfUrl(id);

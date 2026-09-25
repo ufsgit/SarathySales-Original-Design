@@ -71,8 +71,13 @@ export class ReportsStockVerification {
         });
 
         effect(() => {
-            // Load data whenever branch, date or other filters change
+            // Load data whenever branch, date or other filters change (including page)
             this.loadData();
+        });
+
+        effect(() => {
+            // Load totals only when filters change (ignoring page/limit since they aren't read here)
+            this.loadTotals();
         });
     }
 
@@ -152,10 +157,28 @@ export class ReportsStockVerification {
     });
 
     // Summary Totals matching image: Total Sales, Total Branch Trfer, Current Stock, Total Purchase
-    totalSales = computed(() => this.records().reduce((acc, r) => acc + r.sales, 0));
-    totalBranchTransfer = computed(() => this.records().reduce((acc, r) => acc + r.branch_transfer, 0));
-    currentStockTotal = computed(() => this.records().reduce((acc, r) => acc + r.stock, 0));
-    totalPurchase = computed(() => this.records().reduce((acc, r) => acc + r.purchase, 0));
+    totalSales = signal<number>(0);
+    totalBranchTransfer = signal<number>(0);
+    currentStockTotal = signal<number>(0);
+    totalPurchase = signal<number>(0);
+
+    loadTotals() {
+        const obs = this.searchOption() === 'ALL'
+            ? this.api.getStockVerificationTotalsAll(this.branchId(), this.searchTerm(), this.showOnlyInStock())
+            : this.api.getStockVerificationTotals(this.branchId(), this.fromDate(), this.toDate(), this.searchTerm());
+
+        obs.subscribe({
+            next: (res) => {
+                if (res.success && res.grandTotals) {
+                    this.totalSales.set(parseFloat(res.grandTotals.totalSales || 0));
+                    this.totalBranchTransfer.set(parseFloat(res.grandTotals.totalBranchTransfer || 0));
+                    this.currentStockTotal.set(parseFloat(res.grandTotals.currentStockTotal || 0));
+                    this.totalPurchase.set(parseFloat(res.grandTotals.totalPurchase || 0));
+                }
+            },
+            error: (err) => console.error(err)
+        });
+    }
 
     changePage(p: number | string) {
         if (typeof p === 'number' && p !== this.page()) {

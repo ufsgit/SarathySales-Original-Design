@@ -15,6 +15,7 @@ export interface ApiResponse<T = any> {
     page?: number;
     limit?: number;
     notFoundPcodes?: string[];
+    grandTotals?: any;
 }
 
 @Injectable({
@@ -903,12 +904,31 @@ export class ApiService {
             .pipe(catchError(err => this.handleError(err)));
     }
 
+    getStockVerificationTotals(branchId?: string, from?: string, to?: string, search?: string): Observable<ApiResponse> {
+        let params = new HttpParams();
+        if (branchId) params = params.set('branchId', branchId);
+        if (from) params = params.set('from', from);
+        if (to) params = params.set('to', to);
+        if (search) params = params.set('search', search);
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/verification/totals`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
     getStockVerificationAll(branchId?: string, page = 1, limit = 25, search?: string, onlyInStock: boolean = false): Observable<ApiResponse> {
         let params = new HttpParams().set('page', page).set('limit', limit);
         if (branchId) params = params.set('branchId', branchId);
         if (search) params = params.set('search', search);
         if (onlyInStock) params = params.set('onlyInStock', 'true');
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/verification/all`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockVerificationTotalsAll(branchId?: string, search?: string, onlyInStock: boolean = false): Observable<ApiResponse> {
+        let params = new HttpParams();
+        if (branchId) params = params.set('branchId', branchId);
+        if (search) params = params.set('search', search);
+        if (onlyInStock) params = params.set('onlyInStock', 'true');
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/verification/all/totals`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 
@@ -983,6 +1003,34 @@ export class ApiService {
             if (codeStr) params = params.set('vehicleCode', codeStr);
         }
         return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup/all`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockSplitupTotals(branchId?: string, from?: string, to?: string, chassisNo?: string, vehicleCode?: string | string[], search?: string): Observable<ApiResponse> {
+        let params = new HttpParams();
+        if (branchId) params = params.set('branchId', branchId);
+        if (from) params = params.set('from', from);
+        if (to) params = params.set('to', to);
+        if (chassisNo) params = params.set('chassisNo', chassisNo);
+        if (search) params = params.set('search', search);
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) params = params.set('vehicleCode', codeStr);
+        }
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup/totals`, { params })
+            .pipe(catchError(err => this.handleError(err)));
+    }
+
+    getStockSplitupTotalsAll(branchId?: string, chassisNo?: string, vehicleCode?: string | string[], search?: string): Observable<ApiResponse> {
+        let params = new HttpParams();
+        if (branchId) params = params.set('branchId', branchId);
+        if (chassisNo) params = params.set('chassisNo', chassisNo);
+        if (search) params = params.set('search', search);
+        if (vehicleCode) {
+            const codeStr = Array.isArray(vehicleCode) ? vehicleCode.join(',') : vehicleCode;
+            if (codeStr) params = params.set('vehicleCode', codeStr);
+        }
+        return this.http.get<ApiResponse>(`${this.BASE_URL}/stock/report/splitup/all/totals`, { params })
             .pipe(catchError(err => this.handleError(err)));
     }
 

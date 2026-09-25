@@ -320,6 +320,149 @@ const getStockVerification = async (req, res) => {
 
 
 
+const getStockVerificationTotalsAll = async (req, res) => {
+    let branchId = req.query.branchId;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') branchId = null;
+
+    const search = (req.query.search || '').trim();
+    const onlyInStock = req.query.onlyInStock === 'true';
+
+    try {
+        const sql = `
+            SELECT 
+                SUM(COALESCE(p_all.pur_all,0)) AS totalPurchase,
+                SUM(COALESCE(s_all.sales_all,0)) AS totalSales,
+                SUM(COALESCE(t_all.transfer_all,0)) AS totalBranchTransfer,
+                SUM(COALESCE(p_all.pur_all,0) - COALESCE(s_all.sales_all,0) - COALESCE(t_all.transfer_all,0)) AS currentStockTotal
+            FROM
+            (
+                SELECT MAX(pi.materialName) AS vehicle_name, pi.materialsId AS vehicle_code, MIN(pi.purchaseItemId) AS first_id
+                FROM purchaseitem pi
+                GROUP BY pi.materialsId
+                ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}
+            ) v
+            CROSS JOIN tbl_branch b
+            LEFT JOIN (SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_all FROM purchaseitem pi JOIN purchaseitembill pb ON pi.purchaseItemBillId = pb.purchaseItemBillId GROUP BY pi.materialsId, pb.purch_branchId) p_all ON v.vehicle_code = p_all.materialsId AND b.b_id = p_all.purch_branchId
+            LEFT JOIN (SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_all FROM tbl_invoice_labour WHERE status != 0 GROUP BY inv_vehicle_code, inv_branch) s_all ON v.vehicle_code = s_all.inv_vehicle_code AND b.b_id = s_all.inv_branch
+            LEFT JOIN (SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_all FROM tbl_branch_transfer GROUP BY vehicle_code, ic_branch) t_all ON v.vehicle_code = t_all.vehicle_code AND b.b_id = t_all.ic_branch
+            WHERE (? IS NULL OR b.b_id = ?)
+            ${onlyInStock ? 'HAVING currentStockTotal > 0' : ''}
+        `;
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(branchId, branchId);
+        const [rows] = await db.execute(sql, params);
+
+        res.json({ success: true, grandTotals: rows[0] || { totalPurchase:0, totalSales:0, totalBranchTransfer:0, currentStockTotal:0 } });
+    } catch (err) {
+        console.error('getStockVerificationTotalsAll error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock verification totals all: ' + err.message });
+    }
+};
+
+const getStockVerificationTotals = async (req, res) => {
+    let branchId = req.query.branchId;
+    if (!branchId || branchId === 'null' || branchId === 'undefined' || branchId === '') {
+        branchId = null;
+    }
+
+    const fromDate = req.query.from || '2000-01-01';
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const search = (req.query.search || '').trim();
+
+    try {
+        const sql = `
+            SELECT 
+                SUM(COALESCE(p_cur.pur_cur,0)) AS totalPurchase,
+                SUM(COALESCE(s_cur.sales_cur,0)) AS totalSales,
+                SUM(COALESCE(t_cur.transfer_cur,0)) AS totalBranchTransfer,
+                SUM(
+                    COALESCE(p_open.pur_open,0)
+                    - COALESCE(s_open.sales_open,0)
+                    - COALESCE(t_open.transfer_open,0)
+                    + COALESCE(p_cur.pur_cur,0)
+                    - COALESCE(s_cur.sales_cur,0)
+                    - COALESCE(t_cur.transfer_cur,0)
+                ) AS currentStockTotal
+            FROM
+            (
+                SELECT 
+                    MAX(pi.materialName) AS vehicle_name,
+                    pi.materialsId AS vehicle_code,
+                    MIN(pi.purchaseItemId) AS first_id
+                FROM purchaseitem pi
+                GROUP BY pi.materialsId
+                ${search ? 'HAVING (MAX(pi.materialName) LIKE ? OR pi.materialsId LIKE ?)' : ''}
+            ) v
+            CROSS JOIN tbl_branch b
+            LEFT JOIN (
+                SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_open
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb 
+                    ON pi.purchaseItemBillId = pb.purchaseItemBillId
+                WHERE pb.invoiceDate < ?
+                GROUP BY pi.materialsId, pb.purch_branchId
+            ) p_open ON v.vehicle_code = p_open.materialsId AND b.b_id = p_open.purch_branchId
+            LEFT JOIN (
+                SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_open
+                FROM tbl_invoice_labour
+                WHERE inv_inv_date < ? AND status != 0
+                GROUP BY inv_vehicle_code, inv_branch
+            ) s_open ON v.vehicle_code = s_open.inv_vehicle_code AND b.b_id = s_open.inv_branch
+            LEFT JOIN (
+                SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_open
+                FROM tbl_branch_transfer
+                WHERE debit_note_date < ?
+                GROUP BY vehicle_code, ic_branch
+            ) t_open ON v.vehicle_code = t_open.vehicle_code AND b.b_id = t_open.ic_branch
+            LEFT JOIN (
+                SELECT pi.materialsId, pb.purch_branchId, COUNT(*) AS pur_cur
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb 
+                    ON pi.purchaseItemBillId = pb.purchaseItemBillId
+                WHERE pb.invoiceDate BETWEEN ? AND ?
+                GROUP BY pi.materialsId, pb.purch_branchId
+            ) p_cur ON v.vehicle_code = p_cur.materialsId AND b.b_id = p_cur.purch_branchId
+            LEFT JOIN (
+                SELECT inv_vehicle_code, inv_branch, COUNT(*) AS sales_cur
+                FROM tbl_invoice_labour
+                WHERE inv_inv_date BETWEEN ? AND ? AND status != 0
+                GROUP BY inv_vehicle_code, inv_branch
+            ) s_cur ON v.vehicle_code = s_cur.inv_vehicle_code AND b.b_id = s_cur.inv_branch
+            LEFT JOIN (
+                SELECT vehicle_code, ic_branch, COUNT(*) AS transfer_cur
+                FROM tbl_branch_transfer
+                WHERE debit_note_date BETWEEN ? AND ?
+                GROUP BY vehicle_code, ic_branch
+            ) t_cur ON v.vehicle_code = t_cur.vehicle_code AND b.b_id = t_cur.ic_branch
+            WHERE (? IS NULL OR b.b_id = ?)
+        `;
+
+        const params = [];
+        if (search) params.push(`%${search}%`, `%${search}%`);
+        params.push(
+            fromDate, fromDate, fromDate,
+            fromDate, toDate,
+            fromDate, toDate,
+            fromDate, toDate,
+            branchId, branchId
+        );
+
+        const [rows] = await db.execute(sql, params);
+
+        res.json({
+            success: true,
+            grandTotals: rows[0] || { totalPurchase:0, totalSales:0, totalBranchTransfer:0, currentStockTotal:0 }
+        });
+    } catch (err) {
+        console.error('getStockVerificationTotals error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch stock verification totals: ' + err.message
+        });
+    }
+};
+
 const getStockSplitup = async (req, res) => {
     let branchId = req.query.branchId;
     const fromDate = req.query.from || '2000-01-01';
@@ -1332,13 +1475,209 @@ const exportStockVerificationAllPagedCsv = async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Export failed' }); }
 };
 
+const getStockSplitupTotals = async (req, res) => {
+    let branchId = req.query.branchId;
+    const fromDate = req.query.from || '2000-01-01';
+    const toDate = req.query.to || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const search = (req.query.search || '').trim();
+
+    try {
+        let conditions = [
+            'si.inv_id IS NULL',
+            "stock_base.retn_status = 'Available'",
+            'stock_base.invoice_date BETWEEN ? AND ?'
+        ];
+        let params = [toDate, toDate, fromDate, toDate];
+
+        if (branchId && branchId !== 'ALL') {
+            conditions.push('stock_base.branch_id = ?');
+            params.push(branchId);
+        }
+
+        if (chassisNo) {
+            conditions.push('stock_base.chassis_no LIKE ?');
+            params.push(`%${chassisNo}%`);
+        }
+
+        if (search) {
+            conditions.push('(stock_base.invoice_no LIKE ? OR stock_base.product_code LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        const vehicleCodeStr = req.query.vehicleCode;
+        if (vehicleCodeStr) {
+            const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+            if (codes.length > 0) {
+                const placeholders = codes.map(() => '?').join(',');
+                conditions.push(`stock_base.product_code IN (${placeholders})`);
+                params.push(...codes);
+            }
+        }
+
+        const where = 'WHERE ' + conditions.join(' AND ');
+        const stockBaseSql = `
+            FROM (
+                SELECT
+                    pi.purchaseItemId,
+                    pb.invoiceNo AS invoice_no,
+                    pb.rac_date AS rc_date,
+                    pb.pucha_vendorName AS vendor_name,
+                    pi.materialName AS vehicle_code,
+                    pi.materialsId AS product_code,
+                    pb.invoiceDate AS invoice_date,
+                    pb.purch_branchId AS branch_id,
+                    pi.chassis_no,
+                    pi.engine_no,
+                    pi.color_name AS color,
+                    pb.rc_no AS rc_no,
+                    pi.p_date AS mfg_date,
+                    pi.lc_rate AS total_amount,
+                    pi.product_id,
+                    pi.item_status,
+                    pi.retn_status
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb
+                    ON pb.purchaseItemBillId = pi.purchaseItemBillId
+                INNER JOIN (
+                    SELECT
+                        pi2.chassis_no,
+                        MAX(pi2.purchaseItemId) AS latest_purchase_item_id
+                    FROM purchaseitem pi2
+                    JOIN purchaseitembill pb2
+                        ON pb2.purchaseItemBillId = pi2.purchaseItemBillId
+                    WHERE pb2.invoiceDate <= ?
+                    GROUP BY pi2.chassis_no
+                ) latest_pi
+                    ON latest_pi.latest_purchase_item_id = pi.purchaseItemId
+            ) stock_base
+            LEFT JOIN tbl_branch b
+                ON b.b_id = stock_base.branch_id
+            LEFT JOIN tbl_invoice_labour si
+                ON si.inv_chassis = stock_base.chassis_no
+                AND si.inv_inv_date <= ? AND si.status != 0
+        `;
+
+        const totalsSql = `
+            SELECT SUM(CAST(stock_base.total_amount AS DECIMAL(10,2))) as totalInvoiceAmount 
+            ${stockBaseSql}
+            ${where}
+        `;
+
+        const [rows] = await db.execute(totalsSql, params);
+        res.json({ success: true, grandTotals: rows[0] || { totalInvoiceAmount: 0 } });
+    } catch (err) {
+        console.error('getStockSplitupTotals Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup totals: ' + err.message });
+    }
+};
+
+const getStockSplitupTotalsAll = async (req, res) => {
+    let branchId = req.query.branchId;
+    const chassisNo = (req.query.chassisNo || '').trim();
+    const search = (req.query.search || '').trim();
+
+    try {
+        let conditions = [
+            'si.inv_id IS NULL',
+            "stock_base.retn_status = 'Available'",
+            "stock_base.item_status = 'Available'"
+        ];
+        let params = [new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })];
+
+        if (branchId && branchId !== 'ALL') {
+            conditions.push('stock_base.branch_id = ?');
+            params.push(branchId);
+        }
+
+        if (chassisNo) {
+            conditions.push('stock_base.chassis_no LIKE ?');
+            params.push(`%${chassisNo}%`);
+        }
+
+        if (search) {
+            conditions.push('(stock_base.invoice_no LIKE ? OR stock_base.product_code LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        const vehicleCodeStr = req.query.vehicleCode;
+        if (vehicleCodeStr) {
+            const codes = vehicleCodeStr.split(',').map(c => c.trim()).filter(c => c);
+            if (codes.length > 0) {
+                const placeholders = codes.map(() => '?').join(',');
+                conditions.push(`stock_base.product_code IN (${placeholders})`);
+                params.push(...codes);
+            }
+        }
+
+        const where = 'WHERE ' + conditions.join(' AND ');
+        const stockBaseSql = `
+            FROM (
+                SELECT
+                    pi.purchaseItemId,
+                    pb.invoiceNo AS invoice_no,
+                    pb.rac_date AS rc_date,
+                    pb.pucha_vendorName AS vendor_name,
+                    pi.materialName AS vehicle_code,
+                    pi.materialsId AS product_code,
+                    pb.invoiceDate AS invoice_date,
+                    pb.purch_branchId AS branch_id,
+                    pi.chassis_no,
+                    pi.engine_no,
+                    pi.color_name AS color,
+                    pb.rc_no AS rc_no,
+                    pi.p_date AS mfg_date,
+                    pi.lc_rate AS total_amount,
+                    pi.product_id,
+                    pi.item_status,
+                    pi.retn_status
+                FROM purchaseitem pi
+                JOIN purchaseitembill pb
+                    ON pb.purchaseItemBillId = pi.purchaseItemBillId
+                INNER JOIN (
+                    SELECT
+                        pi2.chassis_no,
+                        MAX(pi2.purchaseItemId) AS latest_purchase_item_id
+                    FROM purchaseitem pi2
+                    JOIN purchaseitembill pb2
+                        ON pb2.purchaseItemBillId = pi2.purchaseItemBillId
+                    WHERE pb2.invoiceDate <= ?
+                    GROUP BY pi2.chassis_no
+                ) latest_pi
+                    ON latest_pi.latest_purchase_item_id = pi.purchaseItemId
+            ) stock_base
+            LEFT JOIN tbl_branch b
+                ON b.b_id = stock_base.branch_id
+            LEFT JOIN tbl_invoice_labour si
+                ON si.inv_chassis = stock_base.chassis_no
+                AND si.inv_inv_date <= ? AND si.status != 0
+        `;
+
+        const totalsSql = `
+            SELECT SUM(CAST(stock_base.total_amount AS DECIMAL(10,2))) as totalInvoiceAmount 
+            ${stockBaseSql}
+            ${where}
+        `;
+
+        const [rows] = await db.execute(totalsSql, params);
+        res.json({ success: true, grandTotals: rows[0] || { totalInvoiceAmount: 0 } });
+    } catch (err) {
+        console.error('getStockSplitupTotalsAll Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock splitup all totals: ' + err.message });
+    }
+};
+
 module.exports = {
     getStockList,
     getAvailableVehicles,
     getStockVerification,
     getStockVerificationAll,
+    getStockVerificationTotals,
+    getStockVerificationTotalsAll,
     getStockSplitup,
     getStockSplitupAll,
+    getStockSplitupTotals,
+    getStockSplitupTotalsAll,
     updateStock,
     deleteStock,
     exportStockVerificationExcel,
