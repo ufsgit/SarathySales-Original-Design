@@ -1559,7 +1559,7 @@ const getStockSplitupTotals = async (req, res) => {
         `;
 
         const totalsSql = `
-            SELECT SUM(CAST(stock_base.total_amount AS DECIMAL(10,2))) as totalInvoiceAmount 
+            SELECT CAST(SUM(stock_base.total_amount) AS DECIMAL(15,2)) as totalInvoiceAmount 
             ${stockBaseSql}
             ${where}
         `;
@@ -1654,7 +1654,7 @@ const getStockSplitupTotalsAll = async (req, res) => {
         `;
 
         const totalsSql = `
-            SELECT SUM(CAST(stock_base.total_amount AS DECIMAL(10,2))) as totalInvoiceAmount 
+            SELECT CAST(SUM(stock_base.total_amount) AS DECIMAL(15,2)) as totalInvoiceAmount 
             ${stockBaseSql}
             ${where}
         `;
