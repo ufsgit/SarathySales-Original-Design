@@ -82,7 +82,7 @@ import { ApiService } from '../services/api.service';
                       <button class="btn-action" (click)="toggleDropdown(i)">
                         Action <i class="fas fa-caret-down"></i>
                       </button>
-                      <div class="action-dropdown" *ngIf="openDropdownIndex === i">
+                      <div class="action-dropdown" *ngIf="openDropdownIndex === i" [ngClass]="{'dropup': i >= institutions().length - 3 && institutions().length > 4}">
                         <div class="dropdown-item edit" (click)="onEdit(inst)">
                           <i class="fas fa-edit"></i> Edit
                         </div>
@@ -152,7 +152,7 @@ import { ApiService } from '../services/api.service';
     .search-input { padding: 5px 10px; border: 1px solid #777 !important; border-radius: 4px; outline: none; width: 200px; background-color: #fff; }
     .search-input:focus { border-color: #0b5ed7 !important; box-shadow: 0 0 0 2px rgba(11,94,215,0.2); }
     
-    .table-container { overflow-x: auto; }
+    .table-container { overflow-x: auto; min-height: 280px; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .report-table th { background: #f1f1f1; color: #333; font-weight: 600; padding: 10px; text-align: left; border: 1px solid #ddd; white-space: nowrap; }
     .report-table td { padding: 8px 10px; border: 1px solid #ddd; color: #444; vertical-align: middle; }
@@ -164,6 +164,7 @@ import { ApiService } from '../services/api.service';
     .action-wrapper { position: relative; display: inline-block; }
     .btn-action { background: #c92127; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
     .action-dropdown { position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 4px; min-width: 130px; z-index: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .action-dropdown.dropup { top: auto; bottom: 100%; margin-bottom: 2px; }
     .dropdown-item { padding: 10px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-align: left; }
     .dropdown-item:hover { background: #f5f5f5; }
     .dropdown-item.edit { color: #0b5ed7; }
